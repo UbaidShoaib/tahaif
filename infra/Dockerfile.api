@@ -1,0 +1,19 @@
+FROM python:3.12-slim AS base
+WORKDIR /app
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    UV_COMPILE_BYTECODE=1
+
+FROM base AS builder
+RUN pip install uv
+COPY apps/api/pyproject.toml apps/api/pyproject.toml
+RUN cd apps/api && uv sync --no-dev --frozen
+
+FROM base AS runtime
+RUN addgroup --system app && adduser --system --ingroup app app
+COPY --from=builder /app/apps/api/.venv /app/apps/api/.venv
+COPY apps/api/app apps/api/app
+ENV PATH="/app/apps/api/.venv/bin:$PATH"
+USER app
+EXPOSE 8000
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
