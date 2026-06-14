@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { ShoppingBag } from "lucide-react";
 import { useAuthStore } from "@/stores/auth.store";
 import { useCartStore } from "@/stores/cart.store";
+import { captureEvent } from "@/components/providers";
 
 type Props = {
   product: Product;
@@ -40,6 +41,12 @@ export function VariantPicker({ product }: Props) {
         product_id: product.id,
         variant_id: selected?.id ?? null,
         qty: 1,
+      });
+      captureEvent("add_to_cart", {
+        product_id: product.id,
+        product_name: product.name,
+        variant_id: selected?.id,
+        price_pkr: totalPrice,
       });
       setAddedFeedback(true);
       setTimeout(() => setAddedFeedback(false), 2000);
