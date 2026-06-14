@@ -141,6 +141,7 @@ class Order(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         default=OrderStatus.pending_payment,
         nullable=False,
     )
+    idempotency_key: Mapped[str | None] = mapped_column(String(64), unique=True, nullable=True)
     coupon_code: Mapped[str | None] = mapped_column(String(50), nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     placed_at: Mapped[datetime] = mapped_column(

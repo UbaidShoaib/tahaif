@@ -26,6 +26,12 @@ class OrderRepository:
             selectinload(Order.payments),
         )
 
+    async def get_by_idempotency_key(self, key: str) -> Order | None:
+        result = await self._db.execute(
+            self._with_relations().where(Order.idempotency_key == key)
+        )
+        return result.scalar_one_or_none()
+
     async def get_by_public_token(self, token: uuid.UUID) -> Order | None:
         result = await self._db.execute(
             self._with_relations().where(Order.public_token == token)
