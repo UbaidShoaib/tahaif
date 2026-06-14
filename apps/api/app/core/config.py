@@ -66,6 +66,15 @@ class Settings(BaseSettings):
     resend_api_key: str = ""
     email_from: str = "noreply@tahaif.com"
 
+    # Messaging (Twilio)
+    twilio_account_sid: str = ""
+    twilio_auth_token: str = ""
+    twilio_whatsapp_from: str = "whatsapp:+14155238886"
+    twilio_sms_from: str = ""
+
+    # FX rates
+    open_exchange_rates_app_id: str = ""
+
     # Observability
     sentry_dsn: str = ""
 
