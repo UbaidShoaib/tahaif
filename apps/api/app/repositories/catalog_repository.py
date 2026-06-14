@@ -73,6 +73,12 @@ class VendorRepository:
         result = await self._db.execute(select(Vendor).where(Vendor.id == vendor_id))
         return result.scalar_one_or_none()
 
+    async def get_by_owner(self, user_id: uuid.UUID) -> Vendor | None:
+        result = await self._db.execute(
+            select(Vendor).where(Vendor.owner_user_id == user_id, Vendor.is_active.is_(True))
+        )
+        return result.scalar_one_or_none()
+
     async def create(self, **kwargs: Any) -> Vendor:
         vendor = Vendor(**kwargs)
         self._db.add(vendor)
