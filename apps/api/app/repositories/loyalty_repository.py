@@ -67,6 +67,27 @@ class LoyaltyRepository:
         await self.add_ledger_entry(user_id, points, reason, order_id)
         return wallet
 
+    async def burn_points(
+        self,
+        user_id: uuid.UUID,
+        points: int,
+        reason: str,
+        order_id: uuid.UUID | None = None,
+    ) -> LoyaltyWallet:
+        wallet = await self.get_or_create_wallet(user_id)
+        if wallet.balance_points < points:
+            from fastapi import HTTPException, status
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Insufficient loyalty points (have {wallet.balance_points}, need {points})",
+            )
+        wallet.balance_points -= points
+        wallet.lifetime_burned += points
+        wallet.updated_at = datetime.now(UTC)
+        await self._db.flush()
+        await self.add_ledger_entry(user_id, -points, reason, order_id)
+        return wallet
+
     async def list_ledger(
         self, user_id: uuid.UUID, limit: int = 50
     ) -> list[LoyaltyLedger]:

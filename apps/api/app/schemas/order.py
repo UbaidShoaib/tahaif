@@ -16,6 +16,8 @@ class CheckoutPlace(BaseModel):
     address_line2: str | None = None
     landmark: str | None = None
     notes: str | None = Field(default=None, max_length=500)
+    coupon_code: str | None = Field(default=None, max_length=50)
+    use_loyalty_points: bool = False
 
 
 class QuoteLineItem(BaseModel):
