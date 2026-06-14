@@ -13,29 +13,47 @@ from app.models.catalog import (
     Vendor,
 )
 from app.models.loyalty import (
+    AuditLog,
     Banner,
     Coupon,
     LoyaltyLedger,
     LoyaltyWallet,
+    NewsletterSubscriber,
     Review,
     Testimonial,
+)
+from app.models.order import (
+    Cart,
+    CartItem,
+    Fulfillment,
+    Order,
+    OrderItem,
+    Payment,
 )
 from app.models.user import OAuthAccount, PasswordResetToken, RefreshToken, User
 
 __all__ = [
     "Address",
+    "AuditLog",
     "Banner",
     "Base",
+    "Cart",
+    "CartItem",
     "Category",
     "City",
     "Coupon",
     "CustomizationField",
+    "Fulfillment",
     "FxRate",
     "LoyaltyLedger",
     "LoyaltyWallet",
+    "NewsletterSubscriber",
     "OAuthAccount",
     "Occasion",
+    "Order",
+    "OrderItem",
     "PasswordResetToken",
+    "Payment",
     "Product",
     "ProductCity",
     "ProductImage",
