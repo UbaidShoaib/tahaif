@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from sqlalchemy.sql import Select
 
+from app.models.catalog import Product
 from app.models.order import Cart, CartItem
 
 
@@ -15,8 +16,14 @@ class CartRepository:
 
     def _with_items(self) -> Select[tuple[Cart]]:
         return select(Cart).options(
-            selectinload(Cart.items).selectinload(CartItem.product),
-            selectinload(Cart.items).selectinload(CartItem.variant),
+            selectinload(Cart.items).options(
+                selectinload(CartItem.product).options(
+                    selectinload(Product.images),
+                    selectinload(Product.product_cities),
+                    selectinload(Product.variants),
+                ),
+                selectinload(CartItem.variant),
+            )
         )
 
     async def get_by_user(self, user_id: uuid.UUID) -> Cart | None:

@@ -112,6 +112,8 @@ async def add_item(db: AsyncSession, user_id: uuid.UUID, body: CartItemAdd) -> C
             recipient_phone=body.recipient_phone,
         )
 
+    # Expire cached items collection so selectinload re-fetches fresh data
+    db.expire(cart, ["items"])
     # Reload cart with fresh relations
     cart = await repo.get_or_create_for_user(user_id)
     return _cart_to_read(cart)
@@ -147,6 +149,7 @@ async def update_item(
                 item.recipient_phone = body.recipient_phone
             await db.flush()
 
+    db.expire(cart, ["items"])
     cart = await repo.get_or_create_for_user(user_id)
     return _cart_to_read(cart)
 
@@ -158,6 +161,7 @@ async def remove_item(db: AsyncSession, user_id: uuid.UUID, item_id: uuid.UUID) 
     if not item:
         raise _NOT_FOUND
     await repo.delete_item(item)
+    db.expire(cart, ["items"])
     cart = await repo.get_or_create_for_user(user_id)
     return _cart_to_read(cart)
 

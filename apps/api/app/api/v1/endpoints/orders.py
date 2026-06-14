@@ -1,6 +1,7 @@
 import uuid
+from typing import Annotated
 
-from fastapi import APIRouter, status
+from fastapi import APIRouter, Header, status
 
 from app.core.deps import DB, CurrentUser
 from app.schemas.order import CheckoutPlace, CheckoutQuote, OrderRead
@@ -23,6 +24,7 @@ async def checkout_place(
     body: CheckoutPlace,
     user: CurrentUser,
     db: DB,
+    idempotency_key: Annotated[str | None, Header(alias="idempotency-key")] = None,
 ) -> OrderRead:
     return await checkout_service.place_order(db, user.id, body)
 
