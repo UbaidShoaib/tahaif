@@ -40,7 +40,7 @@ async def award_for_order(
         await repo.award_points(
             user_id=user_id,
             points=points,
-            reason=f"Order reward",
+            reason="Order reward",
             order_id=order_id,
         )
     except Exception:

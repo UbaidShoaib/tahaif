@@ -237,7 +237,7 @@ class ProductRepository:
         result = await self._db.execute(
             self._with_relations().where(Product.id == product.id)
         )
-        return result.scalar_one()
+        return result.scalar_one()  # type: ignore[no-any-return]
 
     async def update(self, product: Product, **kwargs: Any) -> Product:
         for key, value in kwargs.items():

@@ -13,9 +13,8 @@ from app.repositories.order_repository import OrderRepository
 from app.schemas.catalog import VendorUpdate
 from app.schemas.vendor import FulfillmentStatusUpdate, VendorFulfillmentRead
 
-_NOT_FOUND = lambda noun: HTTPException(  # noqa: E731
-    status_code=status.HTTP_404_NOT_FOUND, detail=f"{noun} not found"
-)
+def _NOT_FOUND(noun: str) -> HTTPException:
+    return HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"{noun} not found")
 _FORBIDDEN = HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not a vendor account")
 
 
@@ -76,7 +75,7 @@ async def update_fulfillment(
     # Propagate to order status
     order = await repo.get_by_id(fulfillment.order_id)
     if order:
-        await _sync_order_status(db, order, repo)
+        await _sync_order_status(db, order)
 
     return _fulfillment_to_read(fulfillment)
 
@@ -120,7 +119,7 @@ def _fulfillment_to_read(f: Fulfillment) -> VendorFulfillmentRead:
 
 
 async def _sync_order_status(
-    db: AsyncSession, order: Order, repo: OrderRepository
+    db: AsyncSession, order: Order
 ) -> None:
     """Derive order status from the aggregate of its fulfillments."""
     fulfillments = order.fulfillments

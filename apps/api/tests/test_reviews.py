@@ -11,9 +11,12 @@ from app.core.security import hash_password
 from app.models.catalog import City, Vendor
 from app.models.loyalty import Review
 from app.models.user import User, UserRole
-from app.repositories.catalog_repository import CityRepository, ProductRepository, VendorRepository
+from app.repositories.catalog_repository import (
+    CityRepository,
+    ProductRepository,
+    VendorRepository,
+)
 from app.repositories.user_repository import UserRepository
-
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 

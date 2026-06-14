@@ -10,8 +10,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.catalog import City, Product, ProductCity, Vendor
 from app.models.order import (
-    Cart,
-    CartItem,
     Fulfillment,
     FulfillmentStatus,
     Order,
@@ -22,7 +20,11 @@ from app.models.order import (
     PaymentStatus,
 )
 from app.models.user import User, UserRole
-from app.repositories.catalog_repository import CityRepository, ProductRepository, VendorRepository
+from app.repositories.catalog_repository import (
+    CityRepository,
+    ProductRepository,
+    VendorRepository,
+)
 from app.repositories.user_repository import UserRepository
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -366,6 +368,7 @@ async def test_update_fulfillment_delivered_propagates_order_status(
 
     # Reload order to verify status propagated
     from sqlalchemy import select as sa_select
+
     from app.models.order import Order as OrderModel
     db.expire_all()
     result = await db.execute(sa_select(OrderModel).where(OrderModel.id == order_id))

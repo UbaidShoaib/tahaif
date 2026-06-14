@@ -4,13 +4,14 @@ from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
 import pytest
-import pytest_asyncio
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.loyalty import Banner, Coupon, CouponType, Testimonial
-from app.repositories.loyalty_repository import BannerRepository, CouponRepository, TestimonialRepository
-
+from app.repositories.loyalty_repository import (
+    BannerRepository,
+    TestimonialRepository,
+)
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 

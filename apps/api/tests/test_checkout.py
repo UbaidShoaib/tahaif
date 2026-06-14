@@ -10,7 +10,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.catalog import City, Product, ProductCity, Vendor
 from app.models.user import User, UserRole
-from app.repositories.catalog_repository import CityRepository, ProductRepository, VendorRepository
+from app.repositories.catalog_repository import (
+    CityRepository,
+    ProductRepository,
+    VendorRepository,
+)
 from app.repositories.user_repository import UserRepository
 
 # ── Helpers ───────────────────────────────────────────────────────────────────

@@ -19,6 +19,6 @@ async def submit_review(
 @router.get("", response_model=list[ReviewRead])
 async def list_reviews(
     db: DB,
-    product_id: uuid.UUID = Query(...),
+    product_id: uuid.UUID = Query(...),  # noqa: B008
 ) -> list[ReviewRead]:
     return await review_service.list_reviews(db, product_id, published_only=True)

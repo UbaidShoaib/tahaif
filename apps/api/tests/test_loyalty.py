@@ -3,14 +3,12 @@
 import uuid
 
 import pytest
-import pytest_asyncio
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import hash_password
 from app.models.user import User, UserRole
 from app.repositories.user_repository import UserRepository
-
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -84,9 +82,13 @@ async def test_loyalty_points_awarded_after_order(
 ) -> None:
     """Placing an order credits loyalty points to the wallet."""
     from datetime import date, timedelta
-    from app.models.catalog import City, ProductCity, Vendor
-    from app.models.user import UserRole
-    from app.repositories.catalog_repository import CityRepository, ProductRepository, VendorRepository
+
+    from app.models.catalog import ProductCity
+    from app.repositories.catalog_repository import (
+        CityRepository,
+        ProductRepository,
+        VendorRepository,
+    )
 
     # Build fixtures
     suffix = uuid.uuid4().hex[:6]

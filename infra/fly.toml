@@ -1,0 +1,54 @@
+# fly.toml — Tahaif API on Fly.io
+# Deploy: fly deploy --config infra/fly.toml --dockerfile infra/Dockerfile.api
+
+app = "tahaif-api"
+primary_region = "sin"  # Singapore (closest to Pakistan)
+
+[build]
+  dockerfile = "infra/Dockerfile.api"
+  # Build context is the repo root so COPY apps/api/ works
+  build_target = ""
+
+[env]
+  PORT = "8000"
+  PYTHONUNBUFFERED = "1"
+  # Remaining secrets injected via: fly secrets set KEY=value
+  # Required: DATABASE_URL, REDIS_URL, SECRET_KEY, ALLOWED_ORIGINS
+
+[http_service]
+  internal_port = 8000
+  force_https = true
+  auto_stop_machines = true
+  auto_start_machines = true
+  min_machines_running = 1
+
+  [http_service.concurrency]
+    type = "requests"
+    hard_limit = 250
+    soft_limit = 200
+
+[[http_service.checks]]
+  grace_period = "10s"
+  interval = "15s"
+  method = "GET"
+  path = "/health"
+  protocol = "http"
+  timeout = "5s"
+
+[[vm]]
+  memory = "512mb"
+  cpu_kind = "shared"
+  cpus = 1
+
+[deploy]
+  strategy = "rolling"
+  # Run Alembic migrations before traffic shifts to new version
+  release_command = "uv run alembic upgrade head"
+
+[[statics]]
+  # No static files from API — served by Vercel (web app)
+
+[mounts]
+  # Uncomment if MinIO / local storage is used in staging
+  # source = "tahaif_data"
+  # destination = "/data"

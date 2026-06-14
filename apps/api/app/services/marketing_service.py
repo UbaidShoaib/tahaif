@@ -5,7 +5,11 @@ from datetime import UTC, datetime
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.repositories.loyalty_repository import BannerRepository, CouponRepository, TestimonialRepository
+from app.repositories.loyalty_repository import (
+    BannerRepository,
+    CouponRepository,
+    TestimonialRepository,
+)
 from app.schemas.loyalty import BannerRead, CouponValidateRead, TestimonialRead
 
 

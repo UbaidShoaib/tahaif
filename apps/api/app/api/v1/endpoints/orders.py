@@ -24,7 +24,7 @@ async def checkout_place(
     body: CheckoutPlace,
     user: CurrentUser,
     db: DB,
-    idempotency_key: Annotated[str | None, Header(alias="idempotency-key")] = None,
+    idempotency_key: Annotated[str | None, Header(alias="idempotency-key")] = None,  # noqa: ARG001
 ) -> OrderRead:
     return await checkout_service.place_order(db, user.id, body)
 

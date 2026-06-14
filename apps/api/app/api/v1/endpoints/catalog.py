@@ -1,6 +1,6 @@
 import uuid
 
-from fastapi import APIRouter, Query, status
+from fastapi import APIRouter, Query, Response, status
 
 from app.core.deps import DB, CurrentUser
 from app.integrations import meilisearch_client
@@ -28,17 +28,22 @@ from app.services import catalog_service
 
 router = APIRouter(tags=["catalog"])
 
+_CACHE_STATIC = "public, max-age=300, stale-while-revalidate=60"
+_CACHE_PRODUCTS = "public, max-age=60, stale-while-revalidate=30"
+
 
 # ── Cities ────────────────────────────────────────────────────────────────────
 
 @router.get("/cities", response_model=list[CityRead])
-async def list_cities(db: DB) -> list[CityRead]:
+async def list_cities(db: DB, response: Response) -> list[CityRead]:
+    response.headers["Cache-Control"] = _CACHE_STATIC
     cities = await catalog_service.list_cities(db)
     return [CityRead.model_validate(c) for c in cities]
 
 
 @router.get("/cities/{slug}", response_model=CityRead)
-async def get_city(slug: str, db: DB) -> CityRead:
+async def get_city(slug: str, db: DB, response: Response) -> CityRead:
+    response.headers["Cache-Control"] = _CACHE_STATIC
     return CityRead.model_validate(await catalog_service.get_city(db, slug))
 
 
@@ -57,14 +62,17 @@ async def update_city(slug: str, body: CityUpdate, db: DB, user: CurrentUser) ->
 @router.get("/vendors", response_model=list[VendorRead])
 async def list_vendors(
     db: DB,
+    response: Response,
     city_id: uuid.UUID | None = Query(default=None),  # noqa: B008
 ) -> list[VendorRead]:
+    response.headers["Cache-Control"] = _CACHE_STATIC
     vendors = await catalog_service.list_vendors(db, city_id=city_id)
     return [VendorRead.model_validate(v) for v in vendors]
 
 
 @router.get("/vendors/{slug}", response_model=VendorRead)
-async def get_vendor(slug: str, db: DB) -> VendorRead:
+async def get_vendor(slug: str, db: DB, response: Response) -> VendorRead:
+    response.headers["Cache-Control"] = _CACHE_STATIC
     return VendorRead.model_validate(await catalog_service.get_vendor(db, slug))
 
 
@@ -81,7 +89,8 @@ async def update_vendor(slug: str, body: VendorUpdate, db: DB, user: CurrentUser
 # ── Categories ────────────────────────────────────────────────────────────────
 
 @router.get("/categories", response_model=list[CategoryRead])
-async def list_categories(db: DB) -> list[CategoryRead]:
+async def list_categories(db: DB, response: Response) -> list[CategoryRead]:
+    response.headers["Cache-Control"] = _CACHE_STATIC
     cats = await catalog_service.list_categories(db)
     return [CategoryRead.model_validate(c) for c in cats]
 
@@ -105,6 +114,7 @@ async def update_category(
 @router.get("/products", response_model=PaginatedProducts)
 async def list_products(
     db: DB,
+    response: Response,
     city_id: uuid.UUID | None = Query(default=None),  # noqa: B008
     vendor_id: uuid.UUID | None = Query(default=None),  # noqa: B008
     category_id: uuid.UUID | None = Query(default=None),  # noqa: B008
@@ -112,6 +122,7 @@ async def list_products(
     page: int = Query(default=1, ge=1),  # noqa: B008
     page_size: int = Query(default=20, ge=1, le=100),  # noqa: B008
 ) -> PaginatedProducts:
+    response.headers["Cache-Control"] = _CACHE_PRODUCTS
     return await catalog_service.list_products(
         db,
         city_id=city_id,
@@ -124,7 +135,8 @@ async def list_products(
 
 
 @router.get("/products/{slug}", response_model=ProductRead)
-async def get_product(slug: str, db: DB) -> ProductRead:
+async def get_product(slug: str, db: DB, response: Response) -> ProductRead:
+    response.headers["Cache-Control"] = _CACHE_PRODUCTS
     return ProductRead.model_validate(await catalog_service.get_product(db, slug))
 
 
@@ -183,13 +195,15 @@ async def set_product_cities(
 # ── Occasions ─────────────────────────────────────────────────────────────────
 
 @router.get("/occasions", response_model=list[OccasionRead])
-async def list_occasions(db: DB) -> list[OccasionRead]:
+async def list_occasions(db: DB, response: Response) -> list[OccasionRead]:
+    response.headers["Cache-Control"] = _CACHE_STATIC
     occasions = await catalog_service.list_occasions(db)
     return [OccasionRead.model_validate(o) for o in occasions]
 
 
 @router.get("/occasions/{slug}", response_model=OccasionRead)
-async def get_occasion(slug: str, db: DB) -> OccasionRead:
+async def get_occasion(slug: str, db: DB, response: Response) -> OccasionRead:
+    response.headers["Cache-Control"] = _CACHE_STATIC
     return OccasionRead.model_validate(await catalog_service.get_occasion(db, slug))
 
 

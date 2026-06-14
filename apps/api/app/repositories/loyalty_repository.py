@@ -7,7 +7,14 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.loyalty import Banner, Coupon, LoyaltyLedger, LoyaltyWallet, Review, Testimonial
+from app.models.loyalty import (
+    Banner,
+    Coupon,
+    LoyaltyLedger,
+    LoyaltyWallet,
+    Review,
+    Testimonial,
+)
 
 
 class LoyaltyRepository:

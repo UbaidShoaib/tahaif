@@ -83,6 +83,30 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
 
+    # Pure ASGI request-ID middleware — stamps every response with X-Request-ID
+    class RequestIDMiddleware:
+        def __init__(self, inner: ASGIApp) -> None:
+            self._inner = inner
+
+        async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+            if scope["type"] != "http":
+                await self._inner(scope, receive, send)
+                return
+
+            import uuid as _uuid
+            request_id = _uuid.uuid4().hex
+
+            async def send_with_request_id(message: MutableMapping[str, object]) -> None:
+                if message["type"] == "http.response.start":
+                    from starlette.datastructures import MutableHeaders
+                    headers = MutableHeaders(scope=message)
+                    headers.append("X-Request-ID", request_id)
+                await send(message)
+
+            await self._inner(scope, receive, send_with_request_id)
+
+    app.add_middleware(RequestIDMiddleware)
+
     # Pure ASGI security-headers middleware — avoids BaseHTTPMiddleware/asyncpg loop conflict
     class SecurityHeadersMiddleware:
         def __init__(self, inner: ASGIApp) -> None:

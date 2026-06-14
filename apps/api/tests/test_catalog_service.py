@@ -55,7 +55,7 @@ async def test_create_city_success(db: AsyncSession) -> None:
 
 @pytest.mark.asyncio
 async def test_get_city_success(db: AsyncSession) -> None:
-    staff = await _user(db, UserRole.staff)
+    await _user(db, UserRole.staff)
     slug = f"khi-{uuid.uuid4().hex[:4]}"
     await CityRepository(db).create(name="KHI", slug=slug, timezone="Asia/Karachi")
     city = await catalog_service.get_city(db, slug)
@@ -541,8 +541,9 @@ async def test_list_products_with_occasion_filter(db: AsyncSession) -> None:
         db, OccasionCreate(name="Occ Event", slug=occ_slug), staff
     )
 
-    from app.models.catalog import product_occasions_table
     from sqlalchemy import insert
+
+    from app.models.catalog import product_occasions_table
 
     p_slug = f"occ-prod-{uuid.uuid4().hex[:4]}"
     product = await ProductRepository(db).create(

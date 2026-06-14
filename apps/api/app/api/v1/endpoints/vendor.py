@@ -13,19 +13,19 @@ router = APIRouter(prefix="/vendor", tags=["vendor"])
 
 @router.get("/me", response_model=VendorRead)
 async def get_my_vendor(user: CurrentUser, db: DB) -> VendorRead:
-    return await vendor_service.get_my_vendor(db, user)
+    return await vendor_service.get_my_vendor(db, user)  # type: ignore[return-value]
 
 
 @router.patch("/me", response_model=VendorRead)
 async def update_my_vendor(body: VendorUpdate, user: CurrentUser, db: DB) -> VendorRead:
-    return await vendor_service.update_my_vendor(db, user, body)
+    return await vendor_service.update_my_vendor(db, user, body)  # type: ignore[return-value]
 
 
 @router.get("/fulfillments", response_model=list[VendorFulfillmentRead])
 async def list_fulfillments(
     user: CurrentUser,
     db: DB,
-    filter_status: FulfillmentStatus | None = Query(default=None),
+    filter_status: FulfillmentStatus | None = Query(default=None),  # noqa: B008
 ) -> list[VendorFulfillmentRead]:
     return await vendor_service.list_my_fulfillments(db, user, filter_status)
 
@@ -47,4 +47,4 @@ async def list_my_products(
     page: int = Query(default=1, ge=1),
 ) -> list[ProductRead]:
     items, _total = await vendor_service.list_my_products(db, user, page=page)
-    return items
+    return items  # type: ignore[return-value]

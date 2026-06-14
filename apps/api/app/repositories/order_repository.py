@@ -15,10 +15,14 @@ class OrderRepository:
 
     def _with_relations(self) -> Select[tuple[Order]]:
         return select(Order).options(
-            selectinload(Order.items).selectinload(OrderItem.product),
-            selectinload(Order.items).selectinload(OrderItem.variant),
-            selectinload(Order.fulfillments).selectinload(Fulfillment.vendor),
-            selectinload(Order.fulfillments).selectinload(Fulfillment.city),
+            selectinload(Order.items).options(
+                selectinload(OrderItem.product),
+                selectinload(OrderItem.variant),
+            ),
+            selectinload(Order.fulfillments).options(
+                selectinload(Fulfillment.vendor),
+                selectinload(Fulfillment.city),
+            ),
             selectinload(Order.payments),
         )
 

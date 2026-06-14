@@ -21,8 +21,8 @@ from app.schemas.order import (
     OrderRead,
     QuoteLineItem,
 )
-from app.services.cart_service import _cart_to_read, _unit_price
 from app.services import loyalty_service
+from app.services.cart_service import _cart_to_read, _unit_price
 
 _EMPTY_CART = HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cart is empty")
 _CITY_NOT_FOUND = HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Delivery city not found")

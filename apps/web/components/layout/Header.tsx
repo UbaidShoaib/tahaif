@@ -30,7 +30,7 @@ export function Header() {
           </Link>
 
           {/* Nav */}
-          <nav className="hidden md:flex items-center gap-6 text-sm font-medium">
+          <nav aria-label="Main navigation" className="hidden md:flex items-center gap-6 text-sm font-medium">
             <Link href="/c/cakes" className="hover:text-primary-600 transition-colors">Cakes</Link>
             <Link href="/c/flowers" className="hover:text-primary-600 transition-colors">Flowers</Link>
             <Link href="/c/chocolates" className="hover:text-primary-600 transition-colors">Chocolates</Link>
