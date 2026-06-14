@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { formatPrice } from "@/lib/utils";
 import { ArrowLeft, ShoppingBag } from "lucide-react";
+import { captureEvent } from "@/components/providers";
 
 type City = { id: string; name: string; slug: string; is_active: boolean };
 
@@ -82,9 +83,16 @@ export default function CheckoutPage() {
     if (!token) return;
     setIsPlacing(true);
     setError(null);
+    captureEvent("checkout_start", { payment_method: form.payment_method });
     try {
       const idempotencyKey = crypto.randomUUID();
       const order = await cartApi.place(form, token, idempotencyKey);
+      captureEvent("order_placed", {
+        order_id: order.id,
+        total_pkr: order.total_pkr,
+        payment_method: order.payment_method,
+        item_count: order.items.length,
+      });
       await fetchCart();
       router.push(`/checkout/success/${order.public_token}`);
     } catch (err: unknown) {
@@ -263,9 +271,9 @@ export default function CheckoutPage() {
             {form.payment_method === "bank_transfer" && (
               <div className="rounded-lg bg-muted p-4 text-sm space-y-1">
                 <p className="font-medium">Bank Transfer Details</p>
-                <p>Account: Tahaif Gifts — MCB Bank</p>
-                <p>IBAN: PK36MUCB1234567890123456</p>
-                <p className="text-muted-foreground">After placing order, transfer the total amount and WhatsApp your receipt to +92 300 000 0000.</p>
+                <p>Account: {process.env.NEXT_PUBLIC_BANK_ACCOUNT_NAME ?? "Tahaif Gifts — MCB Bank"}</p>
+                <p>IBAN: {process.env.NEXT_PUBLIC_BANK_IBAN ?? "—"}</p>
+                <p className="text-muted-foreground">After placing your order, transfer the total amount and upload your payment receipt on the confirmation page.</p>
               </div>
             )}
           </section>

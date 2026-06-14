@@ -5,6 +5,7 @@ import { cartApi } from "@/lib/cart";
 import { formatPrice } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { ProofUpload } from "@/components/checkout/ProofUpload";
 
 export const dynamic = "force-dynamic";
 
@@ -158,6 +159,24 @@ export default async function SuccessPage({
           </div>
         </div>
       </div>
+
+      {/* Bank transfer proof upload */}
+      {order.payment_method === "bank_transfer" && (
+        <div className="mt-6 rounded-xl border border-amber-200 bg-amber-50 dark:bg-amber-900/20 dark:border-amber-800 p-5 space-y-3">
+          <h3 className="font-semibold text-sm">Upload Payment Receipt</h3>
+          <p className="text-xs text-muted-foreground">
+            Transfer <span className="font-medium">{formatPrice(order.total_pkr)}</span> to our bank account
+            and upload your receipt below. Bank details:
+            <span className="block mt-1 font-mono text-foreground">
+              IBAN: {process.env.NEXT_PUBLIC_BANK_IBAN ?? "—"}
+            </span>
+            <span className="block font-mono text-foreground">
+              {process.env.NEXT_PUBLIC_BANK_ACCOUNT_NAME ?? "Tahaif Gifts — MCB Bank"}
+            </span>
+          </p>
+          <ProofUpload orderId={String(order.id)} />
+        </div>
+      )}
 
       {/* Actions */}
       <div className="mt-6 flex flex-col sm:flex-row gap-3">
