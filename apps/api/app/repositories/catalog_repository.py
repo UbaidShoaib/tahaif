@@ -8,10 +8,12 @@ from sqlalchemy.orm import selectinload
 from app.models.catalog import (
     Category,
     City,
+    Occasion,
     Product,
     ProductCity,
     ProductImage,
     Vendor,
+    product_occasions_table,
 )
 
 
@@ -128,6 +130,41 @@ class CategoryRepository:
         return category
 
 
+class OccasionRepository:
+    def __init__(self, db: AsyncSession) -> None:
+        self._db = db
+
+    async def list_active(self) -> list[Occasion]:
+        result = await self._db.execute(
+            select(Occasion)
+            .where(Occasion.is_active.is_(True))
+            .order_by(Occasion.sort_order, Occasion.name)
+        )
+        return list(result.scalars().all())
+
+    async def get_by_slug(self, slug: str) -> Occasion | None:
+        result = await self._db.execute(select(Occasion).where(Occasion.slug == slug))
+        return result.scalar_one_or_none()
+
+    async def get_by_id(self, occasion_id: uuid.UUID) -> Occasion | None:
+        result = await self._db.execute(select(Occasion).where(Occasion.id == occasion_id))
+        return result.scalar_one_or_none()
+
+    async def create(self, **kwargs: Any) -> Occasion:
+        occasion = Occasion(**kwargs)
+        self._db.add(occasion)
+        await self._db.flush()
+        await self._db.refresh(occasion)
+        return occasion
+
+    async def update(self, occasion: Occasion, **kwargs: Any) -> Occasion:
+        for key, value in kwargs.items():
+            setattr(occasion, key, value)
+        await self._db.flush()
+        await self._db.refresh(occasion)
+        return occasion
+
+
 class ProductRepository:
     def __init__(self, db: AsyncSession) -> None:
         self._db = db
@@ -145,6 +182,7 @@ class ProductRepository:
         city_id: uuid.UUID | None = None,
         vendor_id: uuid.UUID | None = None,
         category_id: uuid.UUID | None = None,
+        occasion_id: uuid.UUID | None = None,
         active_only: bool = True,
         page: int = 1,
         page_size: int = 20,
@@ -161,6 +199,11 @@ class ProductRepository:
                 ProductCity.city_id == city_id,
                 ProductCity.is_available.is_(True),
             )
+        if occasion_id:
+            q = q.join(
+                product_occasions_table,
+                Product.id == product_occasions_table.c.product_id,
+            ).where(product_occasions_table.c.occasion_id == occasion_id)
 
         count_q = select(func.count()).select_from(q.subquery())
         total = (await self._db.execute(count_q)).scalar_one()
@@ -185,8 +228,10 @@ class ProductRepository:
         product = Product(**kwargs)
         self._db.add(product)
         await self._db.flush()
-        await self._db.refresh(product, ["images", "product_cities"])
-        return product
+        result = await self._db.execute(
+            self._with_relations().where(Product.id == product.id)
+        )
+        return result.scalar_one()
 
     async def update(self, product: Product, **kwargs: Any) -> Product:
         for key, value in kwargs.items():

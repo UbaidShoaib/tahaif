@@ -78,7 +78,7 @@ async def test_refresh_service_rotation(db: AsyncSession) -> None:
     await db.commit()
     db.expire_all()
 
-    pair2 = await auth_service.refresh(db, pair1.refresh_token)
+    _user2, pair2 = await auth_service.refresh(db, pair1.refresh_token)
     await db.commit()
     db.expire_all()
     # Refresh token must rotate (new raw token); access token may match if within same second

@@ -87,6 +87,18 @@ export type City = {
   is_active: boolean;
 };
 
+export type Occasion = {
+  id: string;
+  slug: string;
+  name: string;
+  name_ur: string | null;
+  banner_url: string | null;
+  starts_at: string | null;
+  ends_at: string | null;
+  sort_order: number;
+  is_active: boolean;
+};
+
 async function apiFetch<T>(path: string): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, { next: { revalidate: 60 } });
   if (!res.ok) throw new Error(`API ${res.status} — ${path}`);
@@ -102,6 +114,7 @@ export const catalogApi = {
     category_id?: string;
     vendor_id?: string;
     city_id?: string;
+    occasion_id?: string;
     page?: number;
     page_size?: number;
   }) => {
@@ -109,6 +122,7 @@ export const catalogApi = {
     if (params?.category_id) qs.set("category_id", params.category_id);
     if (params?.vendor_id) qs.set("vendor_id", params.vendor_id);
     if (params?.city_id) qs.set("city_id", params.city_id);
+    if (params?.occasion_id) qs.set("occasion_id", params.occasion_id);
     if (params?.page) qs.set("page", String(params.page));
     if (params?.page_size) qs.set("page_size", String(params.page_size));
     const query = qs.toString();
@@ -118,6 +132,10 @@ export const catalogApi = {
   getProduct: (slug: string) => apiFetch<Product>(`/products/${slug}`),
 
   getVendor: (slug: string) => apiFetch<Vendor>(`/vendors/${slug}`),
+
+  getOccasions: () => apiFetch<Occasion[]>("/occasions"),
+
+  getOccasion: (slug: string) => apiFetch<Occasion>(`/occasions/${slug}`),
 
   getCategoryBySlug: async (slug: string): Promise<Category | null> => {
     const all = await catalogApi.getCategories();

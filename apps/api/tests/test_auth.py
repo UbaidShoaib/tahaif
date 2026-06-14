@@ -22,9 +22,9 @@ async def test_register_happy_path(client: AsyncClient, db: AsyncSession) -> Non
     resp = await _register(client, "register_happy@example.com")
     assert resp.status_code == 201
     data = resp.json()
-    assert data["email"] == "register_happy@example.com"
-    assert "password_hash" not in data
-    assert "X-Access-Token" in resp.headers
+    assert data["user"]["email"] == "register_happy@example.com"
+    assert "password_hash" not in str(data)
+    assert "access_token" in data
     assert resp.cookies.get("refresh_token")
 
 
@@ -113,13 +113,14 @@ async def test_refresh_rotation(client: AsyncClient) -> None:
         "/api/v1/auth/login",
         json={"email": "refresh_rotation@example.com", "password": "Strongpass1"},
     )
-    token_1 = login_resp.json()["refresh_token"]
+    token_1 = login_resp.cookies.get("refresh_token")
+    assert token_1
 
     # First refresh should work
     resp1 = await client.post("/api/v1/auth/refresh", json={"refresh_token": token_1})
     assert resp1.status_code == 200
-    token_2 = resp1.json()["refresh_token"]
-    assert token_2 != token_1
+    token_2 = resp1.cookies.get("refresh_token")
+    assert token_2 and token_2 != token_1
 
     # Reusing old token (token_1) should revoke family and return 401
     resp2 = await client.post("/api/v1/auth/refresh", json={"refresh_token": token_1})
@@ -137,7 +138,8 @@ async def test_logout_invalidates_refresh(client: AsyncClient) -> None:
         "/api/v1/auth/login",
         json={"email": "logout_test@example.com", "password": "Strongpass1"},
     )
-    raw_token = login_resp.json()["refresh_token"]
+    raw_token = login_resp.cookies.get("refresh_token")
+    assert raw_token
 
     await client.post("/api/v1/auth/logout", json={"refresh_token": raw_token})
 

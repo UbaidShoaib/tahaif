@@ -176,6 +176,10 @@ class OrderItem(UUIDPrimaryKeyMixin, Base):
     gift_image_url: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     order: Mapped["Order"] = relationship(back_populates="items")
+    fulfillment: Mapped["Fulfillment | None"] = relationship(
+        back_populates="order_items",
+        foreign_keys=[fulfillment_id],
+    )
     product: Mapped["Product"] = relationship()
     variant: Mapped["ProductVariant | None"] = relationship()
 

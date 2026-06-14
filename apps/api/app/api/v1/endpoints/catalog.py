@@ -11,6 +11,9 @@ from app.schemas.catalog import (
     CityCreate,
     CityRead,
     CityUpdate,
+    OccasionCreate,
+    OccasionRead,
+    OccasionUpdate,
     PaginatedProducts,
     ProductCityUpsert,
     ProductCreate,
@@ -105,6 +108,7 @@ async def list_products(
     city_id: uuid.UUID | None = Query(default=None),  # noqa: B008
     vendor_id: uuid.UUID | None = Query(default=None),  # noqa: B008
     category_id: uuid.UUID | None = Query(default=None),  # noqa: B008
+    occasion_id: uuid.UUID | None = Query(default=None),  # noqa: B008
     page: int = Query(default=1, ge=1),  # noqa: B008
     page_size: int = Query(default=20, ge=1, le=100),  # noqa: B008
 ) -> PaginatedProducts:
@@ -113,6 +117,7 @@ async def list_products(
         city_id=city_id,
         vendor_id=vendor_id,
         category_id=category_id,
+        occasion_id=occasion_id,
         page=page,
         page_size=page_size,
     )
@@ -173,6 +178,29 @@ async def set_product_cities(
 ) -> ProductRead:
     product = await catalog_service.set_product_city_availability(db, slug, body, user)
     return ProductRead.model_validate(product)
+
+
+# ── Occasions ─────────────────────────────────────────────────────────────────
+
+@router.get("/occasions", response_model=list[OccasionRead])
+async def list_occasions(db: DB) -> list[OccasionRead]:
+    occasions = await catalog_service.list_occasions(db)
+    return [OccasionRead.model_validate(o) for o in occasions]
+
+
+@router.get("/occasions/{slug}", response_model=OccasionRead)
+async def get_occasion(slug: str, db: DB) -> OccasionRead:
+    return OccasionRead.model_validate(await catalog_service.get_occasion(db, slug))
+
+
+@router.post("/occasions", response_model=OccasionRead, status_code=status.HTTP_201_CREATED)
+async def create_occasion(body: OccasionCreate, db: DB, user: CurrentUser) -> OccasionRead:
+    return OccasionRead.model_validate(await catalog_service.create_occasion(db, body, user))
+
+
+@router.patch("/occasions/{slug}", response_model=OccasionRead)
+async def update_occasion(slug: str, body: OccasionUpdate, db: DB, user: CurrentUser) -> OccasionRead:
+    return OccasionRead.model_validate(await catalog_service.update_occasion(db, slug, body, user))
 
 
 # ── Search ────────────────────────────────────────────────────────────────────

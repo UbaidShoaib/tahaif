@@ -5,11 +5,12 @@ from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.integrations import meilisearch_client
-from app.models.catalog import Category, City, Product, ProductImage, Vendor
+from app.models.catalog import Category, City, Occasion, Product, ProductImage, Vendor
 from app.models.user import User, UserRole
 from app.repositories.catalog_repository import (
     CategoryRepository,
     CityRepository,
+    OccasionRepository,
     ProductRepository,
     VendorRepository,
 )
@@ -18,6 +19,8 @@ from app.schemas.catalog import (
     CategoryUpdate,
     CityCreate,
     CityUpdate,
+    OccasionCreate,
+    OccasionUpdate,
     PaginatedProducts,
     ProductCityUpsert,
     ProductCreate,
@@ -176,6 +179,7 @@ async def list_products(
     city_id: uuid.UUID | None = None,
     vendor_id: uuid.UUID | None = None,
     category_id: uuid.UUID | None = None,
+    occasion_id: uuid.UUID | None = None,
     page: int = 1,
     page_size: int = 20,
 ) -> PaginatedProducts:
@@ -184,6 +188,7 @@ async def list_products(
         city_id=city_id,
         vendor_id=vendor_id,
         category_id=category_id,
+        occasion_id=occasion_id,
         page=page,
         page_size=page_size,
     )
@@ -322,3 +327,38 @@ async def set_product_city_availability(
     assert updated is not None
     await meilisearch_client.index_product(_to_meili_doc(updated))
     return updated
+
+
+# ── Occasions ─────────────────────────────────────────────────────────────────
+
+async def list_occasions(db: AsyncSession) -> list[Occasion]:
+    return await OccasionRepository(db).list_active()
+
+
+async def get_occasion(db: AsyncSession, slug: str) -> Occasion:
+    occasion = await OccasionRepository(db).get_by_slug(slug)
+    if not occasion:
+        raise _NOT_FOUND("Occasion")
+    return occasion
+
+
+async def create_occasion(db: AsyncSession, data: OccasionCreate, user: User) -> Occasion:
+    _require_staff(user)
+    repo = OccasionRepository(db)
+    if await repo.get_by_slug(data.slug):
+        raise _CONFLICT("Occasion")
+    return await repo.create(**data.model_dump())
+
+
+async def update_occasion(
+    db: AsyncSession, slug: str, data: OccasionUpdate, user: User
+) -> Occasion:
+    _require_staff(user)
+    repo = OccasionRepository(db)
+    occasion = await repo.get_by_slug(slug)
+    if not occasion:
+        raise _NOT_FOUND("Occasion")
+    updates = data.model_dump(exclude_none=True)
+    if not updates:
+        return occasion
+    return await repo.update(occasion, **updates)

@@ -1,5 +1,5 @@
 import uuid
-from datetime import time
+from datetime import datetime, time
 
 from pydantic import BaseModel, Field
 
@@ -175,6 +175,42 @@ class ProductUpdate(BaseModel):
     name: str | None = Field(default=None, max_length=255)
     description: str | None = None
     base_price_pkr: int | None = Field(default=None, ge=0)
+    is_active: bool | None = None
+
+
+# ── Occasion ──────────────────────────────────────────────────────────────────
+
+class OccasionRead(BaseModel):
+    model_config = {"from_attributes": True}
+
+    id: uuid.UUID
+    slug: str
+    name: str
+    name_ur: str | None
+    banner_url: str | None
+    starts_at: datetime | None
+    ends_at: datetime | None
+    sort_order: int
+    is_active: bool
+
+
+class OccasionCreate(BaseModel):
+    slug: str = Field(max_length=100, pattern=r"^[a-z0-9-]+$")
+    name: str = Field(max_length=100)
+    name_ur: str | None = Field(default=None, max_length=100)
+    banner_url: str | None = None
+    starts_at: datetime | None = None
+    ends_at: datetime | None = None
+    sort_order: int = 0
+
+
+class OccasionUpdate(BaseModel):
+    name: str | None = Field(default=None, max_length=100)
+    name_ur: str | None = Field(default=None, max_length=100)
+    banner_url: str | None = None
+    starts_at: datetime | None = None
+    ends_at: datetime | None = None
+    sort_order: int | None = None
     is_active: bool | None = None
 
 
