@@ -1,12 +1,13 @@
 import secrets
 
 import structlog
-from fastapi import APIRouter, Cookie, HTTPException, Request, Response, status
+from fastapi import APIRouter, Cookie, Depends, HTTPException, Request, Response, status
 from fastapi.responses import RedirectResponse
 
 from app.core.config import get_settings
 from app.core.deps import DB
 from app.core.rate_limit import limiter
+from app.core.redis_client import get_redis
 from app.integrations import google_oauth
 from app.integrations.resend_client import send_password_reset_email
 from app.schemas.auth import (
@@ -25,6 +26,46 @@ logger = structlog.get_logger()
 settings = get_settings()
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+
+_FAIL_THRESHOLD = 20
+_FAIL_WINDOW_SECS = 3600   # 1 hour
+_BAN_TTL_SECS = 86400      # 24 hours
+
+
+def _client_ip(request: Request) -> str:
+    forwarded = request.headers.get("X-Forwarded-For")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    return request.client.host if request.client else "unknown"
+
+
+async def _check_ip_not_banned(request: Request) -> None:
+    redis = get_redis()
+    ip = _client_ip(request)
+    if await redis.sismember("ip_blocklist", ip):
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Too many failed login attempts. Try again in 24 hours.",
+        )
+
+
+async def _record_failed_login(request: Request) -> None:
+    redis = get_redis()
+    ip = _client_ip(request)
+    key = f"login_fail:{ip}"
+    count = await redis.incr(key)
+    await redis.expire(key, _FAIL_WINDOW_SECS)
+    if count >= _FAIL_THRESHOLD:
+        await redis.sadd("ip_blocklist", ip)
+        await redis.expire("ip_blocklist", _BAN_TTL_SECS)
+        await logger.awarning("ip_blocked", ip=ip, failures=count)
+
+
+async def _clear_failed_logins(request: Request) -> None:
+    redis = get_redis()
+    ip = _client_ip(request)
+    await redis.delete(f"login_fail:{ip}")
+
 
 _COOKIE_NAME = "refresh_token"
 _COOKIE_OPTS: dict[str, object] = {
@@ -64,12 +105,18 @@ async def register(
 @router.post("/login", response_model=AuthResponse)
 @limiter.limit("5/minute")
 async def login(
-    request: Request,  # noqa: ARG001 — required by slowapi
+    request: Request,
     body: LoginRequest,
     response: Response,
     db: DB,
+    _ban_check: None = Depends(_check_ip_not_banned),
 ) -> AuthResponse:
-    user, pair = await auth_service.login(db, body.email, body.password)
+    try:
+        user, pair = await auth_service.login(db, body.email, body.password)
+    except HTTPException:
+        await _record_failed_login(request)
+        raise
+    await _clear_failed_logins(request)
     _set_refresh_cookie(response, pair.refresh_token)
     return AuthResponse(
         access_token=pair.access_token,

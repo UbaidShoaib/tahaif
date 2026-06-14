@@ -124,16 +124,72 @@ def create_app() -> FastAPI:
                     headers.append("X-Content-Type-Options", "nosniff")
                     headers.append("X-Frame-Options", "DENY")
                     headers.append("Referrer-Policy", "strict-origin-when-cross-origin")
+                    headers.append(
+                        "Content-Security-Policy",
+                        "default-src 'none'; frame-ancestors 'none'",
+                    )
                     if settings.is_production:
                         headers.append(
                             "Strict-Transport-Security",
-                            "max-age=31536000; includeSubDomains",
+                            "max-age=31536000; includeSubDomains; preload",
                         )
                 await send(message)
 
             await self._inner(scope, receive, send_with_headers)
 
     app.add_middleware(SecurityHeadersMiddleware)
+
+    # Audit log middleware — logs mutating requests to /admin/* and /vendor/*
+    class AuditLogMiddleware:
+        def __init__(self, inner: ASGIApp) -> None:
+            self._inner = inner
+
+        async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+            if scope["type"] != "http":
+                await self._inner(scope, receive, send)
+                return
+
+            from starlette.requests import Request as StarletteRequest
+            req = StarletteRequest(scope)
+            method = req.method
+            path = req.url.path
+            should_audit = method in {"POST", "PATCH", "PUT", "DELETE"} and (
+                "/admin/" in path or "/vendor/" in path
+            )
+
+            if not should_audit:
+                await self._inner(scope, receive, send)
+                return
+
+            import asyncio
+            from app.core.db import get_db
+
+            async def run_audit() -> None:
+                try:
+                    import uuid as _uuid
+                    import sqlalchemy as _sa
+                    forwarded = req.headers.get("X-Forwarded-For", "")
+                    ip = forwarded.split(",")[0].strip() if forwarded else (req.client.host if req.client else None)
+
+                    async for _db in get_db():
+                        await _db.execute(_sa.text("""
+                            INSERT INTO audit_logs (id, action, entity, entity_id, ip_address, created_at)
+                            VALUES (:id, :action, :entity, :entity_id, :ip, NOW())
+                        """), {
+                            "id": _uuid.uuid4(),
+                            "action": method,
+                            "entity": path.split("/")[-2] if len(path.split("/")) > 1 else path,
+                            "entity_id": path.split("/")[-1],
+                            "ip": ip,
+                        })
+                        await _db.commit()
+                except Exception:
+                    pass  # audit must never break the request
+
+            asyncio.ensure_future(run_audit())
+            await self._inner(scope, receive, send)
+
+    app.add_middleware(AuditLogMiddleware)
 
     from app.api.v1.router import api_router
 

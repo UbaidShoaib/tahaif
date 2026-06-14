@@ -1,4 +1,4 @@
-"""ORM models for Phase 5: loyalty, reviews, coupons, banners, testimonials."""
+"""ORM models for Phase 5: loyalty, reviews, coupons, banners, testimonials, newsletter, audit."""
 
 import enum
 import uuid
@@ -154,6 +154,38 @@ class Testimonial(UUIDPrimaryKeyMixin, Base):
     rating: Mapped[int] = mapped_column(Integer, default=5, nullable=False)
     image_url: Mapped[str | None] = mapped_column(Text, nullable=True)
     is_featured: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, nullable=False
+    )
+
+
+# ── Newsletter ─────────────────────────────────────────────────────────────────
+
+class NewsletterSubscriber(UUIDPrimaryKeyMixin, Base):
+    __tablename__ = "newsletter_subscribers"
+
+    email: Mapped[str] = mapped_column(String(255), unique=True, nullable=False, index=True)
+    confirmed: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    token: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    subscribed_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, nullable=False
+    )
+
+
+# ── Audit Log ─────────────────────────────────────────────────────────────────
+
+class AuditLog(UUIDPrimaryKeyMixin, Base):
+    __tablename__ = "audit_logs"
+
+    actor_user_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    action: Mapped[str] = mapped_column(String(100), nullable=False)
+    entity: Mapped[str] = mapped_column(String(100), nullable=False)
+    entity_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    before: Mapped[dict[str, object] | None] = mapped_column(JSONB, nullable=True)
+    after: Mapped[dict[str, object] | None] = mapped_column(JSONB, nullable=True)
+    ip_address: Mapped[str | None] = mapped_column(String(45), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utcnow, nullable=False
     )

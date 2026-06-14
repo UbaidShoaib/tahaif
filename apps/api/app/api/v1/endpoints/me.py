@@ -1,6 +1,8 @@
 import uuid
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, HTTPException, status
+from fastapi.responses import JSONResponse
 
 from app.core.deps import DB, CurrentUser
 from app.repositories.address_repository import AddressRepository
@@ -77,3 +79,58 @@ async def delete_address(
     if not address:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Address not found")
     await repo.soft_delete(address)
+
+
+# ── GDPR ──────────────────────────────────────────────────────────────────────
+
+@router.get("/export")
+async def export_my_data(current_user: CurrentUser, db: DB) -> JSONResponse:
+    """Return all personal data for the authenticated user as a JSON download."""
+    addr_repo = AddressRepository(db)
+    addresses = await addr_repo.list_for_user(current_user.id)
+
+    export = {
+        "user": {
+            "id": str(current_user.id),
+            "email": current_user.email,
+            "full_name": current_user.full_name,
+            "phone": current_user.phone,
+            "locale": current_user.locale,
+            "currency_pref": current_user.currency_pref,
+            "is_verified": current_user.is_verified,
+            "created_at": current_user.created_at.isoformat(),
+        },
+        "addresses": [
+            {
+                "id": str(a.id),
+                "label": getattr(a, "label", None),
+                "line1": getattr(a, "line1", None),
+                "line2": getattr(a, "line2", None),
+            }
+            for a in addresses
+        ],
+        "exported_at": datetime.now(UTC).isoformat(),
+    }
+
+    return JSONResponse(
+        content=export,
+        headers={"Content-Disposition": 'attachment; filename="tahaif-my-data.json"'},
+    )
+
+
+@router.delete("", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_account(current_user: CurrentUser, db: DB) -> None:
+    """Anonymise account and hard-delete refresh tokens (GDPR right to erasure)."""
+    repo = UserRepository(db)
+
+    anonymised_email = f"deleted_{current_user.id}@anon.tahaif.invalid"
+    await repo.update(
+        current_user,
+        email=anonymised_email,
+        full_name="[Deleted]",
+        phone=None,
+        password_hash=None,
+        avatar_url=None,
+        is_active=False,
+    )
+    await repo.revoke_all_user_tokens(current_user.id)
