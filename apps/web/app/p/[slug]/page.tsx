@@ -47,7 +47,39 @@ export default async function ProductPage({ params }: Props) {
 
   const img = primaryImage(product);
 
+  // product_view is captured server-side via page render; PostHog client picks it up via pageview
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    name: product.name,
+    description: product.description ?? undefined,
+    image: img,
+    brand: product.vendor ? { "@type": "Brand", name: product.vendor.name } : undefined,
+    offers: {
+      "@type": "Offer",
+      priceCurrency: "PKR",
+      price: (product.base_price_pkr / 100).toFixed(2),
+      availability: product.is_active
+        ? "https://schema.org/InStock"
+        : "https://schema.org/OutOfStock",
+    },
+    ...(reviews.length > 0 && {
+      aggregateRating: {
+        "@type": "AggregateRating",
+        ratingValue: (
+          reviews.reduce((sum: number, r: { rating: number }) => sum + r.rating, 0) / reviews.length
+        ).toFixed(1),
+        reviewCount: reviews.length,
+      },
+    }),
+  };
+
   return (
+    <>
+    <script
+      type="application/ld+json"
+      dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+    />
     <div className="container mx-auto px-4 py-8">
       {/* Breadcrumb */}
       <nav className="flex items-center gap-1.5 text-sm text-muted-foreground mb-6 flex-wrap">
@@ -128,5 +160,6 @@ export default async function ProductPage({ params }: Props) {
       {/* Reviews */}
       <ReviewsSection productId={product.id} initialReviews={reviews} />
     </div>
+    </>
   );
 }
