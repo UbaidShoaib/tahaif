@@ -108,7 +108,7 @@ export default function CheckoutPage() {
         <ShoppingBag className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
         <h1 className="text-2xl font-bold mb-2">Sign in to checkout</h1>
         <Button asChild>
-          <Link href="/login?next=/checkout">Sign in</Link>
+          <Link href="/login?callbackUrl=/checkout">Sign in</Link>
         </Button>
       </div>
     );

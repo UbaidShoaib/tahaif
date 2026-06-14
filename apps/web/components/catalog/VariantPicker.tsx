@@ -32,7 +32,7 @@ export function VariantPicker({ product }: Props) {
 
   const handleAddToCart = async () => {
     if (!user) {
-      router.push("/login?next=" + encodeURIComponent(window.location.pathname));
+      router.push("/login?callbackUrl=" + encodeURIComponent(window.location.pathname));
       return;
     }
     setIsAdding(true);
