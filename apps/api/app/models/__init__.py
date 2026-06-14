@@ -12,15 +12,27 @@ from app.models.catalog import (
     ProductVariant,
     Vendor,
 )
+from app.models.loyalty import (
+    Banner,
+    Coupon,
+    LoyaltyLedger,
+    LoyaltyWallet,
+    Review,
+    Testimonial,
+)
 from app.models.user import OAuthAccount, PasswordResetToken, RefreshToken, User
 
 __all__ = [
     "Address",
+    "Banner",
     "Base",
     "Category",
     "City",
+    "Coupon",
     "CustomizationField",
     "FxRate",
+    "LoyaltyLedger",
+    "LoyaltyWallet",
     "OAuthAccount",
     "Occasion",
     "PasswordResetToken",
@@ -29,6 +41,8 @@ __all__ = [
     "ProductImage",
     "ProductVariant",
     "RefreshToken",
+    "Review",
+    "Testimonial",
     "User",
     "Vendor",
 ]

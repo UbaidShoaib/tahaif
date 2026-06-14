@@ -22,6 +22,7 @@ from app.schemas.order import (
     QuoteLineItem,
 )
 from app.services.cart_service import _cart_to_read, _unit_price
+from app.services import loyalty_service
 
 _EMPTY_CART = HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cart is empty")
 _CITY_NOT_FOUND = HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Delivery city not found")
@@ -171,6 +172,9 @@ async def place_order(
 
     # Clear the cart
     await cart_repo.clear(cart)
+
+    # Award loyalty points (best-effort; never fails the checkout)
+    await loyalty_service.award_for_order(db, user_id, order.id, total_pkr)
 
     # Reload and return
     order = await order_repo.reload(order)

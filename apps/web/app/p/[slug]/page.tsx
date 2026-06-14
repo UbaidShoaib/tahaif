@@ -3,7 +3,9 @@ import Image from "next/image";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { catalogApi, primaryImage } from "@/lib/catalog";
+import { loyaltyApi } from "@/lib/loyalty";
 import { VariantPicker } from "@/components/catalog/VariantPicker";
+import { ReviewsSection } from "@/components/catalog/ReviewsSection";
 import { ChevronRight, Clock, Truck } from "lucide-react";
 
 type Props = { params: Promise<{ slug: string }> };
@@ -25,9 +27,10 @@ export default async function ProductPage({ params }: Props) {
   const product = await catalogApi.getProduct(slug).catch(() => null);
   if (!product) notFound();
 
-  const [categories, cities] = await Promise.all([
+  const [categories, cities, reviews] = await Promise.all([
     catalogApi.getCategories(),
     catalogApi.getCities(),
+    loyaltyApi.listReviews(product.id).catch(() => []),
   ]);
 
   const flat = (cats: typeof categories): typeof categories =>
@@ -121,6 +124,9 @@ export default async function ProductPage({ params }: Props) {
           )}
         </div>
       </div>
+
+      {/* Reviews */}
+      <ReviewsSection productId={product.id} initialReviews={reviews} />
     </div>
   );
 }
