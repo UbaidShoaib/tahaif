@@ -1,5 +1,6 @@
 """Notification tasks: enqueue order confirmation messages into notifications_outbox."""
 
+import json
 import uuid
 from datetime import UTC, datetime
 
@@ -22,11 +23,11 @@ async def enqueue_order_confirmation(
     public_token: uuid.UUID,
 ) -> None:
     """Insert email (and optional SMS) rows into notifications_outbox."""
-    payload = {
+    payload = json.dumps({
         "order_id": str(order_id),
         "public_token": str(public_token),
         "total_pkr": order_total_pkr,
-    }
+    })
     now = datetime.now(UTC)
 
     rows: list[dict[str, object]] = [
@@ -58,7 +59,7 @@ async def enqueue_order_confirmation(
 
     await db.execute(sa.text("""
         INSERT INTO notifications_outbox (id, channel, to_address, template, payload, status, attempts, created_at)
-        VALUES (:id, :channel, :to_address, :template, :payload, :status, :attempts, :created_at)
+        VALUES (:id, :channel, :to_address, :template, :payload::jsonb, :status, :attempts, :created_at)
     """), rows)
 
     await logger.ainfo(
