@@ -26,7 +26,10 @@ services:
     plan: free
     region: singapore
     healthCheckPath: /api/v1/healthz
-    preDeployCommand: alembic upgrade head
+    # preDeployCommand isn't available on the free plan, so migrations run as
+    # part of the container's own start command instead (idempotent — safe to
+    # re-run on every restart of this single always-on instance).
+    dockerCommand: "sh -c 'alembic upgrade head && exec uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 2'"
     envVars:
       - key: ENVIRONMENT
         value: production
@@ -43,6 +46,7 @@ services:
       - key: REDIS_URL
         fromService:
           name: tahaif-redis
+          type: keyvalue
           property: connectionString
       # Everything below has a safe empty-string default in app/core/config.py
       # and can be filled in once the corresponding service exists:
