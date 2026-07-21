@@ -64,6 +64,13 @@ asyncio_mode = "auto"
 testpaths = ["tests"]
 addopts = "--cov=app --cov-report=term-missing --cov-fail-under=80"
 
+[tool.coverage.run]
+# SQLAlchemy's async ORM bridges sync-style code (lazy loads, etc.) through
+# greenlet under the hood. Without this, coverage silently under-reports any
+# line reached only via that bridging — it looks uncovered even when the
+# debugger/logs prove it ran.
+concurrency = ["greenlet", "thread"]
+
 [tool.ruff]
 line-length = 88
 target-version = "py312"
@@ -83,3 +90,7 @@ known-first-party = ["app"]
 python_version = "3.12"
 strict = true
 plugins = ["pydantic.mypy", "sqlalchemy.ext.mypy.plugin"]
+
+[[tool.mypy.overrides]]
+module = "boto3.*"
+ignore_missing_imports = true

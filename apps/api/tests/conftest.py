@@ -65,6 +65,21 @@ def _setup_db() -> None:  # type: ignore[misc]
     _run(_drop_tables())
 
 
+# ── Reset cached redis client between tests ───────────────────────────────────
+# app.core.redis_client memoizes a module-level Redis instance bound to whichever
+# event loop first created it. pytest-asyncio gives each test its own event loop,
+# so a connection cached by an earlier test breaks later tests with
+# "Future attached to a different loop" / "Event loop is closed". Force a fresh
+# client per test, same NullPool-per-test rationale as the DB engine above.
+@pytest.fixture(autouse=True)
+def _reset_redis_client() -> None:  # type: ignore[misc]
+    import app.core.redis_client as redis_client
+
+    redis_client._redis = None
+    yield  # type: ignore[misc]
+    redis_client._redis = None
+
+
 # ── Per-test DB session (NullPool = no cross-loop connection sharing) ─────────
 
 @pytest_asyncio.fixture

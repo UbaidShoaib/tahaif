@@ -1,20 +1,23 @@
 """HTTP-layer tests for checkout and order endpoints."""
 
 import uuid
-from datetime import date, timedelta
+from datetime import UTC, date, datetime, timedelta
+from decimal import Decimal
 
 import pytest
 import pytest_asyncio
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.catalog import City, Product, ProductCity, Vendor
+from app.models.catalog import City, Product, ProductCity, ProductVariant, Vendor
+from app.models.loyalty import Coupon, CouponType
 from app.models.user import User, UserRole
 from app.repositories.catalog_repository import (
     CityRepository,
     ProductRepository,
     VendorRepository,
 )
+from app.repositories.loyalty_repository import LoyaltyRepository
 from app.repositories.user_repository import UserRepository
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -71,13 +74,45 @@ async def _login(client: AsyncClient, email: str) -> str:
     return resp.json()["access_token"]
 
 
-async def _add_item(client: AsyncClient, token: str, product_id: str) -> None:
+async def _add_item(client: AsyncClient, token: str, product_id: str, variant_id: str | None = None) -> None:
+    body = {"product_id": product_id, "qty": 1}
+    if variant_id:
+        body["variant_id"] = variant_id
     resp = await client.post(
         "/api/v1/cart/items",
-        json={"product_id": product_id, "qty": 1},
+        json=body,
         headers={"Authorization": f"Bearer {token}"},
     )
     assert resp.status_code == 201
+
+
+async def _make_variant(db: AsyncSession, product: Product, stock_qty: int = 5, price_delta: int = 0) -> ProductVariant:
+    suffix = uuid.uuid4().hex[:6]
+    variant = ProductVariant(
+        product_id=product.id,
+        name=f"Variant {suffix}",
+        price_delta_pkr=price_delta,
+        stock_qty=stock_qty,
+    )
+    db.add(variant)
+    await db.flush()
+    return variant
+
+
+async def _make_coupon(
+    db: AsyncSession,
+    coupon_type: CouponType = CouponType.percent,
+    value: Decimal = Decimal("10"),
+    **overrides: object,
+) -> Coupon:
+    suffix = uuid.uuid4().hex[:6].upper()
+    from app.repositories.loyalty_repository import CouponRepository
+    return await CouponRepository(db).create(
+        code=f"CODE{suffix}",
+        coupon_type=coupon_type,
+        value=value,
+        **overrides,
+    )
 
 
 _TOMORROW = (date.today() + timedelta(days=1)).isoformat()
@@ -458,3 +493,451 @@ async def test_track_order_happy_path(
 async def test_track_order_not_found_returns_404(client: AsyncClient) -> None:
     resp = await client.get(f"/api/v1/orders/{uuid.uuid4()}")
     assert resp.status_code == 404
+
+
+# ── Coupons ───────────────────────────────────────────────────────────────────
+#
+# NOTE: every ORM attribute we need (product.id, city.id, coupon.code, etc.)
+# must be captured into a plain local variable BEFORE the first `await
+# client.post(...)`. The client fixture's get_db override commits + expires
+# the whole session after each request; touching an expired attribute
+# afterward triggers an implicit lazy-load, which raises MissingGreenlet
+# outside of the request's own async context.
+
+
+def _place_body(city_id: str, **overrides: object) -> dict:
+    body = {
+        "payment_method": "cod",
+        "delivery_city_id": city_id,
+        "delivery_date": _TOMORROW,
+        "recipient_name": "Ammi",
+        "recipient_phone": "+923001234567",
+        "address_line1": "House 5 Street 10",
+    }
+    body.update(overrides)
+    return body
+
+
+@pytest.mark.asyncio
+async def test_place_order_with_percent_coupon_applies_discount(
+    client: AsyncClient, db: AsyncSession, customer: User, product: Product, city: City
+) -> None:
+    coupon = await _make_coupon(db, coupon_type=CouponType.percent, value=Decimal("10"))
+    code = coupon.code
+    email = customer.email
+    product_id = str(product.id)
+    city_id = str(city.id)
+    base_price = product.base_price_pkr
+
+    token = await _login(client, email)
+    headers = {"Authorization": f"Bearer {token}"}
+    await _add_item(client, token, product_id)
+
+    resp = await client.post(
+        "/api/v1/checkout/place",
+        json=_place_body(city_id, coupon_code=code),
+        headers=headers,
+    )
+    assert resp.status_code == 201
+    data = resp.json()
+    assert data["discount_pkr"] == int(base_price * Decimal("10") / Decimal("100"))
+    assert data["total_pkr"] == base_price + 20000 - data["discount_pkr"]
+
+
+@pytest.mark.asyncio
+async def test_place_order_with_fixed_coupon_applies_flat_discount(
+    client: AsyncClient, db: AsyncSession, customer: User, product: Product, city: City
+) -> None:
+    coupon = await _make_coupon(db, coupon_type=CouponType.fixed, value=Decimal("50"))
+    code = coupon.code
+    email = customer.email
+    product_id = str(product.id)
+    city_id = str(city.id)
+
+    token = await _login(client, email)
+    headers = {"Authorization": f"Bearer {token}"}
+    await _add_item(client, token, product_id)
+
+    resp = await client.post(
+        "/api/v1/checkout/place",
+        json=_place_body(city_id, coupon_code=code),
+        headers=headers,
+    )
+    assert resp.status_code == 201
+    assert resp.json()["discount_pkr"] == 5000
+
+
+@pytest.mark.asyncio
+async def test_place_order_with_free_shipping_coupon_waives_delivery_fee(
+    client: AsyncClient, db: AsyncSession, customer: User, product: Product, city: City
+) -> None:
+    coupon = await _make_coupon(db, coupon_type=CouponType.free_shipping, value=Decimal("0"))
+    code = coupon.code
+    email = customer.email
+    product_id = str(product.id)
+    city_id = str(city.id)
+    base_price = product.base_price_pkr
+
+    token = await _login(client, email)
+    headers = {"Authorization": f"Bearer {token}"}
+    await _add_item(client, token, product_id)
+
+    resp = await client.post(
+        "/api/v1/checkout/place",
+        json=_place_body(city_id, coupon_code=code),
+        headers=headers,
+    )
+    assert resp.status_code == 201
+    data = resp.json()
+    assert data["discount_pkr"] == 20000
+    assert data["total_pkr"] == base_price
+
+
+@pytest.mark.asyncio
+async def test_place_order_coupon_increments_used_count(
+    client: AsyncClient, db: AsyncSession, customer: User, product: Product, city: City
+) -> None:
+    coupon = await _make_coupon(db, coupon_type=CouponType.fixed, value=Decimal("10"))
+    code = coupon.code
+    email = customer.email
+    product_id = str(product.id)
+    city_id = str(city.id)
+
+    token = await _login(client, email)
+    headers = {"Authorization": f"Bearer {token}"}
+    await _add_item(client, token, product_id)
+
+    resp = await client.post(
+        "/api/v1/checkout/place",
+        json=_place_body(city_id, coupon_code=code),
+        headers=headers,
+    )
+    assert resp.status_code == 201
+
+    from app.repositories.loyalty_repository import CouponRepository
+    refreshed = await CouponRepository(db).get_by_code(code)
+    assert refreshed is not None
+    assert refreshed.used_count == 1
+
+
+@pytest.mark.asyncio
+async def test_place_order_invalid_coupon_code_returns_400(
+    client: AsyncClient, customer: User, product: Product, city: City
+) -> None:
+    email = customer.email
+    product_id = str(product.id)
+    city_id = str(city.id)
+
+    token = await _login(client, email)
+    headers = {"Authorization": f"Bearer {token}"}
+    await _add_item(client, token, product_id)
+
+    resp = await client.post(
+        "/api/v1/checkout/place",
+        json=_place_body(city_id, coupon_code="NOSUCHCODE"),
+        headers=headers,
+    )
+    assert resp.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_place_order_expired_coupon_returns_400(
+    client: AsyncClient, db: AsyncSession, customer: User, product: Product, city: City
+) -> None:
+    coupon = await _make_coupon(
+        db,
+        coupon_type=CouponType.fixed,
+        value=Decimal("10"),
+        ends_at=datetime.now(UTC) - timedelta(days=1),
+    )
+    code = coupon.code
+    email = customer.email
+    product_id = str(product.id)
+    city_id = str(city.id)
+
+    token = await _login(client, email)
+    headers = {"Authorization": f"Bearer {token}"}
+    await _add_item(client, token, product_id)
+
+    resp = await client.post(
+        "/api/v1/checkout/place",
+        json=_place_body(city_id, coupon_code=code),
+        headers=headers,
+    )
+    assert resp.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_place_order_coupon_not_yet_active_returns_400(
+    client: AsyncClient, db: AsyncSession, customer: User, product: Product, city: City
+) -> None:
+    coupon = await _make_coupon(
+        db,
+        coupon_type=CouponType.fixed,
+        value=Decimal("10"),
+        starts_at=datetime.now(UTC) + timedelta(days=1),
+    )
+    code = coupon.code
+    email = customer.email
+    product_id = str(product.id)
+    city_id = str(city.id)
+
+    token = await _login(client, email)
+    headers = {"Authorization": f"Bearer {token}"}
+    await _add_item(client, token, product_id)
+
+    resp = await client.post(
+        "/api/v1/checkout/place",
+        json=_place_body(city_id, coupon_code=code),
+        headers=headers,
+    )
+    assert resp.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_place_order_coupon_usage_limit_reached_returns_400(
+    client: AsyncClient, db: AsyncSession, customer: User, product: Product, city: City
+) -> None:
+    coupon = await _make_coupon(
+        db,
+        coupon_type=CouponType.fixed,
+        value=Decimal("10"),
+        usage_limit=1,
+        used_count=1,
+    )
+    code = coupon.code
+    email = customer.email
+    product_id = str(product.id)
+    city_id = str(city.id)
+
+    token = await _login(client, email)
+    headers = {"Authorization": f"Bearer {token}"}
+    await _add_item(client, token, product_id)
+
+    resp = await client.post(
+        "/api/v1/checkout/place",
+        json=_place_body(city_id, coupon_code=code),
+        headers=headers,
+    )
+    assert resp.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_place_order_coupon_min_order_not_met_returns_400(
+    client: AsyncClient, db: AsyncSession, customer: User, product: Product, city: City
+) -> None:
+    email = customer.email
+    product_id = str(product.id)
+    city_id = str(city.id)
+    coupon = await _make_coupon(
+        db,
+        coupon_type=CouponType.fixed,
+        value=Decimal("10"),
+        min_order_pkr=product.base_price_pkr + 100_000,
+    )
+    code = coupon.code
+
+    token = await _login(client, email)
+    headers = {"Authorization": f"Bearer {token}"}
+    await _add_item(client, token, product_id)
+
+    resp = await client.post(
+        "/api/v1/checkout/place",
+        json=_place_body(city_id, coupon_code=code),
+        headers=headers,
+    )
+    assert resp.status_code == 400
+
+
+# ── Loyalty points burn ────────────────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_place_order_burns_loyalty_points(
+    client: AsyncClient, db: AsyncSession, customer: User, product: Product, city: City
+) -> None:
+    email = customer.email
+    product_id = str(product.id)
+    city_id = str(city.id)
+    user_id = customer.id
+
+    wallet = await LoyaltyRepository(db).get_or_create_wallet(user_id)
+    wallet.balance_points = 10
+    await db.flush()
+
+    token = await _login(client, email)
+    headers = {"Authorization": f"Bearer {token}"}
+    await _add_item(client, token, product_id)
+
+    resp = await client.post(
+        "/api/v1/checkout/place",
+        json=_place_body(city_id, use_loyalty_points=True),
+        headers=headers,
+    )
+    assert resp.status_code == 201
+    data = resp.json()
+    assert data["discount_pkr"] > 0
+
+    refreshed_wallet = await LoyaltyRepository(db).get_wallet(user_id)
+    assert refreshed_wallet is not None
+    assert refreshed_wallet.balance_points < 10
+
+
+@pytest.mark.asyncio
+async def test_place_order_loyalty_points_ignored_when_wallet_empty(
+    client: AsyncClient, customer: User, product: Product, city: City
+) -> None:
+    email = customer.email
+    product_id = str(product.id)
+    city_id = str(city.id)
+
+    token = await _login(client, email)
+    headers = {"Authorization": f"Bearer {token}"}
+    await _add_item(client, token, product_id)
+
+    resp = await client.post(
+        "/api/v1/checkout/place",
+        json=_place_body(city_id, use_loyalty_points=True),
+        headers=headers,
+    )
+    assert resp.status_code == 201
+    assert resp.json()["discount_pkr"] == 0
+
+
+# ── Variant stock handling ─────────────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_place_order_decrements_variant_stock(
+    client: AsyncClient, db: AsyncSession, customer: User, product: Product, city: City
+) -> None:
+    email = customer.email
+    product_id = str(product.id)
+    city_id = str(city.id)
+    product_pk = product.id
+
+    variant = await _make_variant(db, product, stock_qty=5)
+    variant_id = str(variant.id)
+    variant_pk = variant.id
+
+    token = await _login(client, email)
+    headers = {"Authorization": f"Bearer {token}"}
+    await _add_item(client, token, product_id, variant_id=variant_id)
+
+    resp = await client.post(
+        "/api/v1/checkout/place",
+        json=_place_body(city_id),
+        headers=headers,
+    )
+    assert resp.status_code == 201
+
+    from app.repositories.catalog_repository import ProductRepository as PR
+    refreshed_product = await PR(db).get_by_id(product_pk)
+    refreshed_variant = next(v for v in refreshed_product.variants if v.id == variant_pk)
+    assert refreshed_variant.stock_qty == 4
+    assert refreshed_variant.is_active is True
+
+
+@pytest.mark.asyncio
+async def test_place_order_deactivates_variant_when_stock_hits_zero(
+    client: AsyncClient, db: AsyncSession, customer: User, product: Product, city: City
+) -> None:
+    email = customer.email
+    product_id = str(product.id)
+    city_id = str(city.id)
+    product_pk = product.id
+
+    variant = await _make_variant(db, product, stock_qty=1)
+    variant_id = str(variant.id)
+    variant_pk = variant.id
+
+    token = await _login(client, email)
+    headers = {"Authorization": f"Bearer {token}"}
+    await _add_item(client, token, product_id, variant_id=variant_id)
+
+    resp = await client.post(
+        "/api/v1/checkout/place",
+        json=_place_body(city_id),
+        headers=headers,
+    )
+    assert resp.status_code == 201
+
+    from app.repositories.catalog_repository import ProductRepository as PR
+    refreshed_product = await PR(db).get_by_id(product_pk)
+    refreshed_variant = next(v for v in refreshed_product.variants if v.id == variant_pk)
+    assert refreshed_variant.stock_qty == 0
+    assert refreshed_variant.is_active is False
+
+
+@pytest.mark.asyncio
+async def test_place_order_insufficient_variant_stock_returns_409(
+    client: AsyncClient, db: AsyncSession, customer: User, product: Product, city: City
+) -> None:
+    email = customer.email
+    product_id = str(product.id)
+    city_id = str(city.id)
+    product_pk = product.id
+
+    variant = await _make_variant(db, product, stock_qty=1)
+    variant_id = str(variant.id)
+    variant_pk = variant.id
+
+    token = await _login(client, email)
+    headers = {"Authorization": f"Bearer {token}"}
+    resp = await client.post(
+        "/api/v1/cart/items",
+        json={"product_id": product_id, "variant_id": variant_id, "qty": 1},
+        headers=headers,
+    )
+    assert resp.status_code == 201
+
+    # Simulate the variant selling out (e.g. a concurrent order) between
+    # add-to-cart and checkout, so the cart-level check passed but the
+    # checkout-time stock re-validation must still catch it.
+    from app.repositories.catalog_repository import ProductRepository as PR
+    refreshed_product = await PR(db).get_by_id(product_pk)
+    refreshed_variant = next(v for v in refreshed_product.variants if v.id == variant_pk)
+    refreshed_variant.stock_qty = 0
+    await db.flush()
+
+    resp = await client.post(
+        "/api/v1/checkout/place",
+        json=_place_body(city_id),
+        headers=headers,
+    )
+    assert resp.status_code == 409
+
+
+# ── Idempotency replay ─────────────────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_place_order_same_idempotency_key_returns_same_order(
+    client: AsyncClient, customer: User, product: Product, city: City
+) -> None:
+    email = customer.email
+    product_id = str(product.id)
+    city_id = str(city.id)
+
+    token = await _login(client, email)
+    key = str(uuid.uuid4())
+    headers = {"Authorization": f"Bearer {token}", "idempotency-key": key}
+
+    await _add_item(client, token, product_id)
+    first = await client.post(
+        "/api/v1/checkout/place",
+        json=_place_body(city_id),
+        headers=headers,
+    )
+    assert first.status_code == 201
+    first_id = first.json()["id"]
+
+    # Replay with the same key — must return the original order, not create a
+    # second one (idempotency short-circuit before any cart/stock validation).
+    second = await client.post(
+        "/api/v1/checkout/place",
+        json=_place_body(city_id),
+        headers=headers,
+    )
+    assert second.status_code == 201
+    assert second.json()["id"] == first_id
