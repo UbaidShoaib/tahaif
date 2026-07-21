@@ -1,6 +1,6 @@
 # Tahaif Production Runbook
 
-**Last updated:** 2026-06-14
+**Last updated:** 2026-07-22
 
 ---
 
@@ -8,23 +8,26 @@
 
 | Service | Platform | Region | URL |
 |---|---|---|---|
-| API | Fly.io | iad | `api.tahaif.com` |
-| Web | Vercel | auto | `tahaif.com` |
-| DB | Fly.io Postgres | iad | private network |
-| Redis | Upstash | iad | private |
-| MinIO / S3 | Fly.io volume | iad | `media.tahaif.com` |
-| Meilisearch | Fly.io | iad | private |
+| API | Railway (Trial — no card; see ADR 0002) | Singapore (`sfo` builder, service region auto) | `tahaif-api-production.up.railway.app` |
+| Web | Vercel | auto | `tahaif-web.vercel.app` (Preview; production cutover pending) |
+| DB | Railway Postgres | same project | private network (`postgres.railway.internal`) |
+| Redis | Railway Key Value | same project | private network (`redis.railway.internal`) |
+| MinIO / S3 | **not yet provisioned** | — | proof-of-payment upload is non-functional until set up |
+| Meilisearch | **not yet provisioned** | — | search is non-functional until set up |
+
+`infra/fly.toml` and `infra/render.yaml` are kept in the repo, fully configured
+and validated, as ready alternatives if the project moves to a paid host later.
 
 ---
 
 ## 1. Service restart
 
-### API (Fly.io)
+### API (Railway)
 
 ```bash
-fly restart --app tahaif-api
-fly status --app tahaif-api
-fly logs --app tahaif-api --tail
+railway redeploy --service tahaif-api --yes   # restart without rebuilding
+railway logs --service tahaif-api --deployment --latest
+railway status --json
 ```
 
 ### Web (Vercel)
@@ -41,22 +44,19 @@ vercel --prod
 
 ## 2. Database backup
 
-### Take a manual snapshot
+Railway's free Postgres plugin does not include managed automated backups.
+Take manual snapshots via `pg_dump` against the public connection string
+(`railway variable list --service Postgres --kv` for `DATABASE_PUBLIC_URL`):
 
 ```bash
-fly postgres db backup create tahaif-db
-fly postgres db backup list tahaif-db
+pg_dump "$DATABASE_PUBLIC_URL" -Fc -f tahaif-backup-$(date +%F).dump
 ```
 
-### Restore from snapshot
+Restore:
 
 ```bash
-fly postgres db restore <snapshot-id> --app tahaif-db
+pg_restore -d "$DATABASE_PUBLIC_URL" --clean tahaif-backup-<date>.dump
 ```
-
-### Point-in-time restore (emergency)
-
-Contact Fly.io support with target timestamp; they perform WAL replay.
 
 ---
 
@@ -65,11 +65,10 @@ Contact Fly.io support with target timestamp; they perform WAL replay.
 ### API rollback
 
 ```bash
-# List recent releases
-fly releases --app tahaif-api
-
-# Roll back to a specific version
-fly deploy --image registry.fly.io/tahaif-api:<version>
+railway deployment list --service tahaif-api --json   # find a prior SUCCESS deployment id
+railway redeploy --service tahaif-api --yes            # re-runs the latest; for an older
+                                                        # deployment, use the dashboard's
+                                                        # "Redeploy" on that specific deployment
 ```
 
 ### Web rollback
@@ -79,11 +78,9 @@ Vercel dashboard → Deployments → click the previous successful deployment �
 ### Database migration rollback
 
 ```bash
-# SSH into the Fly machine
-fly ssh console --app tahaif-api
-
+railway ssh --service tahaif-api
 # Inside the container
-cd /app
+cd /app/apps/api
 alembic downgrade <target_revision>
 ```
 
@@ -91,16 +88,17 @@ alembic downgrade <target_revision>
 
 ## 4. Key secrets and where they live
 
-All secrets are stored in **Fly.io secrets** (for API) and **Vercel environment variables** (for web).
+All secrets are stored in **Railway service variables** (for API) and **Vercel environment variables** (for web).
 
-To view / update API secrets:
+To view / update API variables:
 
 ```bash
-fly secrets list --app tahaif-api
-fly secrets set KEY=value --app tahaif-api
+railway variable list --service tahaif-api --kv
+railway variable set KEY=value --service tahaif-api
 ```
 
-To update web secrets: Vercel dashboard → Project → Settings → Environment Variables.
+To update web variables: Vercel dashboard → Project → Settings → Environment Variables,
+or `vercel env add KEY <environment>`.
 
 **Never commit secrets to git.** See `.env.example` for the full list of required variables.
 
@@ -136,13 +134,16 @@ To update web secrets: Vercel dashboard → Project → Settings → Environment
 
 **Symptom:** `POST /orders/{id}/proof` returns 500.
 
+**Status:** expected until S3/MinIO is provisioned — `S3_*` variables are currently unset.
+
 **Check:**
 ```bash
-fly logs --app tahaif-api | grep s3
-fly secrets list --app tahaif-api | grep S3
+railway logs --service tahaif-api --filter "s3"
+railway variable list --service tahaif-api --kv | grep S3
 ```
 
-**Remedy:** verify `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_BUCKET_NAME`, and `S3_ENDPOINT_URL` are set correctly.
+**Remedy:** provision an S3-compatible bucket (AWS S3 or Cloudflare R2) and set
+`S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_BUCKET_NAME`, `S3_ENDPOINT_URL`, `S3_PUBLIC_URL`.
 
 ---
 
@@ -152,21 +153,26 @@ fly secrets list --app tahaif-api | grep S3
 
 **Check:**
 ```bash
-fly redis status tahaif-redis
+railway logs --service Redis --deployment --latest
+railway variable list --service tahaif-api --kv | grep REDIS_URL
 ```
 
-**Remedy:** restart Redis, verify `REDIS_URL` secret.
+**Remedy:** restart the Redis service (`railway redeploy --service Redis --yes`), verify `REDIS_URL`.
+
+Note: Railway's free Key Value plan is in-memory only — data (including rate-limit
+counters) is lost on any restart. Not an issue for correctness, only for state continuity.
 
 ---
 
 ### Meilisearch index out of sync
 
-**Symptom:** search returns stale or empty results.
+**Status:** not applicable until Meilisearch is provisioned — search currently
+returns no results by design (`MEILISEARCH_URL` unset).
 
-**Remedy:** re-index from the API:
+**Remedy once provisioned:** re-index from the API:
 
 ```bash
-fly ssh console --app tahaif-api
+railway ssh --service tahaif-api
 python -c "import asyncio; from app.integrations.meilisearch_client import reindex_all; asyncio.run(reindex_all())"
 ```
 
@@ -174,10 +180,10 @@ python -c "import asyncio; from app.integrations.meilisearch_client import reind
 
 ## 7. Monitoring dashboards
 
-- **Sentry** — errors and performance traces: `sentry.io/tahaif`
-- **PostHog** — product analytics: `app.posthog.com`
-- **Fly.io metrics** — CPU / memory / disk: `fly.io/apps/tahaif-api/metrics`
-- **Upstash Redis** — throughput and latency: Upstash console
+- **Sentry** — not yet configured (`SENTRY_DSN` unset)
+- **PostHog** — not yet configured (`NEXT_PUBLIC_POSTHOG_KEY` unset on web)
+- **Railway metrics** — CPU / memory / network per service: `railway.com` project dashboard, or `railway metrics --service tahaif-api`
+- **Railway usage** — trial credit remaining: `railway usage`
 
 ---
 
@@ -185,6 +191,6 @@ python -c "import asyncio; from app.integrations.meilisearch_client import reind
 
 | Task | Schedule | Where |
 |---|---|---|
-| FX rate refresh | Daily 00:00 UTC | `workers/fx_rate_worker.py` via arq |
-| Outbox drain | Every 5 minutes | `workers/outbox_worker.py` via arq |
-| DB vacuum | Weekly Sunday 03:00 UTC | Fly.io Postgres built-in |
+| FX rate refresh | Daily 00:00 UTC | `workers/fx_rate_worker.py` via arq — **not yet scheduled on Railway; needs a cron-triggered job or always-on worker** |
+| Outbox drain | Every 5 minutes | `workers/outbox_worker.py` via arq — **same; not yet scheduled** |
+| DB vacuum | Managed by Postgres | Railway Postgres template handles autovacuum by default |
