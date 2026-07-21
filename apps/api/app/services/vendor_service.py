@@ -13,6 +13,7 @@ from app.repositories.order_repository import OrderRepository
 from app.schemas.catalog import VendorUpdate
 from app.schemas.vendor import FulfillmentStatusUpdate, VendorFulfillmentRead
 
+
 def _NOT_FOUND(noun: str) -> HTTPException:
     return HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"{noun} not found")
 _FORBIDDEN = HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not a vendor account")

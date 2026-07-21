@@ -162,11 +162,13 @@ def create_app() -> FastAPI:
                 return
 
             import asyncio
+
             from app.core.db import get_db
 
             async def run_audit() -> None:
                 try:
                     import uuid as _uuid
+
                     import sqlalchemy as _sa
                     forwarded = req.headers.get("X-Forwarded-For", "")
                     ip = forwarded.split(",")[0].strip() if forwarded else (req.client.host if req.client else None)

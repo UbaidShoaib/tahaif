@@ -3,7 +3,7 @@
 import uuid
 from datetime import UTC, datetime
 from decimal import Decimal
-from typing import Annotated
+from typing import Annotated, Any
 
 from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel, Field
@@ -60,7 +60,7 @@ async def list_orders(
     db: DB,
     status: OrderStatus | None = None,
     limit: int = 50,
-) -> list[dict]:
+) -> list[dict[str, Any]]:
     repo = OrderRepository(db)
     q = repo._with_relations()
     if status:
@@ -89,9 +89,9 @@ async def list_orders(
 async def update_order_status(
     order_id: uuid.UUID,
     body: OrderStatusUpdate,
-    admin: AdminUser,
+    _admin: AdminUser,
     db: DB,
-) -> dict:
+) -> dict[str, Any]:
     repo = OrderRepository(db)
     order = await repo.get_by_id(order_id)
     if not order:
@@ -107,7 +107,7 @@ async def verify_payment(
     body: PaymentVerify,
     admin: AdminUser,
     db: DB,
-) -> dict:
+) -> dict[str, Any]:
     repo = OrderRepository(db)
     order = await repo.get_by_id(order_id)
     if not order or not order.payments:
@@ -136,7 +136,7 @@ async def set_product_active(
     body: ProductActiveUpdate,
     _admin: AdminUser,
     db: DB,
-) -> dict:
+) -> dict[str, Any]:
     repo = ProductRepository(db)
     product = await repo.get_by_id(product_id)
     if not product:
@@ -148,7 +148,7 @@ async def set_product_active(
 # ── FX rates ──────────────────────────────────────────────────────────────────
 
 @router.get("/fx-rates")
-async def list_fx_rates(_admin: AdminUser, db: DB) -> list[dict]:
+async def list_fx_rates(_admin: AdminUser, db: DB) -> list[dict[str, Any]]:
     result = await db.execute(select(FxRate).order_by(FxRate.quote_currency))
     return [
         {
@@ -163,7 +163,7 @@ async def list_fx_rates(_admin: AdminUser, db: DB) -> list[dict]:
 
 
 @router.post("/fx-rates/override")
-async def override_fx_rate(body: FxRateOverride, admin: AdminUser, db: DB) -> dict:
+async def override_fx_rate(body: FxRateOverride, admin: AdminUser, db: DB) -> dict[str, Any]:
     existing = (await db.execute(
         select(FxRate).where(
             FxRate.base_currency == "PKR",
@@ -193,8 +193,7 @@ async def override_fx_rate(body: FxRateOverride, admin: AdminUser, db: DB) -> di
 # ── Coupons ───────────────────────────────────────────────────────────────────
 
 @router.get("/coupons")
-async def list_coupons(_admin: AdminUser, db: DB) -> list[dict]:
-    repo = CouponRepository(db)
+async def list_coupons(_admin: AdminUser, db: DB) -> list[dict[str, Any]]:
     result = await db.execute(select(Coupon).order_by(Coupon.created_at.desc()).limit(100))
     return [
         {
@@ -212,7 +211,7 @@ async def list_coupons(_admin: AdminUser, db: DB) -> list[dict]:
 
 
 @router.post("/coupons", status_code=status.HTTP_201_CREATED)
-async def create_coupon(body: CouponCreate, _admin: AdminUser, db: DB) -> dict:
+async def create_coupon(body: CouponCreate, _admin: AdminUser, db: DB) -> dict[str, Any]:
     repo = CouponRepository(db)
     coupon = await repo.create(
         code=body.code.upper(),
@@ -231,7 +230,7 @@ async def set_coupon_active(
     body: ProductActiveUpdate,
     _admin: AdminUser,
     db: DB,
-) -> dict:
+) -> dict[str, Any]:
     result = await db.execute(select(Coupon).where(Coupon.id == coupon_id))
     coupon = result.scalar_one_or_none()
     if not coupon:
@@ -244,7 +243,7 @@ async def set_coupon_active(
 # ── Users ─────────────────────────────────────────────────────────────────────
 
 @router.get("/users")
-async def list_users(_admin: AdminUser, db: DB, limit: int = 50) -> list[dict]:
+async def list_users(_admin: AdminUser, db: DB, limit: int = 50) -> list[dict[str, Any]]:
     result = await db.execute(
         select(User).where(User.is_active.is_(True)).order_by(User.created_at.desc()).limit(limit)
     )
@@ -267,7 +266,7 @@ async def update_user_role(
     role: UserRole,
     admin: AdminUser,
     db: DB,
-) -> dict:
+) -> dict[str, Any]:
     if admin.role != UserRole.admin:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only admins can change roles")
     repo = UserRepository(db)
