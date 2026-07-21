@@ -25,7 +25,7 @@ export function ProofUpload({ orderId }: { orderId: string }) {
         body: form,
       });
       if (!resp.ok) {
-        const data = await resp.json().catch(() => ({}));
+        const data = (await resp.json().catch(() => ({}))) as { detail?: string };
         throw new Error(data.detail ?? "Upload failed");
       }
       setUploaded(true);

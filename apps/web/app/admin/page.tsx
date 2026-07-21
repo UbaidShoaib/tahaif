@@ -39,7 +39,7 @@ const ORDER_STATUSES = [
 
 export default function AdminDashboard() {
   const router = useRouter();
-  const { token, user } = useAuthStore();
+  const { accessToken: token, user } = useAuthStore();
   const [orders, setOrders] = useState<OrderSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -63,7 +63,7 @@ export default function AdminDashboard() {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!resp.ok) throw new Error("Failed to fetch orders");
-      setOrders(await resp.json());
+      setOrders((await resp.json()) as OrderSummary[]);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error");
     } finally {
