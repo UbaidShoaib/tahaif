@@ -41,3 +41,5 @@ Thumbs.db
 *.log
 *.lock.bak
 logs/
+.vercel
+.env*
