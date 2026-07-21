@@ -1,0 +1,50 @@
+# render.yaml — Tahaif API on Render
+# Apply via Render Dashboard: New + → Blueprint → select this repo.
+# Docker build context is the repo root so COPY apps/api/ (in Dockerfile.api) works.
+
+databases:
+  - name: tahaif-db
+    plan: free
+    region: singapore
+    postgresMajorVersion: "16"
+
+services:
+  - name: tahaif-redis
+    type: keyvalue
+    plan: free
+    region: singapore
+    maxmemoryPolicy: allkeys-lru
+    ipAllowList:
+      - source: 0.0.0.0/0
+        description: allow all (Render services only; no public exposure needed)
+
+  - name: tahaif-api
+    type: web
+    runtime: docker
+    dockerfilePath: infra/Dockerfile.api
+    dockerContext: .
+    plan: free
+    region: singapore
+    healthCheckPath: /api/v1/healthz
+    preDeployCommand: alembic upgrade head
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: SECRET_KEY
+        generateValue: true
+      - key: COOKIE_SECURE
+        value: "true"
+      - key: FRONTEND_URL
+        value: https://tahaif-web.vercel.app
+      - key: DATABASE_URL
+        fromDatabase:
+          name: tahaif-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          name: tahaif-redis
+          property: connectionString
+      # Everything below has a safe empty-string default in app/core/config.py
+      # and can be filled in once the corresponding service exists:
+      # MEILISEARCH_URL, MEILISEARCH_MASTER_KEY, S3_*, STRIPE_*, RESEND_API_KEY,
+      # TWILIO_*, OPEN_EXCHANGE_RATES_APP_ID, SENTRY_DSN

@@ -43,7 +43,7 @@ primary_region = "sin"  # Singapore (closest to Pakistan)
 [deploy]
   strategy = "rolling"
   # Run Alembic migrations before traffic shifts to new version
-  release_command = "uv run alembic upgrade head"
+  release_command = "alembic upgrade head"
 
 [[statics]]
   # No static files from API — served by Vercel (web app)
