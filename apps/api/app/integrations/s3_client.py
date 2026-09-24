@@ -5,6 +5,8 @@ from pathlib import PurePosixPath
 
 import boto3
 import structlog
+from botocore.exceptions import BotoCoreError, ClientError
+from fastapi import HTTPException, status
 
 from app.core.config import get_settings
 
@@ -44,13 +46,11 @@ def _upload_sync(key: str, data: bytes, content_type: str) -> str:
 async def upload_proof(order_id: str, filename: str, data: bytes, content_type: str) -> str:
     """Upload bank-transfer proof; returns the public URL."""
     if content_type not in _ALLOWED_MIME_TYPES:
-        from fastapi import HTTPException, status
         raise HTTPException(
             status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
             detail=f"Unsupported file type. Allowed: {', '.join(_ALLOWED_MIME_TYPES)}",
         )
     if len(data) > _MAX_FILE_SIZE:
-        from fastapi import HTTPException, status
         raise HTTPException(
             status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
             detail="File exceeds 10 MB limit",
@@ -59,6 +59,14 @@ async def upload_proof(order_id: str, filename: str, data: bytes, content_type: 
     ext = PurePosixPath(filename).suffix or ".jpg"
     key = f"proofs/{order_id}/receipt{ext}"
 
-    url = await asyncio.to_thread(_upload_sync, key, data, content_type)
+    try:
+        url = await asyncio.to_thread(_upload_sync, key, data, content_type)
+    except (BotoCoreError, ClientError) as exc:
+        # e.g. missing bucket or unreachable storage: an ops problem, not a client error.
+        await logger.aexception("s3_proof_upload_failed", order_id=order_id, key=key, error=str(exc))
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Receipt storage is unavailable right now. Please try again shortly.",
+        ) from exc
     await logger.ainfo("s3_proof_uploaded", order_id=order_id, key=key)
     return url

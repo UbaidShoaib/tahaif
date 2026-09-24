@@ -180,6 +180,18 @@ wait_healthy "redis"
 sleep 3
 success "meilisearch, minio, mailhog — started"
 
+# Object storage bucket for bank-transfer receipts. Kept private: receipts are
+# payment documents. Idempotent, so safe on every start.
+wait_healthy "minio"
+S3_BUCKET="$(grep -E '^S3_BUCKET_NAME=' .env | cut -d= -f2- | tr -d '"' || true)"
+S3_BUCKET="${S3_BUCKET:-tahaif-media}"
+if $COMPOSE exec -T minio sh -c \
+    "mc alias set local http://localhost:9000 minioadmin minioadmin >/dev/null && mc mb --ignore-existing local/${S3_BUCKET}" >/dev/null 2>&1; then
+  success "MinIO bucket '${S3_BUCKET}' ready"
+else
+  warn "Could not create MinIO bucket '${S3_BUCKET}' — receipt uploads will return 503"
+fi
+
 # ══════════════════════════════════════════════════════════════════════════════
 header "4/6  Backend"
 # ══════════════════════════════════════════════════════════════════════════════
