@@ -3,6 +3,9 @@ import type { NextConfig } from "next";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 const API_HOST = new URL(API_URL).host;
+// CSP source expressions with a path and no trailing slash match that one URL
+// exactly, so "http://host/api/v1" would block every call under it. Use the origin.
+const API_ORIGIN = new URL(API_URL).origin;
 
 // Content-Security-Policy — tightened for production; localhost entries cover dev.
 const CSP = [
@@ -13,7 +16,7 @@ const CSP = [
     : "script-src 'self' 'unsafe-inline'",
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "font-src 'self' https://fonts.gstatic.com",
-  `connect-src 'self' ${API_URL} https://*.sentry.io wss: ws:`,
+  `connect-src 'self' ${API_ORIGIN} https://*.sentry.io wss: ws:`,
   `img-src 'self' data: blob: https://images.unsplash.com https://*.tahaif.pk http://localhost http://${API_HOST}`,
   "frame-ancestors 'none'",
   "base-uri 'self'",
