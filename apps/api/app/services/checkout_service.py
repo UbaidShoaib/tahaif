@@ -2,6 +2,7 @@ import uuid
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
+import structlog
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -28,6 +29,8 @@ from app.schemas.order import (
 )
 from app.services import delivery_service, fx_service, loyalty_service
 from app.services.cart_service import _cart_to_read, _unit_price
+
+logger = structlog.get_logger()
 
 if TYPE_CHECKING:
     from app.models.catalog import Product, ProductCity, ProductVariant
@@ -298,7 +301,8 @@ async def place_order(
                 public_token=order_reloaded_for_notif.public_token,
             )
     except Exception:
-        pass
+        # Best-effort: the order stands, but a missed confirmation must be visible.
+        await logger.aexception("order_notification_enqueue_failed", order_id=str(order.id))
 
     order = await order_repo.reload(order)
     return _order_to_read(order)

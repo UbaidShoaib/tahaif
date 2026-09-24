@@ -59,7 +59,7 @@ async def enqueue_order_confirmation(
 
     await db.execute(sa.text("""
         INSERT INTO notifications_outbox (id, channel, to_address, template, payload, status, attempts, created_at)
-        VALUES (:id, :channel, :to_address, :template, :payload::jsonb, :status, :attempts, :created_at)
+        VALUES (:id, :channel, :to_address, :template, CAST(:payload AS jsonb), :status, :attempts, :created_at)
     """), rows)
 
     await logger.ainfo(
