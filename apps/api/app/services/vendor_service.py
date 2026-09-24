@@ -6,7 +6,14 @@ from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.catalog import Product, Vendor
-from app.models.order import Fulfillment, FulfillmentStatus, Order, OrderStatus
+from app.models.order import (
+    Fulfillment,
+    FulfillmentStatus,
+    Order,
+    OrderStatus,
+    PaymentMethod,
+    PaymentStatus,
+)
 from app.models.user import User
 from app.repositories.catalog_repository import ProductRepository, VendorRepository
 from app.repositories.order_repository import OrderRepository
@@ -17,6 +24,45 @@ from app.schemas.vendor import FulfillmentStatusUpdate, VendorFulfillmentRead
 def _NOT_FOUND(noun: str) -> HTTPException:
     return HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"{noun} not found")
 _FORBIDDEN = HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not a vendor account")
+
+# Fulfillment legs only move forward. Vendors may skip intermediate stages
+# (e.g. pending → dispatched) but can never go back, and delivered/failed are final.
+_FULFILLMENT_ORDER: dict[FulfillmentStatus, int] = {
+    FulfillmentStatus.pending: 0,
+    FulfillmentStatus.preparing: 1,
+    FulfillmentStatus.ready: 2,
+    FulfillmentStatus.dispatched: 3,
+    FulfillmentStatus.out_for_delivery: 4,
+    FulfillmentStatus.delivered: 5,
+}
+_FINAL_FULFILLMENT = {FulfillmentStatus.delivered, FulfillmentStatus.failed}
+# Orders in these states are frozen for vendors; only staff can move them.
+_FROZEN_ORDER = {OrderStatus.cancelled, OrderStatus.refunded, OrderStatus.on_hold}
+# Order statuses the fulfillment aggregate must never overwrite.
+_TERMINAL_ORDER = {OrderStatus.completed, OrderStatus.cancelled, OrderStatus.refunded, OrderStatus.on_hold}
+
+
+def _conflict(detail: str) -> HTTPException:
+    return HTTPException(status_code=status.HTTP_409_CONFLICT, detail=detail)
+
+
+def _is_allowed_transition(current: FulfillmentStatus, new: FulfillmentStatus) -> bool:
+    """Same-status updates (e.g. adding a tracking number) are fine until the leg is final."""
+    if current in _FINAL_FULFILLMENT:
+        return False
+    if current == new:
+        return True
+    if new == FulfillmentStatus.failed:
+        return True
+    return _FULFILLMENT_ORDER[new] > _FULFILLMENT_ORDER[current]
+
+
+def _is_cleared_for_fulfillment(order: Order) -> bool:
+    """COD orders are paid on delivery; every other method must be paid first."""
+    if not order.payments:
+        return False
+    payment = order.payments[0]
+    return payment.method == PaymentMethod.cod or payment.status == PaymentStatus.paid
 
 
 async def _get_vendor_or_403(db: AsyncSession, user: User) -> Vendor:
@@ -62,6 +108,14 @@ async def update_fulfillment(
     fulfillment = await repo.get_fulfillment(fulfillment_id, vendor.id)
     if not fulfillment:
         raise _NOT_FOUND("Fulfillment")
+
+    parent = fulfillment.order
+    if parent.status in _FROZEN_ORDER:
+        raise _conflict(f"Order is {parent.status.value}; fulfillment cannot be updated")
+    if not _is_allowed_transition(fulfillment.status, data.status):
+        raise _conflict(f"Cannot move fulfillment from {fulfillment.status.value} to {data.status.value}")
+    if data.status not in (FulfillmentStatus.pending, FulfillmentStatus.failed) and not _is_cleared_for_fulfillment(parent):
+        raise _conflict("Payment has not been verified for this order yet")
 
     kwargs: dict[str, object] = {"status": data.status}
     if data.courier_tracking is not None:
@@ -136,6 +190,9 @@ async def _sync_order_status(
     elif FulfillmentStatus.preparing in statuses or FulfillmentStatus.ready in statuses:
         new_order_status = OrderStatus.preparing
     else:
+        return
+
+    if order.status in _TERMINAL_ORDER:
         return
 
     if order.status != new_order_status:

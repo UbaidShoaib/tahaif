@@ -56,6 +56,7 @@ export default function VendorOrdersPage() {
   const [error, setError] = useState<string | null>(null);
   const [filterStatus, setFilterStatus] = useState<FulfillmentStatus | "">("");
   const [updating, setUpdating] = useState<string | null>(null);
+  const [rowError, setRowError] = useState<Record<string, string>>({});
 
   const load = useCallback(
     (token: string) => {
@@ -83,11 +84,17 @@ export default function VendorOrdersPage() {
     const next = NEXT_STATUS[f.status];
     if (!next) return;
     setUpdating(f.id);
+    setRowError((prev) => {
+      const copy = { ...prev };
+      delete copy[f.id];
+      return copy;
+    });
     try {
       const updated = await vendorApi.updateFulfillment(f.id, { status: next }, accessToken);
       setFulfillments((prev) => prev.map((x) => (x.id === updated.id ? updated : x)));
-    } catch {
-      // noop — keep existing state
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Could not update this fulfillment";
+      setRowError((prev) => ({ ...prev, [f.id]: msg }));
     } finally {
       setUpdating(null);
     }
@@ -156,6 +163,8 @@ export default function VendorOrdersPage() {
             const colorClass = STATUS_COLORS[f.status] ?? "bg-gray-100 text-gray-700";
             const nextStatus = NEXT_STATUS[f.status];
             const isUpdating = updating === f.id;
+            // Only COD orders may be prepared before payment is verified.
+            const awaitingPayment = f.payment_method !== "cod" && f.order_status === "pending_payment";
 
             return (
               <li
@@ -172,7 +181,12 @@ export default function VendorOrdersPage() {
                     </span>
                   </div>
 
-                  {nextStatus && (
+                  {nextStatus && awaitingPayment && (
+                    <span className="text-xs font-medium text-amber-700 dark:text-amber-400">
+                      Awaiting payment
+                    </span>
+                  )}
+                  {nextStatus && !awaitingPayment && (
                     <button
                       onClick={() => { void advance(f); }}
                       disabled={isUpdating}
@@ -182,6 +196,9 @@ export default function VendorOrdersPage() {
                     </button>
                   )}
                 </div>
+                {rowError[f.id] && (
+                  <p role="alert" className="mb-3 text-sm text-destructive">{rowError[f.id]}</p>
+                )}
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-1 text-sm">
                   <p>

@@ -5,7 +5,7 @@ from datetime import date, timedelta
 
 import pytest
 import pytest_asyncio
-from httpx import AsyncClient
+from httpx import AsyncClient, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.catalog import City, Product, ProductCity, Vendor
@@ -70,7 +70,14 @@ async def _make_product(db: AsyncSession, vendor: Vendor, city: City) -> Product
 
 
 async def _make_order_with_fulfillment(
-    db: AsyncSession, vendor: Vendor, product: Product, city: City, buyer: User
+    db: AsyncSession,
+    vendor: Vendor,
+    product: Product,
+    city: City,
+    buyer: User,
+    method: PaymentMethod = PaymentMethod.cod,
+    pay_status: PaymentStatus = PaymentStatus.pending_cod,
+    order_status: OrderStatus = OrderStatus.pending_payment,
 ) -> tuple[Order, Fulfillment]:
     """Create a minimal order+fulfillment for testing vendor portal."""
     tomorrow = date.today() + timedelta(days=1)
@@ -83,7 +90,7 @@ async def _make_order_with_fulfillment(
         delivery_pkr=15000,
         total_pkr=product.base_price_pkr + 15000,
         total_charged=product.base_price_pkr + 15000,
-        status=OrderStatus.pending_payment,
+        status=order_status,
         public_token=uuid.uuid4(),
     )
     db.add(order)
@@ -117,8 +124,8 @@ async def _make_order_with_fulfillment(
     # Create payment
     payment = Payment(
         order_id=order.id,
-        method=PaymentMethod.cod,
-        status=PaymentStatus.pending_cod,
+        method=method,
+        status=pay_status,
         amount_pkr=order.total_pkr,
         amount_charged=order.total_pkr,
         currency="PKR",
@@ -390,6 +397,182 @@ async def test_update_fulfillment_not_found_returns_404(
         headers={"Authorization": f"Bearer {token}"},
     )
     assert resp.status_code == 404
+
+
+# ── Fulfillment rules: forward-only, payment-gated, frozen orders ─────────────
+
+
+async def _patch(client: AsyncClient, token: str, fulfillment_id: object, **body: object) -> Response:
+    return await client.patch(
+        f"/api/v1/vendor/fulfillments/{fulfillment_id}",
+        json=body,
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+
+async def _order_status(db: AsyncSession, order_id: uuid.UUID) -> OrderStatus:
+    from sqlalchemy import select as sa_select
+
+    db.expire_all()
+    result = await db.execute(sa_select(Order.status).where(Order.id == order_id))
+    return result.scalar_one()
+
+
+@pytest.mark.asyncio
+async def test_fulfillment_cannot_move_backwards(
+    client: AsyncClient, vendor_user: User, vendor: Vendor, order_and_fulfillment: tuple[Order, Fulfillment]
+) -> None:
+    _order, fulfillment = order_and_fulfillment
+    fid = fulfillment.id
+    token = await _login(client, vendor_user.email)
+
+    assert (await _patch(client, token, fid, status="dispatched")).status_code == 200
+    resp = await _patch(client, token, fid, status="preparing")
+
+    assert resp.status_code == 409
+    assert "dispatched to preparing" in resp.json()["detail"]
+
+
+@pytest.mark.asyncio
+async def test_delivered_fulfillment_is_final_and_order_does_not_regress(
+    client: AsyncClient, db: AsyncSession, vendor_user: User, vendor: Vendor, order_and_fulfillment: tuple[Order, Fulfillment]
+) -> None:
+    order, fulfillment = order_and_fulfillment
+    fid, oid = fulfillment.id, order.id
+    token = await _login(client, vendor_user.email)
+
+    assert (await _patch(client, token, fid, status="delivered")).status_code == 200
+    for status_name in ("preparing", "failed", "delivered"):
+        resp = await _patch(client, token, fid, status=status_name)
+        assert resp.status_code == 409, status_name
+
+    assert await _order_status(db, oid) == OrderStatus.delivered
+
+
+@pytest.mark.asyncio
+async def test_same_status_update_can_add_tracking(
+    client: AsyncClient, vendor_user: User, vendor: Vendor, order_and_fulfillment: tuple[Order, Fulfillment]
+) -> None:
+    _order, fulfillment = order_and_fulfillment
+    fid = fulfillment.id
+    token = await _login(client, vendor_user.email)
+
+    assert (await _patch(client, token, fid, status="dispatched")).status_code == 200
+    resp = await _patch(client, token, fid, status="dispatched", courier_tracking="TCS-999")
+
+    assert resp.status_code == 200
+    assert resp.json()["courier_tracking"] == "TCS-999"
+
+
+@pytest.mark.asyncio
+async def test_open_fulfillment_can_be_marked_failed(
+    client: AsyncClient, vendor_user: User, vendor: Vendor, order_and_fulfillment: tuple[Order, Fulfillment]
+) -> None:
+    _order, fulfillment = order_and_fulfillment
+    fid = fulfillment.id
+    token = await _login(client, vendor_user.email)
+
+    assert (await _patch(client, token, fid, status="ready")).status_code == 200
+    resp = await _patch(client, token, fid, status="failed")
+
+    assert resp.status_code == 200
+    assert resp.json()["status"] == "failed"
+
+
+@pytest.mark.asyncio
+async def test_unpaid_bank_transfer_cannot_be_fulfilled(
+    client: AsyncClient,
+    db: AsyncSession,
+    vendor_user: User,
+    vendor: Vendor,
+    product: Product,
+    city: City,
+    buyer: User,
+) -> None:
+    order, fulfillment = await _make_order_with_fulfillment(
+        db, vendor, product, city, buyer,
+        method=PaymentMethod.bank_transfer, pay_status=PaymentStatus.pending_proof,
+    )
+    fid, oid = fulfillment.id, order.id
+    await db.commit()
+    token = await _login(client, vendor_user.email)
+
+    for status_name in ("preparing", "dispatched"):
+        resp = await _patch(client, token, fid, status=status_name)
+        assert resp.status_code == 409, status_name
+        assert "Payment has not been verified" in resp.json()["detail"]
+
+    assert await _order_status(db, oid) == OrderStatus.pending_payment
+
+
+@pytest.mark.asyncio
+async def test_verified_bank_transfer_can_be_fulfilled(
+    client: AsyncClient,
+    db: AsyncSession,
+    vendor_user: User,
+    vendor: Vendor,
+    product: Product,
+    city: City,
+    buyer: User,
+) -> None:
+    order, fulfillment = await _make_order_with_fulfillment(
+        db, vendor, product, city, buyer,
+        method=PaymentMethod.bank_transfer, pay_status=PaymentStatus.paid, order_status=OrderStatus.paid,
+    )
+    fid, oid = fulfillment.id, order.id
+    await db.commit()
+    token = await _login(client, vendor_user.email)
+
+    resp = await _patch(client, token, fid, status="preparing")
+
+    assert resp.status_code == 200
+    assert await _order_status(db, oid) == OrderStatus.preparing
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("frozen", [OrderStatus.cancelled, OrderStatus.refunded, OrderStatus.on_hold])
+async def test_frozen_order_blocks_fulfillment_updates(
+    client: AsyncClient,
+    db: AsyncSession,
+    vendor_user: User,
+    vendor: Vendor,
+    product: Product,
+    city: City,
+    buyer: User,
+    frozen: OrderStatus,
+) -> None:
+    order, fulfillment = await _make_order_with_fulfillment(db, vendor, product, city, buyer, order_status=frozen)
+    fid, oid = fulfillment.id, order.id
+    await db.commit()
+    token = await _login(client, vendor_user.email)
+
+    resp = await _patch(client, token, fid, status="preparing")
+
+    assert resp.status_code == 409
+    assert await _order_status(db, oid) == frozen
+
+
+@pytest.mark.asyncio
+async def test_completed_order_status_is_not_overwritten(
+    client: AsyncClient,
+    db: AsyncSession,
+    vendor_user: User,
+    vendor: Vendor,
+    product: Product,
+    city: City,
+    buyer: User,
+) -> None:
+    order, fulfillment = await _make_order_with_fulfillment(
+        db, vendor, product, city, buyer, order_status=OrderStatus.completed
+    )
+    fid, oid = fulfillment.id, order.id
+    await db.commit()
+    token = await _login(client, vendor_user.email)
+
+    resp = await _patch(client, token, fid, status="delivered")
+
+    assert resp.status_code == 200
+    assert await _order_status(db, oid) == OrderStatus.completed
 
 
 # ── GET /vendor/products ──────────────────────────────────────────────────────
