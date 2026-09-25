@@ -1,15 +1,23 @@
 import { type NextRequest, NextResponse } from "next/server";
 
-const PROTECTED = ["/account", "/checkout", "/vendor", "/admin"];
-const ROLE_GATES: Record<string, string[]> = {
-  "/admin": ["admin", "staff"],
-  "/vendor": ["vendor", "admin"],
-};
+// /vendor/[slug] is a public storefront, so only the portal routes under
+// /vendor are protected — not the whole prefix.
+const VENDOR_PORTAL = ["/vendor/dashboard", "/vendor/orders", "/vendor/products"];
+const PROTECTED = ["/account", "/checkout", "/admin", ...VENDOR_PORTAL];
+const ROLE_GATES: [string[], string[]][] = [
+  [["/admin"], ["admin", "staff"]],
+  [VENDOR_PORTAL, ["vendor", "admin"]],
+];
+
+/** True for the path itself or anything beneath it (not "/adminx"). */
+function under(pathname: string, prefix: string) {
+  return pathname === prefix || pathname.startsWith(`${prefix}/`);
+}
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  const isProtected = PROTECTED.some((p) => pathname.startsWith(p));
+  const isProtected = PROTECTED.some((p) => under(pathname, p));
   if (!isProtected) return NextResponse.next();
 
   // Refresh token lives in an httpOnly cookie set by the API.
@@ -23,8 +31,8 @@ export function middleware(request: NextRequest) {
   }
 
   // Role gates: the session marker value contains the user role
-  for (const [prefix, allowedRoles] of Object.entries(ROLE_GATES)) {
-    if (pathname.startsWith(prefix)) {
+  for (const [prefixes, allowedRoles] of ROLE_GATES) {
+    if (prefixes.some((p) => under(pathname, p))) {
       const role = sessionMarker.value;
       if (!allowedRoles.includes(role)) {
         return NextResponse.redirect(new URL("/", request.url));

@@ -39,7 +39,7 @@ const ORDER_STATUSES = [
 
 export default function AdminDashboard() {
   const router = useRouter();
-  const { accessToken: token, user } = useAuthStore();
+  const { accessToken: token, user, isLoading: authLoading } = useAuthStore();
   const [orders, setOrders] = useState<OrderSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -47,12 +47,15 @@ export default function AdminDashboard() {
   const [actionInProgress, setActionInProgress] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!user) { router.push("/login"); return; }
+    // On a hard reload the session is restored from the refresh cookie after
+    // first render; redirecting before that finishes bounced admins to /login.
+    if (authLoading) return;
+    if (!user) { router.push("/login?callbackUrl=%2Fadmin"); return; }
     if (user.role !== "admin" && user.role !== "staff") {
       router.push("/"); return;
     }
     void fetchOrders();
-  }, [user, filterStatus]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [authLoading, user, filterStatus]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function fetchOrders() {
     setLoading(true);
