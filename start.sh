@@ -64,7 +64,7 @@ cleanup() {
 
   echo ""
   echo -e "${BOLD}Docker services are still running.${NC} To stop them:"
-  echo "  docker compose -f infra/docker-compose.yml down"
+  echo "  docker compose --env-file .env -f infra/docker-compose.yml down"
   echo ""
 }
 
@@ -141,7 +141,9 @@ fi
 header "3/6  Docker Services"
 # ══════════════════════════════════════════════════════════════════════════════
 
-COMPOSE="docker compose -f infra/docker-compose.yml"
+# --env-file: Compose otherwise looks for infra/.env (which does not exist), so
+# MEILISEARCH_MASTER_KEY fell back to its default and no longer matched the API.
+COMPOSE="docker compose --env-file .env -f infra/docker-compose.yml"
 
 info "Starting Docker services (postgres, redis, meilisearch, minio, mailhog)..."
 $COMPOSE up -d
@@ -225,6 +227,14 @@ if [[ "$SEED" == "true" ]]; then
   fi
 else
   info "Skipping seed (--no-seed)"
+fi
+
+# Idempotent: applies index settings and upserts every active product.
+info "Building search index..."
+if uv run python scripts/reindex_search.py; then
+  success "Search index ready"
+else
+  warn "Search index not built — /search will fall back to the database"
 fi
 
 info "Starting API server (uvicorn, port 8000)..."

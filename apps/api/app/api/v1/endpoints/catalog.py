@@ -3,7 +3,6 @@ import uuid
 from fastapi import APIRouter, Query, Response, status
 
 from app.core.deps import DB, CurrentUser
-from app.integrations import meilisearch_client
 from app.schemas.catalog import (
     CategoryCreate,
     CategoryRead,
@@ -219,11 +218,13 @@ async def update_occasion(slug: str, body: OccasionUpdate, db: DB, user: Current
 
 # ── Search ────────────────────────────────────────────────────────────────────
 
-@router.get("/search")
+@router.get("/search", response_model=PaginatedProducts)
 async def search(
-    q: str = Query(min_length=1),  # noqa: B008
+    db: DB,
+    q: str = Query(min_length=1, max_length=100),  # noqa: B008
     city_id: uuid.UUID | None = Query(default=None),  # noqa: B008
     limit: int = Query(default=20, ge=1, le=100),  # noqa: B008
-) -> dict[str, object]:
-    filters = f"city_ids = {city_id}" if city_id else None
-    return await meilisearch_client.search(q, filters=filters, limit=limit)
+) -> PaginatedProducts:
+    """Full-text product search. Falls back to a database match if Meilisearch is down."""
+    return await catalog_service.search_products(db, q, city_id=city_id, limit=limit)
+

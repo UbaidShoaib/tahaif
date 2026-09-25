@@ -1,7 +1,8 @@
+import builtins
 import uuid
 from typing import Any
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -217,6 +218,48 @@ class ProductRepository:
         q = q.order_by(Product.name).offset((page - 1) * page_size).limit(page_size)
         items = list((await self._db.execute(q)).scalars().unique().all())
         return items, total
+
+    async def search_text(
+        self, query: str, city_id: uuid.UUID | None = None, limit: int = 20
+    ) -> builtins.list[Product]:
+        """Case-insensitive match on product name, description or vendor name.
+
+        Fallback for when Meilisearch is unavailable; active products only.
+        """
+        pattern = f"%{query.strip()}%"
+        q = (
+            self._with_relations()
+            .join(Product.vendor)
+            .where(
+                Product.is_active.is_(True),
+                or_(
+                    Product.name.ilike(pattern),
+                    Product.description.ilike(pattern),
+                    Vendor.name.ilike(pattern),
+                ),
+            )
+        )
+        if city_id:
+            q = q.join(Product.product_cities).where(
+                ProductCity.city_id == city_id,
+                ProductCity.is_available.is_(True),
+            )
+        q = q.order_by(Product.name).limit(limit)
+        return builtins.list((await self._db.execute(q)).scalars().unique().all())
+
+    async def get_active_by_ids(self, product_ids: builtins.list[uuid.UUID]) -> builtins.list[Product]:
+        """Active products for the given ids, in the order the ids were given."""
+        if not product_ids:
+            return []
+        q = self._with_relations().where(
+            Product.id.in_(product_ids), Product.is_active.is_(True)
+        )
+        found = {p.id: p for p in (await self._db.execute(q)).scalars().unique().all()}
+        return [found[pid] for pid in product_ids if pid in found]
+
+    async def list_all_active(self) -> builtins.list[Product]:
+        q = self._with_relations().where(Product.is_active.is_(True))
+        return builtins.list((await self._db.execute(q)).scalars().unique().all())
 
     async def get_by_slug(self, slug: str) -> Product | None:
         result = await self._db.execute(

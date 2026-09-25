@@ -14,10 +14,10 @@ from app.models.catalog import FxRate, FxRateSource
 from app.models.loyalty import Coupon, CouponType
 from app.models.order import Order, OrderStatus, PaymentStatus
 from app.models.user import User, UserRole
-from app.repositories.catalog_repository import ProductRepository
 from app.repositories.loyalty_repository import CouponRepository
 from app.repositories.order_repository import OrderRepository
 from app.repositories.user_repository import UserRepository
+from app.services import catalog_service
 
 AdminUser = Annotated[User, require_roles(UserRole.admin, UserRole.staff)]
 
@@ -137,11 +137,7 @@ async def set_product_active(
     _admin: AdminUser,
     db: DB,
 ) -> dict[str, Any]:
-    repo = ProductRepository(db)
-    product = await repo.get_by_id(product_id)
-    if not product:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Product not found")
-    await repo.update(product, is_active=body.is_active)
+    product = await catalog_service.set_product_active(db, product_id, body.is_active)
     return {"id": str(product.id), "is_active": product.is_active}
 
 

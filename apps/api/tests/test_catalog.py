@@ -456,14 +456,3 @@ async def test_set_product_city_availability(
     assert len(cities) == 1
     assert cities[0]["city_id"] == city_id
     assert cities[0]["delivery_fee_pkr"] == 20000
-
-
-@pytest.mark.asyncio
-async def test_search_returns_empty_without_meilisearch(client: AsyncClient) -> None:
-    """Search endpoint returns empty hits when Meilisearch is unavailable."""
-    empty = {"hits": [], "query": "cake", "estimatedTotalHits": 0}
-    with patch("app.services.catalog_service.meilisearch_client.search", new_callable=AsyncMock) as mock_search:
-        mock_search.return_value = empty
-        resp = await client.get("/api/v1/search?q=cake")
-    assert resp.status_code == 200
-    assert "hits" in resp.json()

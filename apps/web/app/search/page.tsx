@@ -32,25 +32,20 @@ function SearchPageInner() {
   const fetchProducts = useCallback(async (q: string, city: string) => {
     setLoading(true);
     try {
-      const qs = new URLSearchParams({ page_size: "48" });
+      // With a query, use server-side full-text search (Meilisearch with a DB
+      // fallback) so matches beyond the first page are found. Without one,
+      // browse the catalogue.
+      const term = q.trim();
+      const qs = new URLSearchParams(term ? { q: term, limit: "48" } : { page_size: "48" });
       if (city) qs.set("city_id", city);
-      const res = await fetch(`${API_BASE}/products?${qs.toString()}`, {
+      const res = await fetch(`${API_BASE}/${term ? "search" : "products"}?${qs.toString()}`, {
         credentials: "include",
       });
       if (!res.ok) throw new Error("fetch failed");
       const data = (await res.json()) as { items: Product[]; total: number };
 
-      const filtered = q.trim()
-        ? data.items.filter(
-            (p) =>
-              p.name.toLowerCase().includes(q.toLowerCase()) ||
-              (p.description ?? "").toLowerCase().includes(q.toLowerCase()) ||
-              (p.vendor?.name ?? "").toLowerCase().includes(q.toLowerCase()),
-          )
-        : data.items;
-
-      setProducts(filtered);
-      setTotal(filtered.length);
+      setProducts(data.items);
+      setTotal(data.total);
     } catch {
       setProducts([]);
       setTotal(0);

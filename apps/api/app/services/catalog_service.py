@@ -160,10 +160,11 @@ async def update_category(
 
 # ── Products ──────────────────────────────────────────────────────────────────
 
-def _to_meili_doc(product: Product) -> dict[str, object]:
+def _to_meili_doc(product: Product, vendor_name: str | None = None) -> dict[str, object]:
     return {
         "id": str(product.id),
         "name": product.name,
+        "vendor_name": vendor_name or "",
         "slug": product.slug,
         "description": product.description or "",
         "vendor_id": str(product.vendor_id),
@@ -201,10 +202,62 @@ async def list_products(
 
 
 async def get_product(db: AsyncSession, slug: str) -> Product:
+    """Public product lookup. Deactivated products are hidden like missing ones."""
     product = await ProductRepository(db).get_by_slug(slug)
-    if not product:
+    if not product or not product.is_active:
         raise _NOT_FOUND("Product")
     return product
+
+
+async def set_product_active(db: AsyncSession, product_id: uuid.UUID, is_active: bool) -> Product:
+    """Admin toggle. Keeps the search index in step with the storefront."""
+    repo = ProductRepository(db)
+    product = await repo.get_by_id(product_id)
+    if not product:
+        raise _NOT_FOUND("Product")
+    product = await repo.update(product, is_active=is_active)
+    if is_active:
+        refreshed = await repo.get_by_id(product_id)
+        assert refreshed is not None
+        await meilisearch_client.index_product(_to_meili_doc(refreshed, refreshed.vendor.name))
+        return refreshed
+    await meilisearch_client.delete_product(str(product_id))
+    return product
+
+
+async def search_products(
+    db: AsyncSession, query: str, city_id: uuid.UUID | None = None, limit: int = 20
+) -> PaginatedProducts:
+    """Full-text search via Meilisearch, falling back to a database match.
+
+    Results are always loaded from the database, so inactive products or stale
+    index entries never reach the storefront.
+    """
+    repo = ProductRepository(db)
+    try:
+        ids, _estimate = await meilisearch_client.search_ids(query, city_id=city_id, limit=limit)
+        products = await repo.get_active_by_ids(ids)
+    except meilisearch_client.SearchUnavailable as exc:
+        await logger.awarning("search_fallback_to_db", query=query, reason=str(exc))
+        products = await repo.search_text(query, city_id=city_id, limit=limit)
+    return PaginatedProducts(
+        items=[ProductRead.model_validate(p) for p in products],
+        total=len(products),
+        page=1,
+        page_size=limit,
+    )
+
+
+async def reindex_all_products(db: AsyncSession) -> int:
+    """Configure the index and push every active product. Returns the count indexed."""
+    products = await ProductRepository(db).list_all_active()
+    settings_task = await meilisearch_client.configure_index()
+    if settings_task is not None:
+        await meilisearch_client.wait_for_task(settings_task)
+    task = await meilisearch_client.index_products([_to_meili_doc(p, p.vendor.name) for p in products])
+    if task is not None:
+        await meilisearch_client.wait_for_task(task)
+    return len(products)
 
 
 async def create_product(db: AsyncSession, data: ProductCreate, user: User) -> Product:
@@ -220,7 +273,7 @@ async def create_product(db: AsyncSession, data: ProductCreate, user: User) -> P
         raise _CONFLICT("Product")
 
     product = await product_repo.create(**data.model_dump())
-    await meilisearch_client.index_product(_to_meili_doc(product))
+    await meilisearch_client.index_product(_to_meili_doc(product, vendor.name))
     return product
 
 
@@ -239,7 +292,7 @@ async def update_product(
     updates = data.model_dump(exclude_none=True)
     if updates:
         product = await repo.update(product, **updates)
-    await meilisearch_client.index_product(_to_meili_doc(product))
+    await meilisearch_client.index_product(_to_meili_doc(product, vendor.name))
     return product
 
 
@@ -325,7 +378,7 @@ async def set_product_city_availability(
     db.expire(product, ["product_cities"])
     updated = await repo.get_by_id(product.id)
     assert updated is not None
-    await meilisearch_client.index_product(_to_meili_doc(updated))
+    await meilisearch_client.index_product(_to_meili_doc(updated, vendor.name))
     return updated
 
 

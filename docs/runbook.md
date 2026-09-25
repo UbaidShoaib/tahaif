@@ -13,7 +13,7 @@
 | DB | Railway Postgres | same project | private network (`postgres.railway.internal`) |
 | Redis | Railway Key Value | same project | private network (`redis.railway.internal`) |
 | MinIO / S3 | **not yet provisioned** | — | proof-of-payment upload is non-functional until set up |
-| Meilisearch | **not yet provisioned** | — | search is non-functional until set up |
+| Meilisearch | **not yet provisioned** | — | search works through the database fallback until set up |
 
 `infra/fly.toml` and `infra/render.yaml` are kept in the repo, fully configured
 and validated, as ready alternatives if the project moves to a paid host later.
@@ -166,15 +166,25 @@ counters) is lost on any restart. Not an issue for correctness, only for state c
 
 ### Meilisearch index out of sync
 
-**Status:** not applicable until Meilisearch is provisioned — search currently
-returns no results by design (`MEILISEARCH_URL` unset).
+**Symptoms:** a product is missing from search, or deactivated products still
+match. `/search` never shows inactive products (results are re-read from the
+database), so stale entries only cost ranking, not correctness.
 
-**Remedy once provisioned:** re-index from the API:
+**Fallback:** if Meilisearch is unset, unreachable or rejects the key, `/search`
+logs `search_fallback_to_db` and matches name, description and vendor name in
+Postgres. Search keeps working, with simpler ranking.
+
+**Remedy:** rebuild the index. It is idempotent: it applies the index settings
+(searchable and filterable attributes) and upserts every active product.
 
 ```bash
 railway ssh --service tahaif-api
-python -c "import asyncio; from app.integrations.meilisearch_client import reindex_all; asyncio.run(reindex_all())"
+uv run python scripts/reindex_search.py     # prints "Indexed N products"
 ```
+
+Locally, `start.sh` runs the same script on every start. If it warns that the
+index was not built, check that `MEILISEARCH_MASTER_KEY` in `.env` matches the
+container (Compose is started with `--env-file .env` for this reason).
 
 ---
 
