@@ -4,6 +4,7 @@ import { ThemeProvider } from "next-themes";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState, useEffect, useRef } from "react";
 import { useAuthStore } from "@/stores/auth.store";
+import { useCurrencyStore } from "@/stores/currency.store";
 
 // ── PostHog (lightweight, tree-shaken when key absent) ────────────────────────
 const PH_KEY = process.env.NEXT_PUBLIC_POSTHOG_KEY;
@@ -46,6 +47,17 @@ function AuthInitializer() {
   return null;
 }
 
+// ── Currency: load rates once, then follow the signed-in buyer's profile ─────
+function CurrencyInitializer() {
+  const loadRates = useCurrencyStore((s) => s.loadRates);
+  const syncFromUser = useCurrencyStore((s) => s.syncFromUser);
+  const pref = useAuthStore((s) => s.user?.currency_pref);
+  const [ready, setReady] = useState(false);
+  useEffect(() => { void loadRates().then(() => setReady(true)); }, [loadRates]);
+  useEffect(() => { if (ready) syncFromUser(pref); }, [ready, pref, syncFromUser]);
+  return null;
+}
+
 export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(
     () =>
@@ -58,6 +70,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
     <QueryClientProvider client={queryClient}>
       <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
         <AuthInitializer />
+        <CurrencyInitializer />
         <PostHogPageview />
         {children}
       </ThemeProvider>

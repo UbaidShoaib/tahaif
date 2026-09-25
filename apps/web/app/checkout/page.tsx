@@ -10,7 +10,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { formatPrice } from "@/lib/utils";
+import { formatMoney } from "@/lib/money";
+import { Price } from "@/components/money/Price";
+import { useCurrencyStore } from "@/stores/currency.store";
+import { ApiError } from "@/lib/api";
+import { accountApi, type AddressRead } from "@/lib/account";
+import { loyaltyApi } from "@/lib/loyalty";
 import { ArrowLeft, ShoppingBag } from "lucide-react";
 import { captureEvent } from "@/components/providers";
 
@@ -30,12 +35,20 @@ export default function CheckoutPage() {
   const router = useRouter();
   const { user } = useAuthStore();
   const { cart, fetchCart } = useCartStore();
+  const displayCurrency = useCurrencyStore((s) => s.currency);
 
   const [cities, setCities] = useState<City[]>([]);
   const [quote, setQuote] = useState<CheckoutQuote | null>(null);
   const [isQuoting, setIsQuoting] = useState(false);
   const [isPlacing, setIsPlacing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const [couponInput, setCouponInput] = useState("");
+  const [appliedCoupon, setAppliedCoupon] = useState<string | null>(null);
+  const [couponError, setCouponError] = useState<string | null>(null);
+  const [useLoyalty, setUseLoyalty] = useState(false);
+  const [pointsBalance, setPointsBalance] = useState(0);
+  const [addresses, setAddresses] = useState<AddressRead[]>([]);
 
   const [form, setForm] = useState<CheckoutPlace>({
     payment_method: "cod",
@@ -54,24 +67,71 @@ export default function CheckoutPage() {
     void fetchCities().then(setCities);
   }, [user, fetchCart]);
 
+  // Saved addresses and loyalty balance are optional extras: failures just hide them.
+  useEffect(() => {
+    const token = useAuthStore.getState().accessToken;
+    if (!user || !token) return;
+    accountApi.listAddresses(token).then(setAddresses).catch(() => setAddresses([]));
+    loyaltyApi.getWallet(token).then((w) => setPointsBalance(w.balance_points)).catch(() => setPointsBalance(0));
+  }, [user]);
+
   const doQuote = useCallback(async () => {
     if (!form.delivery_city_id || !user) return;
     const token = useAuthStore.getState().accessToken;
     if (!token) return;
     setIsQuoting(true);
     try {
-      const q = await cartApi.quote(form.delivery_city_id, token);
+      const q = await cartApi.quote(form.delivery_city_id, token, {
+        couponCode: appliedCoupon,
+        useLoyaltyPoints: useLoyalty,
+        paymentMethod: form.payment_method,
+      });
       setQuote(q);
-    } catch {
-      setQuote(null);
+      // Only a successful quote *with* a coupon clears a coupon error; the
+      // requote that follows a rejected coupon must keep the explanation visible.
+      if (appliedCoupon) setCouponError(null);
+    } catch (err) {
+      if (appliedCoupon && err instanceof ApiError && err.status === 400) {
+        // Bad coupon: explain why and fall back to the undiscounted quote.
+        setCouponError(err.detail);
+        setAppliedCoupon(null);
+      } else {
+        setQuote(null);
+      }
     } finally {
       setIsQuoting(false);
     }
-  }, [form.delivery_city_id, user]);
+  }, [form.delivery_city_id, form.payment_method, user, appliedCoupon, useLoyalty]);
 
   useEffect(() => {
     if (form.delivery_city_id) void doQuote();
   }, [form.delivery_city_id, doQuote]);
+
+  const applyCoupon = () => {
+    const code = couponInput.trim().toUpperCase();
+    if (!code) return;
+    if (!form.delivery_city_id) {
+      setCouponError("Choose a delivery city first so we can price your order.");
+      return;
+    }
+    setCouponError(null);
+    setAppliedCoupon(code);
+  };
+
+  const fillFromSavedAddress = (id: string) => {
+    const a = addresses.find((x) => x.id === id);
+    if (!a) return;
+    const city = cities.find((c) => c.name.toLowerCase() === a.city_name.toLowerCase());
+    setForm((f) => ({
+      ...f,
+      recipient_name: a.recipient_name,
+      recipient_phone: a.recipient_phone,
+      address_line1: a.line1,
+      address_line2: a.line2 ?? "",
+      landmark: a.landmark ?? "",
+      delivery_city_id: city?.id ?? f.delivery_city_id,
+    }));
+  };
 
   const set = (key: keyof CheckoutPlace, value: string) =>
     setForm((f) => ({ ...f, [key]: value }));
@@ -86,7 +146,11 @@ export default function CheckoutPage() {
     captureEvent("checkout_start", { payment_method: form.payment_method });
     try {
       const idempotencyKey = crypto.randomUUID();
-      const order = await cartApi.place(form, token, idempotencyKey);
+      const order = await cartApi.place(
+        { ...form, coupon_code: appliedCoupon, use_loyalty_points: useLoyalty },
+        token,
+        idempotencyKey,
+      );
       captureEvent("order_placed", {
         order_id: order.id,
         total_pkr: order.total_pkr,
@@ -129,8 +193,14 @@ export default function CheckoutPage() {
   const summary = quote ?? {
     subtotal_pkr: cart?.subtotal_pkr ?? 0,
     delivery_pkr: 0,
+    coupon_discount_pkr: 0,
+    loyalty_discount_pkr: 0,
+    loyalty_points_used: 0,
     total_pkr: cart?.subtotal_pkr ?? 0,
+    currency: "PKR",
+    total_charged: cart?.subtotal_pkr ?? 0,
   };
+  const pkr = (paisa: number) => formatMoney(paisa, "PKR");
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl">
@@ -147,6 +217,25 @@ export default function CheckoutPage() {
           {/* Delivery info */}
           <section className="rounded-xl border p-5 space-y-4">
             <h2 className="font-semibold text-lg">Delivery Details</h2>
+
+            {addresses.length > 0 && (
+              <div className="space-y-1.5">
+                <Label htmlFor="saved-address">Send to a saved address</Label>
+                <select
+                  id="saved-address"
+                  defaultValue=""
+                  onChange={(e) => fillFromSavedAddress(e.target.value)}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <option value="">Choose a recipient…</option>
+                  {addresses.map((a) => (
+                    <option key={a.id} value={a.id}>
+                      {a.recipient_name}, {a.line1}, {a.city_name}{a.is_default ? " (default)" : ""}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
@@ -294,7 +383,7 @@ export default function CheckoutPage() {
                       {item.variant_name ? ` (${item.variant_name})` : ""}
                       {" ×"}{item.qty}
                     </span>
-                    <span className="shrink-0">{formatPrice(item.line_total_pkr)}</span>
+                    <span className="shrink-0">{pkr(item.line_total_pkr)}</span>
                   </div>
                 ))}
               </div>
@@ -305,7 +394,7 @@ export default function CheckoutPage() {
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Subtotal</span>
-                <span>{formatPrice(summary.subtotal_pkr)}</span>
+                <span>{pkr(summary.subtotal_pkr)}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Delivery</span>
@@ -313,18 +402,93 @@ export default function CheckoutPage() {
                   {isQuoting
                     ? "Calculating…"
                     : quote
-                      ? formatPrice(quote.delivery_pkr)
+                      ? pkr(quote.delivery_pkr)
                       : "Select city"}
                 </span>
               </div>
+              {summary.coupon_discount_pkr > 0 && (
+                <div className="flex justify-between text-primary-700 dark:text-primary-400">
+                  <span>Coupon {appliedCoupon}</span>
+                  <span>−{pkr(summary.coupon_discount_pkr)}</span>
+                </div>
+              )}
+              {summary.loyalty_discount_pkr > 0 && (
+                <div className="flex justify-between text-primary-700 dark:text-primary-400">
+                  <span>{summary.loyalty_points_used} loyalty points</span>
+                  <span>−{pkr(summary.loyalty_discount_pkr)}</span>
+                </div>
+              )}
             </div>
+
+            <Separator />
+
+            {/* Coupon */}
+            <div className="space-y-1.5">
+              <Label htmlFor="coupon">Coupon code</Label>
+              {appliedCoupon ? (
+                <div className="flex items-center justify-between rounded-md border px-3 py-2 text-sm">
+                  <span className="font-mono">{appliedCoupon}</span>
+                  <button
+                    type="button"
+                    onClick={() => { setAppliedCoupon(null); setCouponInput(""); }}
+                    className="text-muted-foreground hover:text-destructive"
+                  >
+                    Remove
+                  </button>
+                </div>
+              ) : (
+                <div className="flex gap-2">
+                  <Input
+                    id="coupon"
+                    value={couponInput}
+                    onChange={(e) => setCouponInput(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); applyCoupon(); } }}
+                    placeholder="EID10"
+                    aria-describedby={couponError ? "coupon-error" : undefined}
+                  />
+                  <Button type="button" variant="secondary" onClick={applyCoupon} disabled={!couponInput.trim()}>
+                    Apply
+                  </Button>
+                </div>
+              )}
+              {couponError && <p id="coupon-error" role="alert" className="text-xs text-destructive">{couponError}</p>}
+            </div>
+
+            {/* Loyalty */}
+            {pointsBalance > 0 && (
+              <label htmlFor="use-loyalty" className="flex items-start gap-2 text-sm cursor-pointer">
+                <input
+                  id="use-loyalty"
+                  type="checkbox"
+                  checked={useLoyalty}
+                  onChange={(e) => setUseLoyalty(e.target.checked)}
+                  className="mt-0.5 h-4 w-4 accent-[#16a34a]"
+                />
+                <span>
+                  Use my {pointsBalance} loyalty points
+                  <span className="block text-xs text-muted-foreground">Each point is worth Rs 1.</span>
+                </span>
+              </label>
+            )}
 
             <Separator />
 
             <div className="flex justify-between font-semibold">
               <span>Total</span>
-              <span className="text-primary-600">{formatPrice(summary.total_pkr)}</span>
+              <span className="text-primary-600">{pkr(summary.total_pkr)}</span>
             </div>
+            {quote && quote.currency !== "PKR" ? (
+              <p className="rounded-md bg-muted px-3 py-2 text-sm">
+                You&apos;ll be charged{" "}
+                <strong>{formatMoney(quote.total_charged, quote.currency)}</strong>{" "}
+                ({quote.currency}, at today&apos;s rate).
+              </p>
+            ) : displayCurrency !== "PKR" ? (
+              <p className="rounded-md bg-muted px-3 py-2 text-xs text-muted-foreground">
+                {form.payment_method === "cod" ? "Cash on delivery is" : "Bank transfers are"} paid in
+                rupees. That&apos;s <Price pkr={summary.total_pkr} /> in {displayCurrency}.
+              </p>
+            ) : null}
 
             {error && (
               <div className="rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">

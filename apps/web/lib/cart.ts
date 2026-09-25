@@ -1,5 +1,8 @@
 import { apiFetch } from "@/lib/api";
 
+/** Matches the API's greeting_message limit. */
+export const GREETING_MAX = 500;
+
 export interface CartItemRead {
   id: string;
   product_id: string;
@@ -54,6 +57,8 @@ export interface CheckoutPlace {
   address_line2?: string | null;
   landmark?: string | null;
   notes?: string | null;
+  coupon_code?: string | null;
+  use_loyalty_points?: boolean;
 }
 
 export interface QuoteLineItem {
@@ -68,8 +73,25 @@ export interface CheckoutQuote {
   items: QuoteLineItem[];
   subtotal_pkr: number;
   delivery_pkr: number;
+  coupon_code: string | null;
+  coupon_discount_pkr: number;
+  loyalty_points_used: number;
+  loyalty_discount_pkr: number;
+  discount_pkr: number;
   total_pkr: number;
+  /** Currency the order will be charged in (falls back to PKR without a rate). */
   currency: string;
+  /** PKR→currency rate, as a decimal string. */
+  fx_rate: string;
+  /** Total in the charge currency's minor unit. */
+  total_charged: number;
+}
+
+export interface QuoteOptions {
+  couponCode?: string | null;
+  useLoyaltyPoints?: boolean;
+  /** COD and bank transfer are always charged in PKR. */
+  paymentMethod?: PaymentMethod;
 }
 
 export interface FulfillmentRead {
@@ -102,6 +124,8 @@ export interface OrderRead {
   public_token: string;
   status: string;
   currency: string;
+  /** Total in the charge currency's minor unit. */
+  total_charged: number;
   subtotal_pkr: number;
   delivery_pkr: number;
   discount_pkr: number;
@@ -128,8 +152,13 @@ export const cartApi = {
   clear: (token: string) =>
     apiFetch<CartRead>("/cart", { method: "DELETE", token }),
 
-  quote: (cityId: string, token: string) =>
-    apiFetch<CheckoutQuote>(`/checkout/quote?city_id=${cityId}`, { method: "POST", token }),
+  quote: (cityId: string, token: string, opts: QuoteOptions = {}) => {
+    const qs = new URLSearchParams({ city_id: cityId });
+    if (opts.couponCode) qs.set("coupon_code", opts.couponCode);
+    if (opts.useLoyaltyPoints) qs.set("use_loyalty_points", "true");
+    if (opts.paymentMethod) qs.set("payment_method", opts.paymentMethod);
+    return apiFetch<CheckoutQuote>(`/checkout/quote?${qs.toString()}`, { method: "POST", token });
+  },
 
   place: (body: CheckoutPlace, token: string, idempotencyKey: string) =>
     apiFetch<OrderRead>("/checkout/place", { method: "POST", body, token, idempotencyKey }),

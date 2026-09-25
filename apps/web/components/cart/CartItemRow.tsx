@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Minus, Plus, Trash2 } from "lucide-react";
 import { useCartStore } from "@/stores/cart.store";
-import { formatPrice } from "@/lib/utils";
+import { Price } from "@/components/money/Price";
 import type { CartItemRead } from "@/lib/cart";
 
 export function CartItemRow({ item }: { item: CartItemRead }) {
@@ -49,7 +49,7 @@ export function CartItemRow({ item }: { item: CartItemRead }) {
           <span className="text-xs text-muted-foreground">{item.variant_name}</span>
         )}
         <span className="text-sm font-semibold text-primary-600">
-          {formatPrice(item.line_total_pkr)}
+          <Price pkr={item.line_total_pkr} />
         </span>
       </div>
 

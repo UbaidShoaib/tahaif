@@ -6,7 +6,7 @@ import { useCartStore } from "@/stores/cart.store";
 import { CartItemRow } from "@/components/cart/CartItemRow";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { formatPrice } from "@/lib/utils";
+import { Price } from "@/components/money/Price";
 
 export function CartDrawer() {
   const { cart, isDrawerOpen, closeDrawer, isFetching } = useCartStore();
@@ -91,7 +91,7 @@ export function CartDrawer() {
             <Separator />
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Subtotal</span>
-              <span className="font-semibold">{formatPrice(cart.subtotal_pkr)}</span>
+              <span className="font-semibold"><Price pkr={cart.subtotal_pkr} /></span>
             </div>
             <p className="text-xs text-muted-foreground">
               Delivery fee calculated at checkout

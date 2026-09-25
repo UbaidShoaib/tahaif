@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { CheckCircle, Package, MapPin, Calendar, ArrowRight } from "lucide-react";
 import { cartApi } from "@/lib/cart";
 import { formatPrice } from "@/lib/utils";
+import { formatMoney } from "@/lib/money";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { ProofUpload } from "@/components/checkout/ProofUpload";
@@ -157,6 +158,12 @@ export default async function SuccessPage({
             <span>Total</span>
             <span className="text-primary-600">{formatPrice(order.total_pkr)}</span>
           </div>
+          {order.currency !== "PKR" && (
+            <div className="flex justify-between text-sm text-muted-foreground">
+              <span>Charged in {order.currency}</span>
+              <span>{formatMoney(order.total_charged, order.currency)}</span>
+            </div>
+          )}
         </div>
       </div>
 

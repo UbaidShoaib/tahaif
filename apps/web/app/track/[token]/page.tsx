@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { cartApi } from "@/lib/cart";
 import { formatPrice } from "@/lib/utils";
+import { formatMoney } from "@/lib/money";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 
@@ -214,6 +215,12 @@ export default async function TrackPage({
           <span>Total</span>
           <span className="text-primary-600">{formatPrice(order.total_pkr)}</span>
         </div>
+        {order.currency !== "PKR" && (
+          <div className="flex justify-between text-sm text-muted-foreground">
+            <span>Charged in {order.currency}</span>
+            <span>{formatMoney(order.total_charged, order.currency)}</span>
+          </div>
+        )}
       </div>
 
       {/* Actions */}

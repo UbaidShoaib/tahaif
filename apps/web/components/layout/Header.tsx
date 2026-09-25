@@ -7,6 +7,7 @@ import { useCartStore } from "@/stores/cart.store";
 import { Button } from "@/components/ui/button";
 import { CartDrawer } from "@/components/cart/CartDrawer";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
+import { CurrencySelect } from "@/components/layout/CurrencySelect";
 import { ShoppingBag, Gift, User, LogOut } from "lucide-react";
 
 export function Header() {
@@ -40,6 +41,7 @@ export function Header() {
 
           {/* Right side */}
           <div className="flex items-center gap-2">
+            <CurrencySelect />
             <ThemeToggle />
 
             {/* Cart button with badge */}

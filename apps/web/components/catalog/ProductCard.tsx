@@ -1,6 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
-import { formatPrice } from "@/lib/utils";
+import { Price } from "@/components/money/Price";
 import { primaryImage, type Product } from "@/lib/catalog";
 
 type Props = {
@@ -48,7 +48,7 @@ export function ProductCard({ product, cityId }: Props) {
           <div className="flex items-baseline gap-1 pt-0.5">
             <span className="font-semibold text-sm text-primary-700 dark:text-primary-400">
               {lowestVariantDelta > 0 ? "From " : ""}
-              {formatPrice(displayPrice + lowestVariantDelta)}
+              <Price pkr={displayPrice + lowestVariantDelta} />
             </span>
           </div>
           {cityAvailability && (

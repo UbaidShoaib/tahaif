@@ -6,9 +6,10 @@ import { ShoppingBag, ArrowRight, Trash2 } from "lucide-react";
 import { useCartStore } from "@/stores/cart.store";
 import { useAuthStore } from "@/stores/auth.store";
 import { CartItemRow } from "@/components/cart/CartItemRow";
+import { GreetingEditor } from "@/components/cart/GreetingEditor";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { formatPrice } from "@/lib/utils";
+import { Price } from "@/components/money/Price";
 
 export default function CartPage() {
   const { user } = useAuthStore();
@@ -93,6 +94,7 @@ export default function CartPage() {
             {cart.items.map((item) => (
               <div key={item.id} className="px-4">
                 <CartItemRow item={item} />
+                <GreetingEditor item={item} />
               </div>
             ))}
           </div>
@@ -108,7 +110,7 @@ export default function CartPage() {
                 <span className="text-muted-foreground">
                   Subtotal ({cart.item_count} items)
                 </span>
-                <span>{formatPrice(cart.subtotal_pkr)}</span>
+                <span><Price pkr={cart.subtotal_pkr} /></span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Delivery</span>
@@ -118,7 +120,7 @@ export default function CartPage() {
             <Separator />
             <div className="flex justify-between font-semibold">
               <span>Subtotal</span>
-              <span className="text-primary-600">{formatPrice(cart.subtotal_pkr)}</span>
+              <span className="text-primary-600"><Price pkr={cart.subtotal_pkr} /></span>
             </div>
             <Button className="w-full gap-2" size="lg" asChild>
               <Link href="/checkout">

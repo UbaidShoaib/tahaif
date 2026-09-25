@@ -2,8 +2,10 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { formatPrice, cn } from "@/lib/utils";
+import { cn } from "@/lib/utils";
+import { Price } from "@/components/money/Price";
 import type { Product, ProductVariant } from "@/lib/catalog";
+import { GREETING_MAX } from "@/lib/cart";
 import { Button } from "@/components/ui/button";
 import { ShoppingBag } from "lucide-react";
 import { useAuthStore } from "@/stores/auth.store";
@@ -21,6 +23,7 @@ export function VariantPicker({ product }: Props) {
   );
   const [isAdding, setIsAdding] = useState(false);
   const [addedFeedback, setAddedFeedback] = useState(false);
+  const [greeting, setGreeting] = useState("");
 
   const { user } = useAuthStore();
   const { addItem } = useCartStore();
@@ -37,10 +40,12 @@ export function VariantPicker({ product }: Props) {
     }
     setIsAdding(true);
     try {
+      const message = greeting.trim();
       await addItem({
         product_id: product.id,
         variant_id: selected?.id ?? null,
         qty: 1,
+        ...(message ? { greeting_message: message } : {}),
       });
       captureEvent("add_to_cart", {
         product_id: product.id,
@@ -49,6 +54,7 @@ export function VariantPicker({ product }: Props) {
         price_pkr: totalPrice,
       });
       setAddedFeedback(true);
+      setGreeting("");
       setTimeout(() => setAddedFeedback(false), 2000);
     } catch (err) {
       console.error("Add to cart failed:", err);
@@ -62,11 +68,11 @@ export function VariantPicker({ product }: Props) {
       {/* Price */}
       <div className="flex items-baseline gap-2">
         <span className="text-3xl font-bold text-primary-700 dark:text-primary-400">
-          {formatPrice(totalPrice)}
+          <Price pkr={totalPrice} />
         </span>
         {selected && selected.price_delta_pkr > 0 && (
           <span className="text-sm text-muted-foreground">
-            (Base {formatPrice(basePrice)} + {formatPrice(selected.price_delta_pkr)})
+            (Base <Price pkr={basePrice} /> + <Price pkr={selected.price_delta_pkr} />)
           </span>
         )}
       </div>
@@ -98,6 +104,27 @@ export function VariantPicker({ product }: Props) {
           </div>
         </div>
       )}
+
+      {/* Greeting card */}
+      <div className="space-y-1.5">
+        <label htmlFor="greeting-message" className="text-sm font-medium">
+          Greeting card message <span className="font-normal text-muted-foreground">(optional)</span>
+        </label>
+        <textarea
+          id="greeting-message"
+          value={greeting}
+          maxLength={GREETING_MAX}
+          rows={3}
+          onChange={(e) => setGreeting(e.target.value)}
+          placeholder="Happy birthday, Ammi! Wish I could be there. Love, Ali"
+          className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600"
+          aria-describedby="greeting-help"
+        />
+        <p id="greeting-help" className="flex justify-between text-xs text-muted-foreground">
+          <span>Printed on a card delivered with this gift.</span>
+          <span>{greeting.length}/{GREETING_MAX}</span>
+        </p>
+      </div>
 
       {/* Add to cart */}
       <Button
