@@ -10,6 +10,7 @@ from app.schemas.catalog import (
     CityCreate,
     CityRead,
     CityUpdate,
+    FxRatesRead,
     OccasionCreate,
     OccasionRead,
     OccasionUpdate,
@@ -23,7 +24,7 @@ from app.schemas.catalog import (
     VendorRead,
     VendorUpdate,
 )
-from app.services import catalog_service
+from app.services import catalog_service, fx_service
 
 router = APIRouter(tags=["catalog"])
 
@@ -228,3 +229,9 @@ async def search(
     """Full-text product search. Falls back to a database match if Meilisearch is down."""
     return await catalog_service.search_products(db, q, city_id=city_id, limit=limit)
 
+
+@router.get("/fx-rates", response_model=FxRatesRead)
+async def fx_rates(db: DB, response: Response) -> FxRatesRead:
+    """Rates for display conversion. Only currencies with a known rate are listed."""
+    response.headers["Cache-Control"] = "public, max-age=300"
+    return FxRatesRead(rates=await fx_service.available_rates(db))

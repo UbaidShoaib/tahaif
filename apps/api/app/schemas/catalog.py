@@ -1,5 +1,6 @@
 import uuid
 from datetime import datetime, time
+from decimal import Decimal
 
 from pydantic import BaseModel, Field
 
@@ -221,3 +222,10 @@ class PaginatedProducts(BaseModel):
     total: int
     page: int
     page_size: int
+
+
+class FxRatesRead(BaseModel):
+    """PKR→currency rates buyers can currently be charged in (PKR is always 1)."""
+
+    base: str = "PKR"
+    rates: dict[str, Decimal]

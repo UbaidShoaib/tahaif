@@ -1,5 +1,6 @@
 import uuid
 from datetime import date, datetime
+from decimal import Decimal
 
 from pydantic import BaseModel, Field
 
@@ -32,8 +33,15 @@ class CheckoutQuote(BaseModel):
     items: list[QuoteLineItem]
     subtotal_pkr: int
     delivery_pkr: int
+    coupon_code: str | None = None
+    coupon_discount_pkr: int = 0
+    loyalty_points_used: int = 0
+    loyalty_discount_pkr: int = 0
+    discount_pkr: int = 0
     total_pkr: int
-    currency: str = "PKR"
+    currency: str = Field(default="PKR", description="Currency the order will be charged in")
+    fx_rate: Decimal = Field(default=Decimal("1"), description="PKR→currency rate used for the charge")
+    total_charged: int = Field(default=0, description="Total in the charge currency's minor unit")
 
 
 class FulfillmentRead(BaseModel):
@@ -66,6 +74,7 @@ class OrderRead(BaseModel):
     public_token: uuid.UUID
     status: OrderStatus
     currency: str
+    total_charged: int = Field(description="Total in the charge currency's minor unit")
     subtotal_pkr: int
     delivery_pkr: int
     discount_pkr: int

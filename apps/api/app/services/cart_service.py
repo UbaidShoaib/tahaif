@@ -15,6 +15,13 @@ _OUT_OF_STOCK = HTTPException(
 )
 
 
+
+def _clean_greeting(message: str | None) -> str | None:
+    """Trim a greeting-card message; blank means no card."""
+    if message is None:
+        return None
+    return message.strip() or None
+
 def _unit_price(product: Product, variant: ProductVariant | None) -> int:
     base = product.base_price_pkr
     delta = variant.price_delta_pkr if variant else 0
@@ -95,8 +102,8 @@ async def add_item(db: AsyncSession, user_id: uuid.UUID, body: CartItemAdd) -> C
         existing.line_total_pkr = _unit_price(product, variant) * new_qty
         if body.delivery_date:
             existing.delivery_date = body.delivery_date
-        if body.greeting_message:
-            existing.greeting_message = body.greeting_message
+        if _clean_greeting(body.greeting_message):
+            existing.greeting_message = _clean_greeting(body.greeting_message)
         await db.flush()
     else:
         unit = _unit_price(product, variant)
@@ -107,7 +114,7 @@ async def add_item(db: AsyncSession, user_id: uuid.UUID, body: CartItemAdd) -> C
             qty=body.qty,
             line_total_pkr=unit * body.qty,
             delivery_date=body.delivery_date,
-            greeting_message=body.greeting_message,
+            greeting_message=_clean_greeting(body.greeting_message),
             recipient_name=body.recipient_name,
             recipient_phone=body.recipient_phone,
         )
@@ -142,7 +149,8 @@ async def update_item(
             if body.delivery_date is not None:
                 item.delivery_date = body.delivery_date
             if body.greeting_message is not None:
-                item.greeting_message = body.greeting_message
+                # A blank message clears the card rather than storing "".
+                item.greeting_message = _clean_greeting(body.greeting_message)
             if body.recipient_name is not None:
                 item.recipient_name = body.recipient_name
             if body.recipient_phone is not None:

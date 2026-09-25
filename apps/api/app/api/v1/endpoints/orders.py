@@ -2,10 +2,11 @@ import hashlib
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Header, HTTPException, UploadFile, status
+from fastapi import APIRouter, Header, HTTPException, Query, UploadFile, status
 
 from app.core.deps import DB, CurrentUser
 from app.integrations.s3_client import upload_proof
+from app.models.order import PaymentMethod
 from app.repositories.order_repository import OrderRepository
 from app.schemas.order import CheckoutPlace, CheckoutQuote, OrderRead
 from app.services import checkout_service
@@ -18,8 +19,19 @@ async def checkout_quote(
     city_id: uuid.UUID,
     user: CurrentUser,
     db: DB,
+    coupon_code: Annotated[str | None, Query(max_length=50)] = None,
+    use_loyalty_points: bool = False,
+    payment_method: PaymentMethod = PaymentMethod.cod,
 ) -> CheckoutQuote:
-    return await checkout_service.quote(db, user.id, city_id)
+    """Preview totals, including coupon and loyalty discounts and the charge currency.
+
+    COD and bank transfer are always charged in PKR. An invalid coupon returns
+    400 with the same message checkout would give.
+    """
+    return await checkout_service.quote(
+        db, user, city_id, coupon_code=coupon_code, use_loyalty_points=use_loyalty_points,
+        payment_method=payment_method,
+    )
 
 
 @router.post("/checkout/place", response_model=OrderRead, status_code=status.HTTP_201_CREATED)

@@ -25,6 +25,12 @@ async def get_ledger(
     return [LoyaltyLedgerEntryRead.model_validate(e) for e in entries]
 
 
+# Earn 1 point per PKR 100 spent; each point is worth PKR 1 at checkout
+# (docs/questions.md Q9: "Earn 1 pt per PKR 100 spent, Burn 100 pts = PKR 100").
+EARN_PAISA_PER_POINT = 10_000
+POINT_VALUE_PAISA = 100
+
+
 async def award_for_order(
     db: AsyncSession,
     user_id: uuid.UUID,
@@ -33,7 +39,7 @@ async def award_for_order(
 ) -> None:
     """Award loyalty points when an order is placed. Fire-and-forget; never raises."""
     try:
-        points = total_pkr // 10_000  # 10 000 paisa = 100 PKR → 1 point
+        points = total_pkr // EARN_PAISA_PER_POINT
         if points <= 0:
             return
         repo = LoyaltyRepository(db)

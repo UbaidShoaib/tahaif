@@ -1,11 +1,14 @@
 import uuid
+from dataclasses import dataclass
 from datetime import UTC, datetime
+from decimal import Decimal
 from typing import TYPE_CHECKING
 
 import structlog
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.models.loyalty import Coupon, CouponType
 from app.models.order import (
     CartItem,
     Order,
@@ -39,12 +42,103 @@ _EMPTY_CART = HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Car
 _CITY_NOT_FOUND = HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Delivery city not found")
 
 
+@dataclass
+class _Pricing:
+    coupon: Coupon | None
+    coupon_discount_pkr: int
+    loyalty_points_used: int
+    loyalty_discount_pkr: int
+    total_pkr: int
+    currency: str
+    fx_rate: Decimal
+    total_charged: int
+
+    @property
+    def discount_pkr(self) -> int:
+        return self.coupon_discount_pkr + self.loyalty_discount_pkr
+
+
+def _bad_request(detail: str) -> HTTPException:
+    return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=detail)
+
+
+# Paid in rupees in Pakistan: cash at the door, or a transfer to a PKR account.
+_LOCAL_METHODS = frozenset({PaymentMethod.cod, PaymentMethod.bank_transfer})
+
+
+async def _price(
+    db: AsyncSession,
+    user: User,
+    subtotal_pkr: int,
+    delivery_pkr: int,
+    coupon_code: str | None,
+    use_loyalty_points: bool,
+    now: datetime,
+    payment_method: PaymentMethod,
+) -> _Pricing:
+    """Apply coupon, loyalty burn and currency. Shared by quote and place_order
+    so the buyer previews exactly what they will be charged.
+
+    Local methods always charge PKR; only card-style methods charge in the
+    buyer's preferred currency (when a rate is known)."""
+    coupon: Coupon | None = None
+    coupon_discount = 0
+    if coupon_code:
+        coupon = await CouponRepository(db).get_by_code(coupon_code.strip().upper())
+        if not coupon or not coupon.is_active:
+            raise _bad_request("Invalid coupon code")
+        if coupon.starts_at and coupon.starts_at > now:
+            raise _bad_request("Coupon not yet active")
+        if coupon.ends_at and coupon.ends_at < now:
+            raise _bad_request("Coupon has expired")
+        if coupon.usage_limit is not None and coupon.used_count >= coupon.usage_limit:
+            raise _bad_request("Coupon usage limit reached")
+        if coupon.min_order_pkr and subtotal_pkr < coupon.min_order_pkr:
+            raise _bad_request(
+                f"Minimum order of PKR {coupon.min_order_pkr / 100:,.0f} required for this coupon"
+            )
+        if coupon.coupon_type == CouponType.percent:
+            coupon_discount = int(subtotal_pkr * coupon.value / Decimal("100"))
+        elif coupon.coupon_type == CouponType.fixed:
+            coupon_discount = min(int(coupon.value * 100), subtotal_pkr)
+        elif coupon.coupon_type == CouponType.free_shipping:
+            coupon_discount = delivery_pkr
+
+    points_used = 0
+    loyalty_discount = 0
+    if use_loyalty_points:
+        wallet = await LoyaltyRepository(db).get_wallet(user.id)
+        remaining = subtotal_pkr + delivery_pkr - coupon_discount
+        if wallet and wallet.balance_points > 0 and remaining > 0:
+            points_used = min(wallet.balance_points, remaining // loyalty_service.POINT_VALUE_PAISA)
+            loyalty_discount = points_used * loyalty_service.POINT_VALUE_PAISA
+
+    total_pkr = max(0, subtotal_pkr + delivery_pkr - coupon_discount - loyalty_discount)
+    if payment_method in _LOCAL_METHODS:
+        currency, fx_rate = "PKR", Decimal("1")
+    else:
+        currency, fx_rate = await fx_service.resolve_charge_currency(db, user.currency_pref)
+    return _Pricing(
+        coupon=coupon,
+        coupon_discount_pkr=coupon_discount,
+        loyalty_points_used=points_used,
+        loyalty_discount_pkr=loyalty_discount,
+        total_pkr=total_pkr,
+        currency=currency,
+        fx_rate=fx_rate,
+        total_charged=fx_service.convert_from_pkr(total_pkr, fx_rate),
+    )
+
+
 async def quote(
     db: AsyncSession,
-    user_id: uuid.UUID,
+    user: User,
     city_id: uuid.UUID,
+    coupon_code: str | None = None,
+    use_loyalty_points: bool = False,
+    payment_method: PaymentMethod = PaymentMethod.cod,
 ) -> CheckoutQuote:
-    cart_read = await _cart_to_read_with_db(db, user_id)
+    cart_read = await _cart_to_read_with_db(db, user.id)
     if not cart_read.items:
         raise _EMPTY_CART
 
@@ -74,11 +168,22 @@ async def quote(
         ))
 
     subtotal = sum(li.line_total_pkr for li in line_items)
+    pricing = await _price(
+        db, user, subtotal, delivery_pkr, coupon_code, use_loyalty_points, datetime.now(UTC), payment_method
+    )
     return CheckoutQuote(
         items=line_items,
         subtotal_pkr=subtotal,
         delivery_pkr=delivery_pkr,
-        total_pkr=subtotal + delivery_pkr,
+        coupon_code=pricing.coupon.code if pricing.coupon else None,
+        coupon_discount_pkr=pricing.coupon_discount_pkr,
+        loyalty_points_used=pricing.loyalty_points_used,
+        loyalty_discount_pkr=pricing.loyalty_discount_pkr,
+        discount_pkr=pricing.discount_pkr,
+        total_pkr=pricing.total_pkr,
+        currency=pricing.currency,
+        fx_rate=pricing.fx_rate,
+        total_charged=pricing.total_charged,
     )
 
 
@@ -141,61 +246,16 @@ async def place_order(
     delivery_pkr = sum(pc.delivery_fee_pkr for _, _, _, _, pc in item_details if pc)
     vendor_ids: set[uuid.UUID] = {p.vendor_id for _, p, _, _, _ in item_details}
 
-    discount_pkr = 0
-
-    # ── Coupon application ─────────────────────────────────────────────────────
-    applied_coupon = None
-    if body.coupon_code:
-        coupon_repo = CouponRepository(db)
-        coupon = await coupon_repo.get_by_code(body.coupon_code.upper())
-
-        if not coupon or not coupon.is_active:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid coupon code")
-        if coupon.starts_at and coupon.starts_at > now:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Coupon not yet active")
-        if coupon.ends_at and coupon.ends_at < now:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Coupon has expired")
-        if coupon.usage_limit is not None and coupon.used_count >= coupon.usage_limit:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Coupon usage limit reached")
-        if coupon.min_order_pkr and subtotal_pkr < coupon.min_order_pkr:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Minimum order of PKR {coupon.min_order_pkr / 100:,.0f} required for this coupon",
-            )
-
-        from decimal import Decimal
-
-        from app.models.loyalty import CouponType
-        if coupon.coupon_type == CouponType.percent:
-            discount_pkr = int(subtotal_pkr * coupon.value / Decimal("100"))
-        elif coupon.coupon_type == CouponType.fixed:
-            discount_pkr = min(int(coupon.value * 100), subtotal_pkr)
-        elif coupon.coupon_type == CouponType.free_shipping:
-            discount_pkr = delivery_pkr
-
-        applied_coupon = coupon
-
-    # ── Loyalty burn ───────────────────────────────────────────────────────────
-    loyalty_discount_pkr = 0
-    if body.use_loyalty_points:
-        loyalty_repo = LoyaltyRepository(db)
-        wallet = await loyalty_repo.get_wallet(user.id)
-        if wallet and wallet.balance_points > 0:
-            # Each point is worth 100 PKR (paisa); cap at order total
-            max_points_value = wallet.balance_points * 10_000  # paisa per point
-            remaining_total = subtotal_pkr + delivery_pkr - discount_pkr
-            loyalty_discount_pkr = min(max_points_value, remaining_total)
-            points_to_burn = loyalty_discount_pkr // 10_000
-            if points_to_burn > 0:
-                loyalty_discount_pkr = points_to_burn * 10_000
-                discount_pkr += loyalty_discount_pkr
-
-    total_pkr = max(0, subtotal_pkr + delivery_pkr - discount_pkr)
-
-    # ── FX conversion ──────────────────────────────────────────────────────────
-    currency = user.currency_pref or "PKR"
-    fx_rate = await fx_service.get_rate(db, currency)
-    total_charged = fx_service.convert_from_pkr(total_pkr, fx_rate)
+    pricing = await _price(
+        db, user, subtotal_pkr, delivery_pkr, body.coupon_code, body.use_loyalty_points, now,
+        body.payment_method,
+    )
+    applied_coupon = pricing.coupon
+    discount_pkr = pricing.discount_pkr
+    total_pkr = pricing.total_pkr
+    currency = pricing.currency
+    fx_rate = pricing.fx_rate
+    total_charged = pricing.total_charged
 
     # ── Create order ───────────────────────────────────────────────────────────
     order = await order_repo.create(
@@ -209,7 +269,7 @@ async def place_order(
         total_pkr=total_pkr,
         total_charged=total_charged,
         status=OrderStatus.pending_payment,
-        coupon_code=body.coupon_code,
+        coupon_code=applied_coupon.code if applied_coupon else None,
         notes=body.notes,
     )
 
@@ -271,12 +331,10 @@ async def place_order(
         applied_coupon.used_count += 1
         await db.flush()
 
-    if body.use_loyalty_points and loyalty_discount_pkr > 0:
-        loyalty_repo = LoyaltyRepository(db)
-        points_burned = loyalty_discount_pkr // 10_000
-        await loyalty_repo.burn_points(
+    if pricing.loyalty_points_used > 0:
+        await LoyaltyRepository(db).burn_points(
             user_id=user.id,
-            points=points_burned,
+            points=pricing.loyalty_points_used,
             reason="Redeemed at checkout",
             order_id=order.id,
         )
@@ -358,6 +416,7 @@ def _order_to_read(order: Order) -> OrderRead:
         public_token=order.public_token,
         status=order.status,
         currency=order.currency,
+        total_charged=order.total_charged,
         subtotal_pkr=order.subtotal_pkr,
         delivery_pkr=order.delivery_pkr,
         discount_pkr=order.discount_pkr,
