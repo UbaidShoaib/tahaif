@@ -120,7 +120,7 @@ async def export_my_data(current_user: CurrentUser, db: DB) -> JSONResponse:
 
 @router.delete("", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_account(current_user: CurrentUser, db: DB) -> None:
-    """Anonymise account and hard-delete refresh tokens (GDPR right to erasure)."""
+    """Anonymise the account, delete saved addresses and refresh tokens (GDPR erasure)."""
     repo = UserRepository(db)
 
     anonymised_email = f"deleted_{current_user.id}@anon.tahaif.invalid"
@@ -134,3 +134,5 @@ async def delete_account(current_user: CurrentUser, db: DB) -> None:
         is_active=False,
     )
     await repo.revoke_all_user_tokens(current_user.id)
+    # Saved recipients are personal data too (names, phones, home addresses).
+    await AddressRepository(db).delete_all_for_user(current_user.id)

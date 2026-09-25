@@ -149,7 +149,10 @@ railway variable list --service tahaif-api --kv | grep S3
 
 ### Redis connection refused
 
-**Symptom:** login rate-limit checks fail; auth endpoint returns 500.
+**Symptom:** login returns 500 (its brute-force IP ban check reads Redis) and the
+readiness probe fails. Request rate limiting keeps working: the limiter swallows
+Redis errors and falls back to per-process counters, so limits are temporarily
+per worker rather than shared.
 
 **Check:**
 ```bash
@@ -160,7 +163,8 @@ railway variable list --service tahaif-api --kv | grep REDIS_URL
 **Remedy:** restart the Redis service (`railway redeploy --service Redis --yes`), verify `REDIS_URL`.
 
 Note: Railway's free Key Value plan is in-memory only — data (including rate-limit
-counters) is lost on any restart. Not an issue for correctness, only for state continuity.
+counters, stored under the `tahaif-rl` key prefix) is lost when Redis restarts. API
+restarts no longer reset limits. Not an issue for correctness, only for state continuity.
 
 ---
 

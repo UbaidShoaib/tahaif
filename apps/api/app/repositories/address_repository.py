@@ -1,6 +1,6 @@
 import uuid
 
-from sqlalchemy import select, update
+from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.address import Address
@@ -46,6 +46,16 @@ class AddressRepository:
         await self._db.flush()
         await self._db.refresh(address)
         return address
+
+    async def delete_all_for_user(self, user_id: uuid.UUID) -> int:
+        """Hard-delete a user's saved addresses (GDPR erasure).
+
+        Fulfillments keep their own copy of the delivery address, and cart items'
+        recipient_address_id is set to NULL by the foreign key.
+        """
+        result = await self._db.execute(delete(Address).where(Address.user_id == user_id))
+        await self._db.flush()
+        return int(getattr(result, "rowcount", 0) or 0)
 
     async def soft_delete(self, address: Address) -> None:
         address.is_active = False
