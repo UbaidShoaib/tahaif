@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import Cookies from "js-cookie";
+import { clearSessionMarker } from "@/lib/session";
 import { MapPin, Package, Star, Download, Trash2 } from "lucide-react";
 import { useAuthStore } from "@/stores/auth.store";
 import { useCurrencyStore } from "@/stores/currency.store";
@@ -100,7 +100,7 @@ export default function AccountPage() {
     setError(null);
     try {
       await accountApi.deleteAccount(accessToken);
-      Cookies.remove("tahaif_session");
+      clearSessionMarker();
       clearSession();
       router.push("/");
     } catch {
@@ -172,8 +172,8 @@ export default function AccountPage() {
 
         <div className="border-t pt-4 space-y-3">
           <p className="text-sm text-muted-foreground">
-            Deleting your account removes your name, email and phone number and signs you out everywhere. Past
-            orders stay on record for delivery and accounting, linked to an anonymous account.
+            Deleting your account removes your name, email, phone number and saved addresses, and signs you out
+            everywhere. Past orders stay on record for delivery and accounting, linked to an anonymous account.
           </p>
           {!confirmOpen ? (
             <Button type="button" variant="destructive" onClick={() => setConfirmOpen(true)} className="gap-2">

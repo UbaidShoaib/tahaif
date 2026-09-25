@@ -42,8 +42,8 @@ function PostHogPageview() {
 
 // ── Auth initializer ──────────────────────────────────────────────────────────
 function AuthInitializer() {
-  const refresh = useAuthStore((s) => s.refresh);
-  useEffect(() => { void refresh(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  const restoreSession = useAuthStore((s) => s.restoreSession);
+  useEffect(() => { void restoreSession(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   return null;
 }
 

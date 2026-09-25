@@ -57,7 +57,7 @@ export default async function HomePage() {
               </Button>
             </Link>
             <Link href="/c/cakes">
-              <Button size="lg" variant="outline" className="gap-2 border-white text-white hover:bg-white/10">
+              <Button size="lg" variant="outline" className="gap-2 border-white bg-transparent text-white hover:bg-white/10 hover:text-white">
                 <Cake className="h-5 w-5" />
                 Shop cakes
               </Button>

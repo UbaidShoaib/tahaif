@@ -5,7 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import Cookies from "js-cookie";
+import { setSessionMarker } from "@/lib/session";
 import { apiFetch, ApiError } from "@/lib/api";
 import { useAuthStore } from "@/stores/auth.store";
 import { Button } from "@/components/ui/button";
@@ -50,7 +50,7 @@ export function RegisterForm() {
         { method: "POST", body: data },
       );
       setSession(res.user, res.access_token);
-      Cookies.set("tahaif_session", res.user.role, { sameSite: "lax", expires: 7 });
+      setSessionMarker(res.user.role);
       router.push("/");
     } catch (e) {
       setError(e instanceof ApiError ? e.detail : "Registration failed. Please try again.");

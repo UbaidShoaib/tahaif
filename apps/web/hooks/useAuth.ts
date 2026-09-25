@@ -9,10 +9,10 @@ export function useAuth() {
 }
 
 export function useAuthInit() {
-  const { refresh, isLoading } = useAuthStore();
+  const { restoreSession, isLoading } = useAuthStore();
 
   useEffect(() => {
-    void refresh();
+    void restoreSession();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   return { isLoading };
