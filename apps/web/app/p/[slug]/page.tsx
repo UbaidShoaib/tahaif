@@ -6,7 +6,8 @@ import { catalogApi, primaryImage } from "@/lib/catalog";
 import { loyaltyApi } from "@/lib/loyalty";
 import { VariantPicker } from "@/components/catalog/VariantPicker";
 import { ReviewsSection } from "@/components/catalog/ReviewsSection";
-import { ChevronRight, Clock, Truck } from "lucide-react";
+import { Clock, Truck } from "lucide-react";
+import { Breadcrumb } from "@/components/ui/breadcrumb";
 
 type Props = { params: Promise<{ slug: string }> };
 
@@ -81,27 +82,20 @@ export default async function ProductPage({ params }: Props) {
       dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
     />
     <div className="container mx-auto px-4 py-8">
-      {/* Breadcrumb */}
-      <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-sm text-muted-foreground mb-6 flex-wrap">
-        <Link href="/" className="hover:text-foreground transition-colors">Home</Link>
-        {category && (
-          <>
-            <ChevronRight className="h-3.5 w-3.5 shrink-0" />
-            <Link href={`/c/${category.slug}`} className="hover:text-foreground transition-colors">
-              {category.name}
-            </Link>
-          </>
-        )}
-        <ChevronRight className="h-3.5 w-3.5 shrink-0" />
-        <span className="text-foreground font-medium truncate max-w-[200px]">{product.name}</span>
-      </nav>
+      <Breadcrumb
+        items={[
+          { label: "Home", href: "/" },
+          ...(category ? [{ label: category.name, href: `/c/${category.slug}` }] : []),
+          { label: product.name },
+        ]}
+      />
 
       <div className="grid md:grid-cols-2 gap-10">
         {/* Image */}
         <div className="relative aspect-square rounded-2xl overflow-hidden bg-muted">
           <Image
             src={img}
-            alt={product.name}
+            alt={product.images[0]?.alt_text ?? product.name}
             fill
             sizes="(max-width: 768px) 100vw, 50vw"
             className="object-cover"
@@ -134,10 +128,10 @@ export default async function ProductPage({ params }: Props) {
           {/* Delivery availability */}
           {availableCities.length > 0 && (
             <div className="space-y-2 pt-2">
-              <h3 className="text-sm font-semibold flex items-center gap-1.5">
-                <Truck className="h-4 w-4 text-link" />
+              <h2 className="font-sans text-sm font-semibold tracking-normal flex items-center gap-1.5">
+                <Truck aria-hidden className="h-4 w-4 text-link" />
                 Delivery available in
-              </h3>
+              </h2>
               <div className="grid grid-cols-2 gap-2">
                 {availableCities.map((pc) => (
                   <div

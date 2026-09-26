@@ -1,3 +1,7 @@
+import Link from "next/link";
+import { SearchX } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
 import { ProductCard } from "@/components/catalog/ProductCard";
 import type { Product } from "@/lib/catalog";
 
@@ -10,10 +14,16 @@ type Props = {
 export function ProductGrid({ products, cityId, emptyMessage = "No products found." }: Props) {
   if (products.length === 0) {
     return (
-      <div className="py-16 text-center text-muted-foreground">
-        <p className="text-lg">😔</p>
-        <p className="mt-2">{emptyMessage}</p>
-      </div>
+      <EmptyState
+        icon={SearchX}
+        title={emptyMessage}
+        description="Try another city or search term, or browse everything we deliver."
+        action={
+          <Button variant="outline" asChild>
+            <Link href="/search">Browse all gifts</Link>
+          </Button>
+        }
+      />
     );
   }
 

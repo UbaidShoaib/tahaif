@@ -3,20 +3,14 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { FormField } from "@/components/ui/form-field";
+import { Input } from "@/components/ui/input";
+import { Rating, RatingInput } from "@/components/ui/rating";
+import { Textarea } from "@/components/ui/textarea";
 import { useAuthStore } from "@/stores/auth.store";
 import { loyaltyApi, type ReviewCreate, type ReviewRead } from "@/lib/loyalty";
-
-function StarRating({ rating, max = 5 }: { rating: number; max?: number }) {
-  return (
-    <span role="img" className="flex gap-0.5" aria-label={`${rating} out of ${max} stars`}>
-      {Array.from({ length: max }).map((_, i) => (
-        <span key={i} aria-hidden className={i < rating ? "text-star" : "text-muted-foreground"}>
-          {i < rating ? "★" : "☆"}
-        </span>
-      ))}
-    </span>
-  );
-}
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("en-GB", {
@@ -67,10 +61,10 @@ export function ReviewsSection({ productId, initialReviews }: Props) {
   return (
     <div className="mt-12">
       <div className="flex items-center gap-4 mb-6">
-        <h2 className="text-xl font-bold">Customer Reviews</h2>
+        <h2 className="text-h2">Customer Reviews</h2>
         {avgRating !== null && (
           <div className="flex items-center gap-2">
-            <StarRating rating={Math.round(avgRating)} />
+            <Rating value={Number(avgRating.toFixed(1))} />
             <span className="text-sm text-muted-foreground">
               {avgRating.toFixed(1)} ({reviews.length})
             </span>
@@ -86,7 +80,7 @@ export function ReviewsSection({ productId, initialReviews }: Props) {
           {reviews.map((r) => (
             <li key={r.id} className="border rounded-xl p-4">
               <div className="flex items-center gap-3 mb-2">
-                <StarRating rating={r.rating} />
+                <Rating value={r.rating} size="sm" />
                 {r.title && <span className="font-semibold text-sm">{r.title}</span>}
                 <span className="text-xs text-muted-foreground ml-auto">
                   {formatDate(r.created_at)}
@@ -104,69 +98,48 @@ export function ReviewsSection({ productId, initialReviews }: Props) {
           <Link href={`/login?callbackUrl=${encodeURIComponent(pathname)}`} className="text-link hover:underline">Sign in</Link> to leave a review.
         </p>
       ) : submitted ? (
-        <div className="border border-primary-700/30 bg-primary-700/5 rounded-xl p-4 text-sm text-link font-medium">
-          Thanks for your review! It will appear after moderation.
-        </div>
+        <Alert variant="success">
+          <AlertDescription>Thanks for your review! It will appear after moderation.</AlertDescription>
+        </Alert>
       ) : (
         <form onSubmit={(e) => { void handleSubmit(e); }} className="border rounded-xl p-5 space-y-4">
-          <h3 className="font-semibold">Write a Review</h3>
+          <h3 className="text-h3">Write a Review</h3>
 
-          {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
+          {error && (
+            <Alert variant="destructive">
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
 
-          <fieldset>
-            <legend className="text-sm font-medium mb-1 block">Rating</legend>
-            <div className="flex gap-1">
-              {[1, 2, 3, 4, 5].map((n) => (
-                <button
-                  key={n}
-                  type="button"
-                  onClick={() => setRating(n)}
-                  aria-pressed={n === rating}
-                  className={`inline-flex h-11 w-11 items-center justify-center rounded-md text-2xl ${n <= rating ? "text-star" : "text-muted-foreground"}`}
-                  aria-label={`${n} star`}
-                >
-                  <span aria-hidden>{n <= rating ? "★" : "☆"}</span>
-                </button>
-              ))}
-            </div>
-          </fieldset>
+          <RatingInput value={rating} onChange={setRating} />
 
-          <div>
-            <label htmlFor="review-title" className="text-sm font-medium mb-1 block">
-              Title <span className="text-muted-foreground font-normal">(optional)</span>
-            </label>
-            <input
-              id="review-title"
-              type="text"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              maxLength={255}
-              placeholder="Summary of your experience"
-              className="w-full border rounded-lg px-3 py-2 text-sm bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            />
-          </div>
+          <FormField label="Title" hint="Optional" id="review-title">
+            {(p) => (
+              <Input
+                {...p}
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                maxLength={255}
+                placeholder="Summary of your experience"
+              />
+            )}
+          </FormField>
 
-          <div>
-            <label htmlFor="review-body" className="text-sm font-medium mb-1 block">
-              Review <span className="text-muted-foreground font-normal">(optional)</span>
-            </label>
-            <textarea
-              id="review-body"
-              value={body}
-              onChange={(e) => setBody(e.target.value)}
-              rows={3}
-              placeholder="Tell others about your experience…"
-              className="w-full border rounded-lg px-3 py-2 text-sm bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring resize-none"
-            />
-          </div>
+          <FormField label="Review" hint="Optional" id="review-body">
+            {(p) => (
+              <Textarea
+                {...p}
+                value={body}
+                onChange={(e) => setBody(e.target.value)}
+                rows={3}
+                placeholder="Tell others about your experience…"
+              />
+            )}
+          </FormField>
 
-          <button
-            type="submit"
-            disabled={submitting}
-            className="bg-primary-700 text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-primary-800 disabled:opacity-50 transition-colors"
-          >
+          <Button type="submit" loading={submitting}>
             {submitting ? "Submitting…" : "Submit Review"}
-          </button>
+          </Button>
         </form>
       )}
     </div>

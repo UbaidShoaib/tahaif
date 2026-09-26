@@ -8,8 +8,20 @@ import {
   type FulfillmentStatus,
   type VendorFulfillmentRead,
 } from "@/lib/vendor";
+import { OrderStatusBadge, statusLabel } from "@/components/orders/OrderStatusBadge";
 
-const STATUS_LABELS: Record<FulfillmentStatus, string> = {
+const FULFILLMENT_STATUSES: FulfillmentStatus[] = [
+  "pending",
+  "preparing",
+  "ready",
+  "dispatched",
+  "out_for_delivery",
+  "delivered",
+  "failed",
+];
+
+// Button wording for moving a fulfilment to its next status.
+const ACTION_LABELS: Record<FulfillmentStatus, string> = {
   pending: "Pending",
   preparing: "Preparing",
   ready: "Ready",
@@ -17,16 +29,6 @@ const STATUS_LABELS: Record<FulfillmentStatus, string> = {
   out_for_delivery: "Out for Delivery",
   delivered: "Delivered",
   failed: "Failed",
-};
-
-const STATUS_COLORS: Record<FulfillmentStatus, string> = {
-  pending: "bg-yellow-100 text-yellow-800",
-  preparing: "bg-purple-100 text-purple-800",
-  ready: "bg-blue-100 text-blue-800",
-  dispatched: "bg-indigo-100 text-indigo-800",
-  out_for_delivery: "bg-orange-100 text-orange-800",
-  delivered: "bg-green-100 text-green-800",
-  failed: "bg-red-100 text-red-800",
 };
 
 const NEXT_STATUS: Partial<Record<FulfillmentStatus, FulfillmentStatus>> = {
@@ -147,9 +149,9 @@ export default function VendorOrdersPage() {
           className="text-sm border rounded-lg px-3 py-1.5 bg-background"
         >
           <option value="">All</option>
-          {(Object.keys(STATUS_LABELS) as FulfillmentStatus[]).map((s) => (
+          {FULFILLMENT_STATUSES.map((s) => (
             <option key={s} value={s}>
-              {STATUS_LABELS[s]}
+              {statusLabel(s, "fulfillment")}
             </option>
           ))}
         </select>
@@ -160,7 +162,6 @@ export default function VendorOrdersPage() {
       ) : (
         <ul className="space-y-4">
           {fulfillments.map((f) => {
-            const colorClass = STATUS_COLORS[f.status] ?? "bg-gray-100 text-gray-700";
             const nextStatus = NEXT_STATUS[f.status];
             const isUpdating = updating === f.id;
             // Only COD orders may be prepared before payment is verified.
@@ -173,9 +174,7 @@ export default function VendorOrdersPage() {
               >
                 <div className="flex flex-wrap items-start justify-between gap-3 mb-3">
                   <div>
-                    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${colorClass}`}>
-                      {STATUS_LABELS[f.status]}
-                    </span>
+                    <OrderStatusBadge status={f.status} kind="fulfillment" />
                     <span className="ml-3 text-xs text-muted-foreground">
                       Deliver by {formatDate(f.delivery_date)}
                     </span>
@@ -192,7 +191,7 @@ export default function VendorOrdersPage() {
                       disabled={isUpdating}
                       className="text-xs font-medium bg-primary-700 text-white px-3 py-1 rounded-lg hover:bg-primary-800 disabled:opacity-50 transition-colors"
                     >
-                      {isUpdating ? "Updating…" : `Mark ${STATUS_LABELS[nextStatus]}`}
+                      {isUpdating ? "Updating…" : `Mark ${ACTION_LABELS[nextStatus]}`}
                     </button>
                   )}
                 </div>

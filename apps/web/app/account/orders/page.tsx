@@ -4,32 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useAuthStore } from "@/stores/auth.store";
 import { cartApi, type OrderRead } from "@/lib/cart";
-
-const STATUS_LABELS: Record<string, string> = {
-  pending_payment: "Pending Payment",
-  paid: "Paid",
-  preparing: "Preparing",
-  dispatched: "Dispatched",
-  out_for_delivery: "Out for Delivery",
-  delivered: "Delivered",
-  completed: "Completed",
-  cancelled: "Cancelled",
-  refunded: "Refunded",
-  on_hold: "On Hold",
-};
-
-const STATUS_COLORS: Record<string, string> = {
-  pending_payment: "bg-yellow-100 text-yellow-800",
-  paid: "bg-blue-100 text-blue-800",
-  preparing: "bg-purple-100 text-purple-800",
-  dispatched: "bg-indigo-100 text-indigo-800",
-  out_for_delivery: "bg-orange-100 text-orange-800",
-  delivered: "bg-green-100 text-green-800",
-  completed: "bg-green-100 text-green-800",
-  cancelled: "bg-red-100 text-red-800",
-  refunded: "bg-gray-100 text-gray-800",
-  on_hold: "bg-yellow-100 text-yellow-700",
-};
+import { OrderStatusBadge } from "@/components/orders/OrderStatusBadge";
 
 function formatPKR(paisa: number) {
   return `PKR ${(paisa / 100).toLocaleString("en-PK", { minimumFractionDigits: 0 })}`;
@@ -116,9 +91,6 @@ export default function OrdersPage() {
           {orders.map((order) => {
             const itemCount = order.items.reduce((sum, i) => sum + i.qty, 0);
             const recipient = order.fulfillments[0]?.recipient_name;
-            const label = STATUS_LABELS[order.status] ?? order.status;
-            const color =
-              STATUS_COLORS[order.status] ?? "bg-gray-100 text-gray-700";
 
             return (
               <li
@@ -127,11 +99,7 @@ export default function OrdersPage() {
               >
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-3 mb-1">
-                    <span
-                      className={`text-xs font-semibold px-2 py-0.5 rounded-full ${color}`}
-                    >
-                      {label}
-                    </span>
+                    <OrderStatusBadge status={order.status} />
                     <span className="text-xs text-muted-foreground">
                       {formatDate(order.placed_at)}
                     </span>

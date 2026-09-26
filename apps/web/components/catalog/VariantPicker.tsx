@@ -11,6 +11,8 @@ import { ShoppingBag } from "lucide-react";
 import { useAuthStore } from "@/stores/auth.store";
 import { useCartStore } from "@/stores/cart.store";
 import { captureEvent } from "@/components/providers";
+import { toast } from "@/components/ui/toast";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 type Props = {
   product: Product;
@@ -27,7 +29,7 @@ export function VariantPicker({ product }: Props) {
   const [addError, setAddError] = useState<string | null>(null);
 
   const { user } = useAuthStore();
-  const { addItem } = useCartStore();
+  const { addItem, openDrawer } = useCartStore();
   const router = useRouter();
 
   const basePrice = product.product_cities[0]?.price_override_pkr ?? product.base_price_pkr;
@@ -56,6 +58,12 @@ export function VariantPicker({ product }: Props) {
         price_pkr: totalPrice,
       });
       setAddedFeedback(true);
+      toast({
+        variant: "success",
+        title: "Added to your cart",
+        description: selected ? `${product.name} (${selected.name})` : product.name,
+        action: { label: "View cart", onClick: () => openDrawer() },
+      });
       setGreeting("");
       setTimeout(() => setAddedFeedback(false), 2000);
     } catch (err) {
@@ -126,7 +134,7 @@ export function VariantPicker({ product }: Props) {
           rows={3}
           onChange={(e) => setGreeting(e.target.value)}
           placeholder="Happy birthday, Ammi! Wish I could be there. Love, Ali"
-          className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-700"
+          className="w-full rounded-md border border-input bg-background px-3 py-2 text-base sm:text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           aria-describedby="greeting-help"
         />
         <p id="greeting-help" className="flex justify-between text-xs text-muted-foreground">
@@ -152,14 +160,10 @@ export function VariantPicker({ product }: Props) {
               : "Out of Stock"}
       </Button>
 
-      <p aria-live="polite" className="sr-only">
-        {addedFeedback ? `${product.name} added to your cart` : ""}
-      </p>
-
       {addError && (
-        <p role="alert" className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-          {addError}
-        </p>
+        <Alert variant="destructive">
+          <AlertDescription>{addError}</AlertDescription>
+        </Alert>
       )}
 
       {selected && selected.stock_qty > 0 && selected.stock_qty <= 5 && (

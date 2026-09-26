@@ -15,6 +15,7 @@ import { formatPrice } from "@/lib/utils";
 import { formatMoney } from "@/lib/money";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
+import { OrderStatusBadge } from "@/components/orders/OrderStatusBadge";
 
 export const dynamic = "force-dynamic";
 
@@ -39,16 +40,6 @@ const STATUS_STEPS = [
 ];
 
 const STATUS_ORDER = STATUS_STEPS.map((s) => s.key);
-
-const FULFILLMENT_STATUS_LABELS: Record<string, string> = {
-  pending: "Pending",
-  preparing: "Preparing",
-  ready: "Ready for Dispatch",
-  dispatched: "Dispatched",
-  out_for_delivery: "Out for Delivery",
-  delivered: "Delivered",
-  failed: "Failed",
-};
 
 export default async function TrackPage({
   params,
@@ -128,15 +119,7 @@ export default async function TrackPage({
               <Package className="h-4 w-4" />
               {f.vendor_name}
             </h2>
-            <span className={`text-xs rounded-full px-2.5 py-1 font-medium ${
-              f.status === "delivered"
-                ? "bg-success-soft text-success-foreground"
-                : f.status === "dispatched" || f.status === "out_for_delivery"
-                  ? "bg-info-soft text-info"
-                  : "bg-muted text-muted-foreground"
-            }`}>
-              {FULFILLMENT_STATUS_LABELS[f.status] ?? f.status}
-            </span>
+            <OrderStatusBadge status={f.status} kind="fulfillment" />
           </div>
 
           <div className="text-sm space-y-1.5 text-muted-foreground">

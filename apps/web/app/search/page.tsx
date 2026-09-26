@@ -5,6 +5,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { Search, MapPin } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { ProductGrid } from "@/components/catalog/ProductGrid";
+import { ProductCardSkeleton } from "@/components/ui/skeleton";
 import type { City, Product } from "@/lib/catalog";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api/v1";
@@ -126,9 +127,9 @@ function SearchPageInner() {
       {/* Results */}
       <div>
         {loading ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+          <div aria-busy="true" aria-label="Loading gifts" className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
             {Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} className="rounded-xl border bg-muted animate-pulse aspect-[3/4]" />
+              <ProductCardSkeleton key={i} />
             ))}
           </div>
         ) : (

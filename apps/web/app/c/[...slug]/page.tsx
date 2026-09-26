@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { catalogApi } from "@/lib/catalog";
 import { ProductGrid } from "@/components/catalog/ProductGrid";
-import { ChevronRight } from "lucide-react";
+import { Breadcrumb } from "@/components/ui/breadcrumb";
 
 type Props = { params: Promise<{ slug: string[] }> };
 
@@ -34,12 +34,7 @@ export default async function CategoryPage({ params }: Props) {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      {/* Breadcrumb */}
-      <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-sm text-muted-foreground mb-6">
-        <Link href="/" className="hover:text-foreground transition-colors">Home</Link>
-        <ChevronRight className="h-3.5 w-3.5" />
-        <span className="text-foreground font-medium">{category.name}</span>
-      </nav>
+      <Breadcrumb items={[{ label: "Home", href: "/" }, { label: category.name }]} />
 
       <div className="flex gap-8">
         {/* Sidebar — categories */}

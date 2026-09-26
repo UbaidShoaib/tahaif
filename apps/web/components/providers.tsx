@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState, useEffect, useRef } from "react";
 import { useAuthStore } from "@/stores/auth.store";
 import { useCurrencyStore } from "@/stores/currency.store";
+import { Toaster } from "@/components/ui/toast";
 
 // ── PostHog (lightweight, tree-shaken when key absent) ────────────────────────
 const PH_KEY = process.env.NEXT_PUBLIC_POSTHOG_KEY;
@@ -73,6 +74,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
         <CurrencyInitializer />
         <PostHogPageview />
         {children}
+        <Toaster />
       </ThemeProvider>
     </QueryClientProvider>
   );
