@@ -40,7 +40,7 @@ export function ForgotPasswordForm() {
         <p className="text-sm text-muted-foreground">
           If that email is registered, we&apos;ve sent a password reset link. Check your inbox.
         </p>
-        <Link href="/login" className="text-primary-600 hover:underline text-sm">
+        <Link href="/login" className="text-primary-700 dark:text-primary-300 hover:underline text-sm">
           Back to login
         </Link>
       </div>
@@ -72,7 +72,7 @@ export function ForgotPasswordForm() {
       </form>
 
       <p className="text-center text-sm">
-        <Link href="/login" className="text-primary-600 hover:underline">
+        <Link href="/login" className="text-primary-700 dark:text-primary-300 hover:underline">
           Back to login
         </Link>
       </p>

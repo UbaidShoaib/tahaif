@@ -49,7 +49,7 @@ export default async function VendorPage({ params }: Props) {
             unoptimized
           />
         ) : (
-          <div className="h-16 w-16 rounded-xl bg-primary-100 dark:bg-primary-900/40 flex items-center justify-center text-2xl font-bold text-primary-600 shrink-0">
+          <div className="h-16 w-16 rounded-xl bg-primary-100 dark:bg-primary-900/40 flex items-center justify-center text-2xl font-bold text-primary-700 dark:text-primary-300 shrink-0">
             {vendor.name[0]}
           </div>
         )}

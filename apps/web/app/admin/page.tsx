@@ -106,7 +106,7 @@ export default function AdminDashboard() {
     <div className="container mx-auto px-4 py-8">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold flex items-center gap-2">
-          <Package className="h-6 w-6 text-primary-600" />
+          <Package className="h-6 w-6 text-primary-700 dark:text-primary-300" />
           Admin Dashboard
         </h1>
         <Button variant="outline" size="sm" onClick={() => void fetchOrders()} className="gap-2">

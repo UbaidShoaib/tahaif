@@ -81,7 +81,7 @@ export default async function TrackPage({
           {/* Progress line */}
           <div className="absolute left-4 top-4 bottom-4 w-0.5 bg-muted" />
           <div
-            className="absolute left-4 top-4 w-0.5 bg-primary-600 transition-all duration-500"
+            className="absolute left-4 top-4 w-0.5 bg-primary-700 transition-all duration-500"
             style={{
               height: currentStep >= 0
                 ? `${(currentStep / (STATUS_STEPS.length - 1)) * 100}%`
@@ -99,7 +99,7 @@ export default async function TrackPage({
                   <div
                     className={`relative z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${
                       isCompleted
-                        ? "border-primary-600 bg-primary-600 text-white"
+                        ? "border-primary-700 bg-primary-700 text-white"
                         : "border-muted bg-background text-muted-foreground"
                     } ${isCurrent ? "ring-2 ring-primary-200 ring-offset-2" : ""}`}
                   >
@@ -110,7 +110,7 @@ export default async function TrackPage({
                       {step.label}
                     </p>
                     {isCurrent && (
-                      <p className="text-xs text-primary-600 font-medium">Current status</p>
+                      <p className="text-xs text-primary-700 dark:text-primary-300 font-medium">Current status</p>
                     )}
                   </div>
                 </div>
@@ -213,7 +213,7 @@ export default async function TrackPage({
         <Separator />
         <div className="flex justify-between font-semibold">
           <span>Total</span>
-          <span className="text-primary-600">{formatPrice(order.total_pkr)}</span>
+          <span className="text-primary-700 dark:text-primary-300">{formatPrice(order.total_pkr)}</span>
         </div>
         {order.currency !== "PKR" && (
           <div className="flex justify-between text-sm text-muted-foreground">

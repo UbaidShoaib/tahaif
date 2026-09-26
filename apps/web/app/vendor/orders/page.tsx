@@ -112,7 +112,7 @@ export default function VendorOrdersPage() {
     return (
       <div className="container mx-auto px-4 py-16 text-center">
         <p className="text-muted-foreground mb-6">Please sign in to view your fulfillments.</p>
-        <Link href="/login" className="text-sm text-[#16a34a] hover:underline">
+        <Link href="/login" className="text-sm text-primary-700 dark:text-primary-300 hover:underline">
           Sign In
         </Link>
       </div>
@@ -131,7 +131,7 @@ export default function VendorOrdersPage() {
     <div className="container mx-auto px-4 py-8 max-w-4xl">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">Fulfillments</h1>
-        <Link href="/vendor/dashboard" className="text-sm text-[#16a34a] hover:underline">
+        <Link href="/vendor/dashboard" className="text-sm text-primary-700 dark:text-primary-300 hover:underline">
           ← Dashboard
         </Link>
       </div>
@@ -169,7 +169,7 @@ export default function VendorOrdersPage() {
             return (
               <li
                 key={f.id}
-                className="border rounded-xl p-5 hover:border-[#16a34a] transition-colors"
+                className="border rounded-xl p-5 hover:border-primary-700 transition-colors"
               >
                 <div className="flex flex-wrap items-start justify-between gap-3 mb-3">
                   <div>
@@ -190,7 +190,7 @@ export default function VendorOrdersPage() {
                     <button
                       onClick={() => { void advance(f); }}
                       disabled={isUpdating}
-                      className="text-xs font-medium bg-[#16a34a] text-white px-3 py-1 rounded-lg hover:bg-[#15803d] disabled:opacity-50 transition-colors"
+                      className="text-xs font-medium bg-primary-700 text-white px-3 py-1 rounded-lg hover:bg-primary-800 disabled:opacity-50 transition-colors"
                     >
                       {isUpdating ? "Updating…" : `Mark ${STATUS_LABELS[nextStatus]}`}
                     </button>

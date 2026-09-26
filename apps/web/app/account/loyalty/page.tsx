@@ -53,7 +53,7 @@ export default function LoyaltyPage() {
         <p className="text-muted-foreground mb-6">Please sign in to view your points.</p>
         <Link
           href="/login"
-          className="inline-block bg-[#16a34a] text-white px-6 py-2 rounded-lg font-medium hover:bg-[#15803d] transition-colors"
+          className="inline-block bg-primary-700 text-white px-6 py-2 rounded-lg font-medium hover:bg-primary-800 transition-colors"
         >
           Sign In
         </Link>
@@ -77,7 +77,7 @@ export default function LoyaltyPage() {
       {wallet && (
         <div className="grid grid-cols-3 gap-4 mb-8">
           <div className="border rounded-xl p-4 text-center">
-            <p className="text-3xl font-bold text-[#16a34a]">{wallet.balance_points}</p>
+            <p className="text-3xl font-bold text-primary-700 dark:text-primary-300">{wallet.balance_points}</p>
             <p className="text-xs text-muted-foreground mt-1">Available</p>
           </div>
           <div className="border rounded-xl p-4 text-center">
@@ -92,8 +92,8 @@ export default function LoyaltyPage() {
       )}
 
       {/* Earning info */}
-      <div className="bg-[#16a34a]/5 border border-[#16a34a]/20 rounded-xl p-4 mb-8 text-sm">
-        <p className="font-semibold text-[#16a34a] mb-1">How to earn points</p>
+      <div className="bg-primary-700/5 border border-primary-700/20 rounded-xl p-4 mb-8 text-sm">
+        <p className="font-semibold text-primary-700 dark:text-primary-300 mb-1">How to earn points</p>
         <p className="text-muted-foreground">
           Earn <strong>1 point</strong> for every <strong>PKR 100</strong> you spend. Points are
           credited automatically when you place an order.
@@ -121,7 +121,7 @@ export default function LoyaltyPage() {
               </div>
               <span
                 className={`font-semibold ${
-                  entry.delta_points > 0 ? "text-[#16a34a]" : "text-destructive"
+                  entry.delta_points > 0 ? "text-green-700 dark:text-green-400" : "text-destructive"
                 }`}
               >
                 {entry.delta_points > 0 ? "+" : ""}

@@ -40,7 +40,7 @@ export default function VendorProductsPage() {
     return (
       <div className="container mx-auto px-4 py-16 text-center">
         <p className="text-muted-foreground mb-6">Please sign in to view your products.</p>
-        <Link href="/login" className="text-sm text-[#16a34a] hover:underline">
+        <Link href="/login" className="text-sm text-primary-700 dark:text-primary-300 hover:underline">
           Sign In
         </Link>
       </div>
@@ -59,7 +59,7 @@ export default function VendorProductsPage() {
     <div className="container mx-auto px-4 py-8 max-w-4xl">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">My Products</h1>
-        <Link href="/vendor/dashboard" className="text-sm text-[#16a34a] hover:underline">
+        <Link href="/vendor/dashboard" className="text-sm text-primary-700 dark:text-primary-300 hover:underline">
           ← Dashboard
         </Link>
       </div>
@@ -73,7 +73,7 @@ export default function VendorProductsPage() {
           {products.map((p) => (
             <li
               key={p.id}
-              className="border rounded-xl px-5 py-4 flex items-center justify-between gap-4 hover:border-[#16a34a] transition-colors"
+              className="border rounded-xl px-5 py-4 flex items-center justify-between gap-4 hover:border-primary-700 transition-colors"
             >
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
@@ -91,7 +91,7 @@ export default function VendorProductsPage() {
               <Link
                 href={`/p/${p.slug}`}
                 target="_blank"
-                className="shrink-0 text-sm text-[#16a34a] hover:underline"
+                className="shrink-0 text-sm text-primary-700 dark:text-primary-300 hover:underline"
               >
                 View →
               </Link>

@@ -52,7 +52,7 @@ export default async function SuccessPage({
     <div className="container mx-auto px-4 py-12 max-w-2xl">
       {/* Success banner */}
       <div className="rounded-2xl border border-primary-200 bg-primary-50 dark:bg-primary-900/20 dark:border-primary-800 px-6 py-8 text-center mb-8 space-y-3">
-        <CheckCircle className="h-12 w-12 mx-auto text-primary-600" />
+        <CheckCircle className="h-12 w-12 mx-auto text-primary-700 dark:text-primary-300" />
         <h1 className="text-2xl font-bold">Order Placed Successfully!</h1>
         <p className="text-muted-foreground text-sm">
           We&apos;ve received your order and will confirm shortly.
@@ -156,7 +156,7 @@ export default async function SuccessPage({
           <Separator />
           <div className="flex justify-between font-semibold text-base">
             <span>Total</span>
-            <span className="text-primary-600">{formatPrice(order.total_pkr)}</span>
+            <span className="text-primary-700 dark:text-primary-300">{formatPrice(order.total_pkr)}</span>
           </div>
           {order.currency !== "PKR" && (
             <div className="flex justify-between text-sm text-muted-foreground">

@@ -181,7 +181,7 @@ export default function AddressesPage() {
         <Input id="addr-landmark" value={form.landmark ?? ""} placeholder="e.g. Near Liberty Market" onChange={(e) => set("landmark", e.target.value)} />
       </div>
       <label htmlFor="addr-default" className="flex items-center gap-2 text-sm">
-        <input id="addr-default" type="checkbox" checked={!!form.is_default} onChange={(e) => set("is_default", e.target.checked)} className="h-4 w-4 accent-[#16a34a]" />
+        <input id="addr-default" type="checkbox" checked={!!form.is_default} onChange={(e) => set("is_default", e.target.checked)} className="h-4 w-4 accent-primary-700" />
         Use as my default address at checkout
       </label>
       <div className="flex gap-3">
@@ -232,9 +232,9 @@ export default function AddressesPage() {
                     </div>
                     <div className="flex flex-wrap gap-3 text-sm">
                       {!a.is_default && (
-                        <button type="button" onClick={() => { void makeDefault(a.id); }} className="text-primary-600 hover:underline">Make default</button>
+                        <button type="button" onClick={() => { void makeDefault(a.id); }} className="text-primary-700 dark:text-primary-300 hover:underline">Make default</button>
                       )}
-                      <button type="button" onClick={() => open(a)} className="text-primary-600 hover:underline">Edit</button>
+                      <button type="button" onClick={() => open(a)} className="text-primary-700 dark:text-primary-300 hover:underline">Edit</button>
                       <button type="button" onClick={() => setConfirmDelete(a.id)} className="text-muted-foreground hover:text-destructive">Delete</button>
                     </div>
                   </div>

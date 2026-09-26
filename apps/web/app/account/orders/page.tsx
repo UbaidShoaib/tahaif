@@ -79,7 +79,7 @@ export default function OrdersPage() {
         </p>
         <Link
           href="/login"
-          className="inline-block bg-[#16a34a] text-white px-6 py-2 rounded-lg font-medium hover:bg-[#15803d] transition-colors"
+          className="inline-block bg-primary-700 text-white px-6 py-2 rounded-lg font-medium hover:bg-primary-800 transition-colors"
         >
           Sign In
         </Link>
@@ -106,7 +106,7 @@ export default function OrdersPage() {
           </p>
           <Link
             href="/"
-            className="inline-block bg-[#16a34a] text-white px-6 py-2 rounded-lg font-medium hover:bg-[#15803d] transition-colors"
+            className="inline-block bg-primary-700 text-white px-6 py-2 rounded-lg font-medium hover:bg-primary-800 transition-colors"
           >
             Start Shopping
           </Link>
@@ -123,7 +123,7 @@ export default function OrdersPage() {
             return (
               <li
                 key={order.id}
-                className="border rounded-xl p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 hover:border-[#16a34a] transition-colors"
+                className="border rounded-xl p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 hover:border-primary-700 transition-colors"
               >
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-3 mb-1">
@@ -149,7 +149,7 @@ export default function OrdersPage() {
 
                 <Link
                   href={`/track/${order.public_token}`}
-                  className="shrink-0 text-sm font-medium text-[#16a34a] hover:underline"
+                  className="shrink-0 text-sm font-medium text-primary-700 dark:text-primary-300 hover:underline"
                 >
                   Track Order →
                 </Link>

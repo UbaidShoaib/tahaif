@@ -31,7 +31,7 @@ export function GreetingEditor({ item }: { item: CartItemRead }) {
   if (!editing) {
     return (
       <div className="flex items-start gap-2 pb-3 text-sm">
-        <MessageSquareHeart className="mt-0.5 h-4 w-4 shrink-0 text-primary-600" aria-hidden />
+        <MessageSquareHeart className="mt-0.5 h-4 w-4 shrink-0 text-primary-700 dark:text-primary-300" aria-hidden />
         {item.greeting_message ? (
           <p className="flex-1 italic text-muted-foreground">“{item.greeting_message}”</p>
         ) : (
@@ -40,7 +40,7 @@ export function GreetingEditor({ item }: { item: CartItemRead }) {
         <button
           type="button"
           onClick={() => { setDraft(item.greeting_message ?? ""); setEditing(true); }}
-          className="text-primary-600 hover:underline"
+          className="text-primary-700 dark:text-primary-300 hover:underline"
         >
           {item.greeting_message ? "Edit message" : "Add a message"}
         </button>
@@ -57,7 +57,7 @@ export function GreetingEditor({ item }: { item: CartItemRead }) {
         maxLength={GREETING_MAX}
         rows={3}
         onChange={(e) => setDraft(e.target.value)}
-        className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600"
+        className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-700"
       />
       <div className="flex items-center justify-between text-xs text-muted-foreground">
         <span>{draft.length}/{GREETING_MAX}</span>
@@ -67,7 +67,7 @@ export function GreetingEditor({ item }: { item: CartItemRead }) {
             type="button"
             disabled={saving}
             onClick={() => { void save(); }}
-            className="font-medium text-primary-600 hover:underline disabled:opacity-50"
+            className="font-medium text-primary-700 dark:text-primary-300 hover:underline disabled:opacity-50"
           >
             {saving ? "Saving…" : "Save message"}
           </button>

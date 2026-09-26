@@ -39,7 +39,7 @@ export default function VendorDashboardPage() {
         <p className="text-muted-foreground mb-6">Please sign in to access your vendor dashboard.</p>
         <Link
           href="/login"
-          className="inline-block bg-[#16a34a] text-white px-6 py-2 rounded-lg font-medium hover:bg-[#15803d] transition-colors"
+          className="inline-block bg-primary-700 text-white px-6 py-2 rounded-lg font-medium hover:bg-primary-800 transition-colors"
         >
           Sign In
         </Link>
@@ -52,7 +52,7 @@ export default function VendorDashboardPage() {
       <div className="container mx-auto px-4 py-16 text-center">
         <h1 className="text-2xl font-bold mb-4">Vendor Portal</h1>
         <p className="text-destructive mb-4">{error}</p>
-        <Link href="/" className="text-sm text-[#16a34a] hover:underline">
+        <Link href="/" className="text-sm text-primary-700 dark:text-primary-300 hover:underline">
           Return to store
         </Link>
       </div>
@@ -82,10 +82,10 @@ export default function VendorDashboardPage() {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <Link
           href="/vendor/orders"
-          className="border rounded-xl p-6 hover:border-[#16a34a] hover:shadow-sm transition-all group"
+          className="border rounded-xl p-6 hover:border-primary-700 hover:shadow-sm transition-all group"
         >
           <div className="text-3xl mb-3">📦</div>
-          <h2 className="text-lg font-semibold group-hover:text-[#16a34a]">Fulfillments</h2>
+          <h2 className="text-lg font-semibold group-hover:text-primary-700 dark:group-hover:text-primary-300">Fulfillments</h2>
           <p className="text-sm text-muted-foreground mt-1">
             View and update delivery status for your orders.
           </p>
@@ -93,10 +93,10 @@ export default function VendorDashboardPage() {
 
         <Link
           href="/vendor/products"
-          className="border rounded-xl p-6 hover:border-[#16a34a] hover:shadow-sm transition-all group"
+          className="border rounded-xl p-6 hover:border-primary-700 hover:shadow-sm transition-all group"
         >
           <div className="text-3xl mb-3">🛍️</div>
-          <h2 className="text-lg font-semibold group-hover:text-[#16a34a]">Products</h2>
+          <h2 className="text-lg font-semibold group-hover:text-primary-700 dark:group-hover:text-primary-300">Products</h2>
           <p className="text-sm text-muted-foreground mt-1">
             Browse the products listed under your store.
           </p>

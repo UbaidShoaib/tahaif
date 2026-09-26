@@ -10,20 +10,28 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
+        // Anaar (pomegranate berry) — ADR 0003. Use 700+ for text and CTA backgrounds.
         primary: {
-          DEFAULT: "#16a34a",
-          50: "#f0fdf4",
-          100: "#dcfce7",
-          200: "#bbf7d0",
-          300: "#86efac",
-          400: "#4ade80",
-          500: "#22c55e",
-          600: "#16a34a",
-          700: "#15803d",
-          800: "#166534",
-          900: "#14532d",
-          950: "#052e16",
+          DEFAULT: "#9f1f50",
+          50: "#fdf2f6",
+          100: "#fce7ef",
+          200: "#f9cfe0",
+          300: "#f4a6c4",
+          400: "#ec74a0",
+          500: "#db4a7d",
+          600: "#c02d63",
+          700: "#9f1f50",
+          800: "#831a44",
+          900: "#6b173a",
+          950: "#420a21",
           foreground: "#ffffff",
+        },
+        // Zari (antique gold) — decorative only, never text on light backgrounds or buttons.
+        gold: {
+          DEFAULT: "#d4a017",
+          soft: "#fdf8e7",
+          ink: "#7a5406",
+          dark: "#a16207",
         },
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
