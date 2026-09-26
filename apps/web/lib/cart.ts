@@ -1,3 +1,4 @@
+import { guestCartHeaders, syncGuestCartToken } from "@/lib/guest-cart";
 import { apiFetch } from "@/lib/api";
 
 /** Matches the API's greeting_message limit. */
@@ -25,6 +26,8 @@ export interface CartRead {
   item_count: number;
   subtotal_pkr: number;
   items: CartItemRead[];
+  /** Guest carts only (ADR 0004); stored and sent back as X-Cart-Token. */
+  guest_token?: string | null;
 }
 
 export interface CartItemAdd {
@@ -59,6 +62,9 @@ export interface CheckoutPlace {
   notes?: string | null;
   coupon_code?: string | null;
   use_loyalty_points?: boolean;
+  /** Required for guest checkout (ADR 0004). */
+  contact_email?: string | null;
+  contact_phone?: string | null;
 }
 
 export interface QuoteLineItem {
@@ -136,32 +142,50 @@ export interface OrderRead {
   payment_method: PaymentMethod | null;
 }
 
+/**
+ * Cart and checkout calls work signed in (token) or as a guest (token null).
+ * The guest cart header is added automatically, and every cart response updates
+ * the stored guest token (see lib/guest-cart.ts).
+ */
+async function cartCall(path: string, token: string | null, init: { method?: string; body?: unknown } = {}) {
+  const cart = await apiFetch<CartRead>(path, { ...init, token: token ?? undefined, headers: guestCartHeaders() });
+  syncGuestCartToken(cart, !!token);
+  return cart;
+}
+
 export const cartApi = {
-  get: (token: string) =>
-    apiFetch<CartRead>("/cart", { token }),
+  get: (token: string | null) => cartCall("/cart", token),
 
-  addItem: (body: CartItemAdd, token: string) =>
-    apiFetch<CartRead>("/cart/items", { method: "POST", body, token }),
+  addItem: (body: CartItemAdd, token: string | null) => cartCall("/cart/items", token, { method: "POST", body }),
 
-  updateItem: (itemId: string, body: CartItemUpdate, token: string) =>
-    apiFetch<CartRead>(`/cart/items/${itemId}`, { method: "PATCH", body, token }),
+  updateItem: (itemId: string, body: CartItemUpdate, token: string | null) =>
+    cartCall(`/cart/items/${itemId}`, token, { method: "PATCH", body }),
 
-  removeItem: (itemId: string, token: string) =>
-    apiFetch<CartRead>(`/cart/items/${itemId}`, { method: "DELETE", token }),
+  removeItem: (itemId: string, token: string | null) =>
+    cartCall(`/cart/items/${itemId}`, token, { method: "DELETE" }),
 
-  clear: (token: string) =>
-    apiFetch<CartRead>("/cart", { method: "DELETE", token }),
+  clear: (token: string | null) => cartCall("/cart", token, { method: "DELETE" }),
 
-  quote: (cityId: string, token: string, opts: QuoteOptions = {}) => {
+  quote: (cityId: string, token: string | null, opts: QuoteOptions = {}) => {
     const qs = new URLSearchParams({ city_id: cityId });
     if (opts.couponCode) qs.set("coupon_code", opts.couponCode);
     if (opts.useLoyaltyPoints) qs.set("use_loyalty_points", "true");
     if (opts.paymentMethod) qs.set("payment_method", opts.paymentMethod);
-    return apiFetch<CheckoutQuote>(`/checkout/quote?${qs.toString()}`, { method: "POST", token });
+    return apiFetch<CheckoutQuote>(`/checkout/quote?${qs.toString()}`, {
+      method: "POST",
+      token: token ?? undefined,
+      headers: guestCartHeaders(),
+    });
   },
 
-  place: (body: CheckoutPlace, token: string, idempotencyKey: string) =>
-    apiFetch<OrderRead>("/checkout/place", { method: "POST", body, token, idempotencyKey }),
+  place: (body: CheckoutPlace, token: string | null, idempotencyKey: string) =>
+    apiFetch<OrderRead>("/checkout/place", {
+      method: "POST",
+      body,
+      token: token ?? undefined,
+      idempotencyKey,
+      headers: guestCartHeaders(),
+    }),
 
   getOrder: (publicToken: string) =>
     apiFetch<OrderRead>(`/orders/${publicToken}`),

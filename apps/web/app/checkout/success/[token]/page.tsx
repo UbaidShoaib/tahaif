@@ -7,6 +7,7 @@ import { formatMoney } from "@/lib/money";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { ProofUpload } from "@/components/checkout/ProofUpload";
+import { GuestOrderNote } from "@/components/checkout/GuestOrderNote";
 
 export const dynamic = "force-dynamic";
 
@@ -181,9 +182,11 @@ export default async function SuccessPage({
               {process.env.NEXT_PUBLIC_BANK_ACCOUNT_NAME ?? "Tahaif Gifts — MCB Bank"}
             </span>
           </p>
-          <ProofUpload orderId={String(order.id)} />
+          <ProofUpload orderId={String(order.id)} publicToken={String(order.public_token)} />
         </div>
       )}
+
+      <GuestOrderNote />
 
       {/* Actions */}
       <div className="mt-6 flex flex-col sm:flex-row gap-3">

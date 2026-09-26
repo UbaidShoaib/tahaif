@@ -3,6 +3,7 @@
 import { create } from "zustand";
 import { cartApi, type CartRead, type CartItemAdd, type CartItemUpdate } from "@/lib/cart";
 import { useAuthStore } from "@/stores/auth.store";
+import { getGuestCartToken } from "@/lib/guest-cart";
 
 interface CartState {
   cart: CartRead | null;
@@ -28,13 +29,14 @@ export const useCartStore = create<CartState>((set) => ({
 
   fetchCart: async () => {
     const token = getToken();
-    if (!token) return;
+    // Guests without a cart token have nothing to fetch (the API would return an empty cart).
+    if (!token && !getGuestCartToken()) return;
     set({ isFetching: true });
     try {
       const cart = await cartApi.get(token);
       set({ cart });
     } catch {
-      // silently fail — user may not be logged in
+      // Keep whatever we had; the next action will surface a real error.
     } finally {
       set({ isFetching: false });
     }
@@ -42,28 +44,24 @@ export const useCartStore = create<CartState>((set) => ({
 
   addItem: async (body) => {
     const token = getToken();
-    if (!token) return;
     const cart = await cartApi.addItem(body, token);
     set({ cart, isDrawerOpen: true });
   },
 
   updateItem: async (itemId, body) => {
     const token = getToken();
-    if (!token) return;
     const cart = await cartApi.updateItem(itemId, body, token);
     set({ cart });
   },
 
   removeItem: async (itemId) => {
     const token = getToken();
-    if (!token) return;
     const cart = await cartApi.removeItem(itemId, token);
     set({ cart });
   },
 
   clearCart: async () => {
     const token = getToken();
-    if (!token) return;
     const cart = await cartApi.clear(token);
     set({ cart });
   },

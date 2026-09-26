@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useId, useState } from "react";
-import { useRouter } from "next/navigation";
 import { AlertTriangle, Clock, MapPin, ShoppingBag, Truck } from "lucide-react";
 import { Price } from "@/components/money/Price";
 import type { City, Product, ProductCity } from "@/lib/catalog";
@@ -15,7 +14,6 @@ import { FormField } from "@/components/ui/form-field";
 import { RadioChip, RadioGroup } from "@/components/ui/radio-group";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { toast } from "@/components/ui/toast";
-import { useAuthStore } from "@/stores/auth.store";
 import { useCartStore } from "@/stores/cart.store";
 import { useDeliveryStore } from "@/stores/delivery.store";
 import { captureEvent } from "@/components/providers";
@@ -54,9 +52,7 @@ export function VariantPicker({ product, cities = [] }: Props) {
   const [addError, setAddError] = useState<string | null>(null);
   const [greeting, setGreeting] = useState("");
 
-  const { user } = useAuthStore();
   const { addItem, openDrawer } = useCartStore();
-  const router = useRouter();
   const deliverTo = useDeliveryStore((s) => s.cityId);
   const setDeliverTo = useDeliveryStore((s) => s.setCity);
   const now = useMinuteClock();
@@ -77,11 +73,8 @@ export function VariantPicker({ product, cities = [] }: Props) {
   const inStock = selected ? selected.stock_qty > 0 : true;
   const eta = chosen && now ? earliestDelivery(chosen.pc, chosen.city.timezone || DEFAULT_TZ, now) : null;
 
+  // Guests can add to the cart without an account (ADR 0004).
   const handleAddToCart = async () => {
-    if (!user) {
-      router.push("/login?callbackUrl=" + encodeURIComponent(window.location.pathname));
-      return;
-    }
     setIsAdding(true);
     setAddError(null);
     try {

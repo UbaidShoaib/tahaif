@@ -3,7 +3,8 @@ import { type NextRequest, NextResponse } from "next/server";
 // /vendor/[slug] is a public storefront, so only the portal routes under
 // /vendor are protected — not the whole prefix.
 const VENDOR_PORTAL = ["/vendor/dashboard", "/vendor/orders", "/vendor/products"];
-const PROTECTED = ["/account", "/checkout", "/admin", ...VENDOR_PORTAL];
+// Checkout is open to guests (ADR 0004), so it isn't gated here.
+const PROTECTED = ["/account", "/admin", ...VENDOR_PORTAL];
 const ROLE_GATES: [string[], string[]][] = [
   [["/admin"], ["admin", "staff"]],
   [VENDOR_PORTAL, ["vendor", "admin"]],
@@ -44,5 +45,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/account/:path*", "/checkout/:path*", "/vendor/:path*", "/admin/:path*"],
+  matcher: ["/account/:path*", "/vendor/:path*", "/admin/:path*"],
 };

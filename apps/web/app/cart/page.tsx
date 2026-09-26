@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect } from "react";
-import { ShoppingBag, ArrowRight, Trash2 } from "lucide-react";
+import { ArrowRight, Trash2 } from "lucide-react";
 import { useCartStore } from "@/stores/cart.store";
 import { useAuthStore } from "@/stores/auth.store";
 import { CartItemRow } from "@/components/cart/CartItemRow";
@@ -15,24 +15,10 @@ export default function CartPage() {
   const { user } = useAuthStore();
   const { cart, fetchCart, clearCart, isFetching } = useCartStore();
 
+  // Signed in or guest (ADR 0004): fetch whichever cart this browser has.
   useEffect(() => {
-    if (user) void fetchCart();
+    void fetchCart();
   }, [user, fetchCart]);
-
-  if (!user) {
-    return (
-      <div className="container mx-auto px-4 py-24 text-center max-w-md">
-        <ShoppingBag className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
-        <h1 className="text-2xl font-bold mb-2">Sign in to view your cart</h1>
-        <p className="text-muted-foreground mb-6">
-          Your cart is saved when you&apos;re logged in.
-        </p>
-        <Button asChild>
-          <Link href="/login?callbackUrl=/cart">Sign in</Link>
-        </Button>
-      </div>
-    );
-  }
 
   if (isFetching && !cart) {
     return (

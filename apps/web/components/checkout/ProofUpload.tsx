@@ -7,7 +7,12 @@ import { useAuthStore } from "@/stores/auth.store";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api/v1";
 
-export function ProofUpload({ orderId }: { orderId: string }) {
+/**
+ * Bank-transfer receipt upload. Signed-in buyers upload by order id; guests (or a
+ * buyer whose session has expired) upload with the order's public token from the
+ * confirmation link (ADR 0004).
+ */
+export function ProofUpload({ orderId, publicToken }: { orderId: string; publicToken?: string }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [uploaded, setUploaded] = useState(false);
@@ -16,7 +21,7 @@ export function ProofUpload({ orderId }: { orderId: string }) {
   const accessToken = useAuthStore((s) => s.accessToken);
 
   async function handleFile(file: File) {
-    if (!accessToken) {
+    if (!accessToken && !publicToken) {
       setError("Your session has expired. Sign in again to upload your receipt.");
       return;
     }
@@ -25,11 +30,13 @@ export function ProofUpload({ orderId }: { orderId: string }) {
     try {
       const form = new FormData();
       form.append("file", file);
-      const resp = await fetch(`${API_URL}/orders/${orderId}/proof`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${accessToken}` },
-        body: form,
-      });
+      const resp = accessToken
+        ? await fetch(`${API_URL}/orders/${orderId}/proof`, {
+            method: "POST",
+            headers: { Authorization: `Bearer ${accessToken}` },
+            body: form,
+          })
+        : await fetch(`${API_URL}/orders/by-token/${publicToken}/proof`, { method: "POST", body: form });
       if (!resp.ok) {
         const data = (await resp.json().catch(() => ({}))) as { detail?: string };
         throw new Error(data.detail ?? "Upload failed");

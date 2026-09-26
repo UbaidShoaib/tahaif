@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useForm, type FieldErrors } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { ArrowLeft, ChevronDown, Gift, Lock, ShoppingBag } from "lucide-react";
+import { ArrowLeft, ChevronDown, Gift, Lock } from "lucide-react";
 import { useCartStore } from "@/stores/cart.store";
 import { useAuthStore } from "@/stores/auth.store";
 import { useCurrencyStore } from "@/stores/currency.store";
@@ -18,6 +18,8 @@ import { formatMoney } from "@/lib/money";
 import { captureEvent } from "@/components/providers";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
+import { FormField } from "@/components/ui/form-field";
+import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
   checkoutSchema,
@@ -79,6 +81,9 @@ export default function CheckoutPage() {
     // We focus the error summary instead; it links to each field.
     shouldFocusError: false,
     defaultValues: {
+      is_guest: !useAuthStore.getState().user,
+      contact_email: "",
+      contact_phone: "",
       payment_method: "cod",
       delivery_city_id: useDeliveryStore.getState().cityId ?? "",
       delivery_date: today,
@@ -95,9 +100,20 @@ export default function CheckoutPage() {
   const paymentMethod = watch("payment_method");
 
   useEffect(() => {
-    if (user) void fetchCart();
+    void fetchCart();
     void fetchCities().then(setCities);
   }, [user, fetchCart]);
+
+  // The city select gets its default before its options exist, so the browser can't
+  // show it. Re-apply once the options render so the screen matches the form value.
+  useEffect(() => {
+    if (cities.length > 0) setValue("delivery_city_id", getValues("delivery_city_id"));
+  }, [cities, setValue, getValues]);
+
+  // Guests give contact details; signed-in buyers don't (ADR 0004).
+  useEffect(() => {
+    setValue("is_guest", !user);
+  }, [user, setValue]);
 
   // Saved addresses and loyalty balance are optional extras: failures just hide them.
   useEffect(() => {
@@ -108,9 +124,9 @@ export default function CheckoutPage() {
   }, [user]);
 
   const doQuote = useCallback(async () => {
-    if (!cityId || !user) return;
-    const token = useAuthStore.getState().accessToken;
-    if (!token) return;
+    if (!cityId) return;
+    // Requotes after sign-in, when the guest cart is merged into the account's.
+    const token = user ? useAuthStore.getState().accessToken : null;
     setIsQuoting(true);
     try {
       const q = await cartApi.quote(cityId, token, {
@@ -184,12 +200,17 @@ export default function CheckoutPage() {
   const onValid = async (values: CheckoutFormValues) => {
     setErrorList([]);
     const token = useAuthStore.getState().accessToken;
-    if (!user || !token) return;
     setIsPlacing(true);
     setPlaceError(null);
     captureEvent("checkout_start", { payment_method: values.payment_method });
 
-    const body = { ...values, coupon_code: appliedCoupon, use_loyalty_points: useLoyalty };
+    const { is_guest, contact_email, contact_phone, ...delivery } = values;
+    const body = {
+      ...delivery,
+      coupon_code: appliedCoupon,
+      use_loyalty_points: useLoyalty,
+      ...(is_guest ? { contact_email, contact_phone } : {}),
+    };
     const payload = JSON.stringify(body);
     if (attemptRef.current?.payload !== payload) {
       attemptRef.current = { payload, key: crypto.randomUUID() };
@@ -225,24 +246,6 @@ export default function CheckoutPage() {
   useEffect(() => {
     if (invalidAttempt > 0) errorSummaryRef.current?.focus();
   }, [invalidAttempt]);
-
-  if (!user) {
-    return (
-      <div className="container mx-auto max-w-md px-4 py-24">
-        <EmptyState
-          icon={ShoppingBag}
-          as="h1"
-          title="Sign in to checkout"
-          description="Your cart and saved addresses are linked to your account."
-          action={
-            <Button asChild>
-              <Link href="/login?callbackUrl=/checkout">Sign in</Link>
-            </Button>
-          }
-        />
-      </div>
-    );
-  }
 
   if (cart && cart.items.length === 0) {
     return (
@@ -328,6 +331,47 @@ export default function CheckoutPage() {
                 </ul>
               </AlertDescription>
             </Alert>
+          )}
+
+          {!user && (
+            <section aria-labelledby="contact-heading" className="space-y-4 rounded-xl border bg-card p-5">
+              <div className="flex flex-wrap items-baseline justify-between gap-2">
+                <h2 id="contact-heading" className="text-h3">
+                  Your details
+                </h2>
+                <Link href="/login?callbackUrl=/checkout" className="text-sm font-medium text-link hover:underline">
+                  Have an account? Sign in
+                </Link>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                No account needed. We&apos;ll send your order confirmation and tracking link here.
+              </p>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <FormField label="Your email" required id="contact_email" error={errors.contact_email?.message}>
+                  {(p) => (
+                    <Input {...p} type="email" autoComplete="email" inputMode="email" {...register("contact_email")} />
+                  )}
+                </FormField>
+                <FormField
+                  label="Your phone"
+                  required
+                  id="contact_phone"
+                  hint="Any country; we'll only use it about this order."
+                  error={errors.contact_phone?.message}
+                >
+                  {(p) => (
+                    <Input
+                      {...p}
+                      type="tel"
+                      inputMode="tel"
+                      autoComplete="tel"
+                      placeholder="+44 7700 900123"
+                      {...register("contact_phone")}
+                    />
+                  )}
+                </FormField>
+              </div>
+            </section>
           )}
 
           <DeliveryDetailsSection

@@ -19,8 +19,10 @@ export function Header() {
   const { user, logout } = useAuthStore();
   const { cart, fetchCart, openDrawer } = useCartStore();
 
+  // Load the cart for guests too (ADR 0004). When a guest signs in, the next fetch
+  // sends both credentials and the API merges the guest cart into theirs.
   useEffect(() => {
-    if (user) void fetchCart();
+    void fetchCart();
   }, [user, fetchCart]);
 
   const itemCount = cart?.item_count ?? 0;
