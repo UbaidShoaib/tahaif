@@ -26,7 +26,7 @@ test.describe("Bank transfer checkout + proof upload", () => {
     await page.fill('[name="recipient_phone"]', "+92 321 9876543");
     await page.fill('[name="address_line1"]', "Flat 5, DHA Phase 2");
 
-    const citySelect = page.locator('[name="delivery_city_id"], select').first();
+    const citySelect = page.locator('select[name="delivery_city_id"]');
     if (await citySelect.count() > 0) await citySelect.selectOption({ index: 1 });
 
     const future = new Date();
@@ -34,10 +34,12 @@ test.describe("Bank transfer checkout + proof upload", () => {
     await page.fill('[name="delivery_date"]', future.toISOString().split("T")[0]);
 
     // Select bank transfer
-    await page.getByRole("button", { name: /bank transfer/i }).click();
+    // Payment methods are radio cards: click the card, then confirm the radio is selected.
+    await page.locator("label", { hasText: /bank transfer/i }).click();
+    await expect(page.getByRole("radio", { name: /bank transfer/i })).toBeChecked();
 
     // IBAN section should appear (from env var or fallback)
-    await expect(page.getByText(/IBAN|bank/i)).toBeVisible();
+    await expect(page.getByText(/IBAN/i)).toBeVisible();
 
     // Place order
     await page.getByRole("button", { name: /place order|confirm/i }).click();

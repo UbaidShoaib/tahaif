@@ -1,36 +1,41 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { useForm, type FieldErrors } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { ArrowLeft, ChevronDown, Gift, Lock, ShoppingBag } from "lucide-react";
 import { useCartStore } from "@/stores/cart.store";
 import { useAuthStore } from "@/stores/auth.store";
-import { cartApi, type CheckoutPlace, type CheckoutQuote, type PaymentMethod } from "@/lib/cart";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
-import { formatMoney } from "@/lib/money";
-import { Price } from "@/components/money/Price";
 import { useCurrencyStore } from "@/stores/currency.store";
 import { useDeliveryStore } from "@/stores/delivery.store";
+import { cartApi, type CheckoutQuote, type PaymentMethod } from "@/lib/cart";
 import { ApiError } from "@/lib/api";
 import { accountApi, type AddressRead } from "@/lib/account";
 import { loyaltyApi } from "@/lib/loyalty";
-import { ArrowLeft, ShoppingBag } from "lucide-react";
+import { formatMoney } from "@/lib/money";
 import { captureEvent } from "@/components/providers";
-
-type City = { id: string; name: string; slug: string; is_active: boolean };
+import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import {
+  checkoutSchema,
+  FIELD_ORDER,
+  localToday,
+  type CheckoutFormValues,
+} from "@/components/checkout/checkout-schema";
+import { DeliveryDetailsSection, type CheckoutCity } from "@/components/checkout/DeliveryDetailsSection";
+import { PaymentMethodSection } from "@/components/checkout/PaymentMethodSection";
+import { OrderSummary, SummaryItems, type SummaryTotals } from "@/components/checkout/OrderSummary";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api/v1";
 
-async function fetchCities(): Promise<City[]> {
+async function fetchCities(): Promise<CheckoutCity[]> {
   const res = await fetch(`${API_BASE}/cities`);
   if (!res.ok) return [];
-  return res.json() as Promise<City[]>;
+  return res.json() as Promise<CheckoutCity[]>;
 }
-
-const today = new Date().toISOString().split("T")[0] ?? "";
 
 export default function CheckoutPage() {
   const router = useRouter();
@@ -38,30 +43,56 @@ export default function CheckoutPage() {
   const { cart, fetchCart } = useCartStore();
   const displayCurrency = useCurrencyStore((s) => s.currency);
 
-  const [cities, setCities] = useState<City[]>([]);
+  const [cities, setCities] = useState<CheckoutCity[]>([]);
   const [quote, setQuote] = useState<CheckoutQuote | null>(null);
   const [isQuoting, setIsQuoting] = useState(false);
   const [isPlacing, setIsPlacing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [placeError, setPlaceError] = useState<string | null>(null);
 
-  const [couponInput, setCouponInput] = useState("");
   const [appliedCoupon, setAppliedCoupon] = useState<string | null>(null);
   const [couponError, setCouponError] = useState<string | null>(null);
   const [useLoyalty, setUseLoyalty] = useState(false);
   const [pointsBalance, setPointsBalance] = useState(0);
   const [addresses, setAddresses] = useState<AddressRead[]>([]);
+  const [selectedAddressId, setSelectedAddressId] = useState("");
 
-  const [form, setForm] = useState<CheckoutPlace>({
-    payment_method: "cod",
-    delivery_city_id: useDeliveryStore.getState().cityId ?? "",
-    delivery_date: today,
-    recipient_name: "",
-    recipient_phone: "",
-    address_line1: "",
-    address_line2: "",
-    landmark: "",
-    notes: "",
+  const [today] = useState(localToday);
+  const [errorList, setErrorList] = useState<{ name: string; label: string; message: string }[]>([]);
+  // Bumped on every failed submit so a repeat attempt re-focuses the summary.
+  const [invalidAttempt, setInvalidAttempt] = useState(0);
+  const errorSummaryRef = useRef<HTMLDivElement>(null);
+  // Reuse the Idempotency-Key when the buyer retries the exact same order (e.g. after a
+  // network timeout), so a request that did reach the server can't create a second order.
+  const attemptRef = useRef<{ payload: string; key: string } | null>(null);
+
+  const {
+    register,
+    handleSubmit,
+    watch,
+    setValue,
+    getValues,
+    formState: { errors },
+  } = useForm<CheckoutFormValues>({
+    resolver: zodResolver(checkoutSchema),
+    mode: "onSubmit",
+    reValidateMode: "onChange",
+    // We focus the error summary instead; it links to each field.
+    shouldFocusError: false,
+    defaultValues: {
+      payment_method: "cod",
+      delivery_city_id: useDeliveryStore.getState().cityId ?? "",
+      delivery_date: today,
+      recipient_name: "",
+      recipient_phone: "",
+      address_line1: "",
+      address_line2: "",
+      landmark: "",
+      notes: "",
+    },
   });
+
+  const cityId = watch("delivery_city_id");
+  const paymentMethod = watch("payment_method");
 
   useEffect(() => {
     if (user) void fetchCart();
@@ -77,15 +108,15 @@ export default function CheckoutPage() {
   }, [user]);
 
   const doQuote = useCallback(async () => {
-    if (!form.delivery_city_id || !user) return;
+    if (!cityId || !user) return;
     const token = useAuthStore.getState().accessToken;
     if (!token) return;
     setIsQuoting(true);
     try {
-      const q = await cartApi.quote(form.delivery_city_id, token, {
+      const q = await cartApi.quote(cityId, token, {
         couponCode: appliedCoupon,
         useLoyaltyPoints: useLoyalty,
-        paymentMethod: form.payment_method,
+        paymentMethod,
       });
       setQuote(q);
       // Only a successful quote *with* a coupon clears a coupon error; the
@@ -102,16 +133,14 @@ export default function CheckoutPage() {
     } finally {
       setIsQuoting(false);
     }
-  }, [form.delivery_city_id, form.payment_method, user, appliedCoupon, useLoyalty]);
+  }, [cityId, paymentMethod, user, appliedCoupon, useLoyalty]);
 
   useEffect(() => {
-    if (form.delivery_city_id) void doQuote();
-  }, [form.delivery_city_id, doQuote]);
+    if (cityId) void doQuote();
+  }, [cityId, doQuote]);
 
-  const applyCoupon = () => {
-    const code = couponInput.trim().toUpperCase();
-    if (!code) return;
-    if (!form.delivery_city_id) {
+  const applyCoupon = (code: string) => {
+    if (!getValues("delivery_city_id")) {
       setCouponError("Choose a delivery city first so we can price your order.");
       return;
     }
@@ -119,411 +148,224 @@ export default function CheckoutPage() {
     setAppliedCoupon(code);
   };
 
-  const fillFromSavedAddress = (id: string) => {
+  const selectAddress = (id: string) => {
+    setSelectedAddressId(id);
     const a = addresses.find((x) => x.id === id);
-    if (!a) return;
+    const opts = { shouldValidate: errorList.length > 0, shouldDirty: true };
+    if (!a) {
+      // "A new address": clear the recipient fields for fresh entry.
+      for (const k of ["recipient_name", "recipient_phone", "address_line1", "address_line2", "landmark"] as const) {
+        setValue(k, "", opts);
+      }
+      return;
+    }
     const city = cities.find((c) => c.name.toLowerCase() === a.city_name.toLowerCase());
-    setForm((f) => ({
-      ...f,
-      recipient_name: a.recipient_name,
-      recipient_phone: a.recipient_phone,
-      address_line1: a.line1,
-      address_line2: a.line2 ?? "",
-      landmark: a.landmark ?? "",
-      delivery_city_id: city?.id ?? f.delivery_city_id,
-    }));
+    setValue("recipient_name", a.recipient_name, opts);
+    setValue("recipient_phone", a.recipient_phone, opts);
+    setValue("address_line1", a.line1, opts);
+    setValue("address_line2", a.line2 ?? "", opts);
+    setValue("landmark", a.landmark ?? "", opts);
+    if (city) {
+      setValue("delivery_city_id", city.id, opts);
+      useDeliveryStore.getState().setCity(city.id);
+    }
   };
 
-  const set = (key: keyof CheckoutPlace, value: string) =>
-    setForm((f) => ({ ...f, [key]: value }));
+  // Start from the buyer's default saved address (once), unless they've already typed one.
+  const prefilled = useRef(false);
+  useEffect(() => {
+    if (prefilled.current || addresses.length === 0 || cities.length === 0) return;
+    prefilled.current = true;
+    const def = addresses.find((a) => a.is_default);
+    if (def && !getValues("recipient_name") && !getValues("address_line1")) selectAddress(def.id);
+    // selectAddress is recreated every render; this effect must only run once per load.
+  }, [addresses, cities]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const handlePlace = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!user) return;
+  const onValid = async (values: CheckoutFormValues) => {
+    setErrorList([]);
     const token = useAuthStore.getState().accessToken;
-    if (!token) return;
+    if (!user || !token) return;
     setIsPlacing(true);
-    setError(null);
-    captureEvent("checkout_start", { payment_method: form.payment_method });
+    setPlaceError(null);
+    captureEvent("checkout_start", { payment_method: values.payment_method });
+
+    const body = { ...values, coupon_code: appliedCoupon, use_loyalty_points: useLoyalty };
+    const payload = JSON.stringify(body);
+    if (attemptRef.current?.payload !== payload) {
+      attemptRef.current = { payload, key: crypto.randomUUID() };
+    }
     try {
-      const idempotencyKey = crypto.randomUUID();
-      const order = await cartApi.place(
-        { ...form, coupon_code: appliedCoupon, use_loyalty_points: useLoyalty },
-        token,
-        idempotencyKey,
-      );
+      const order = await cartApi.place(body, token, attemptRef.current.key);
       captureEvent("order_placed", {
         order_id: order.id,
         total_pkr: order.total_pkr,
         payment_method: order.payment_method,
         item_count: order.items.length,
       });
+      attemptRef.current = null;
       await fetchCart();
       router.push(`/checkout/success/${order.public_token}`);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
+      setPlaceError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
     } finally {
       setIsPlacing(false);
     }
   };
 
+  const onInvalid = (errs: FieldErrors<CheckoutFormValues>) => {
+    const list = FIELD_ORDER.flatMap(({ name, label }) => {
+      const message = errs[name]?.message;
+      return message ? [{ name, label, message }] : [];
+    });
+    setErrorList(list);
+    setInvalidAttempt((n) => n + 1);
+  };
+
+  // After the summary renders, move focus to it so keyboard and screen-reader users hear it.
+  useEffect(() => {
+    if (invalidAttempt > 0) errorSummaryRef.current?.focus();
+  }, [invalidAttempt]);
+
   if (!user) {
     return (
-      <div className="container mx-auto px-4 py-24 text-center max-w-md">
-        <ShoppingBag className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
-        <h1 className="text-2xl font-bold mb-2">Sign in to checkout</h1>
-        <Button asChild>
-          <Link href="/login?callbackUrl=/checkout">Sign in</Link>
-        </Button>
+      <div className="container mx-auto max-w-md px-4 py-24">
+        <EmptyState
+          icon={ShoppingBag}
+          as="h1"
+          title="Sign in to checkout"
+          description="Your cart and saved addresses are linked to your account."
+          action={
+            <Button asChild>
+              <Link href="/login?callbackUrl=/checkout">Sign in</Link>
+            </Button>
+          }
+        />
       </div>
     );
   }
 
   if (cart && cart.items.length === 0) {
     return (
-      <div className="container mx-auto px-4 py-24 text-center max-w-md">
-        <div className="text-6xl mb-4">🎁</div>
-        <h1 className="text-2xl font-bold mb-2">Your cart is empty</h1>
-        <Button asChild>
-          <Link href="/search">Browse Gifts</Link>
-        </Button>
+      <div className="container mx-auto max-w-md px-4 py-24">
+        <EmptyState
+          icon={Gift}
+          as="h1"
+          title="Your cart is empty"
+          description="Add a gift to start an order."
+          action={
+            <Button asChild>
+              <Link href="/search">Browse Gifts</Link>
+            </Button>
+          }
+        />
       </div>
     );
   }
 
-  const summary = quote ?? {
+  const totals: SummaryTotals = quote ?? {
     subtotal_pkr: cart?.subtotal_pkr ?? 0,
     delivery_pkr: 0,
     coupon_discount_pkr: 0,
     loyalty_discount_pkr: 0,
     loyalty_points_used: 0,
     total_pkr: cart?.subtotal_pkr ?? 0,
-    currency: "PKR",
-    total_charged: cart?.subtotal_pkr ?? 0,
   };
-  const pkr = (paisa: number) => formatMoney(paisa, "PKR");
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-4xl">
-      <div className="flex items-center gap-3 mb-6">
+    // Bottom padding leaves room for the pinned Place Order bar on phones.
+    <div className="container mx-auto max-w-5xl px-4 pb-32 pt-6 lg:pb-12">
+      <div className="mb-6 flex items-center gap-2">
         <Link
           href="/cart"
           aria-label="Back to cart"
-          className="inline-flex h-11 w-11 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+          className="inline-flex h-11 w-11 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
         >
-          <ArrowLeft className="h-5 w-5" aria-hidden />
+          <ArrowLeft className="h-5 w-5 rtl:rotate-180" aria-hidden />
         </Link>
-        <h1 className="text-2xl font-bold">Checkout</h1>
+        <h1 className="text-h1">Checkout</h1>
+        <span className="ms-auto flex items-center gap-1.5 text-xs text-muted-foreground">
+          <Lock aria-hidden className="h-3.5 w-3.5" /> Secure checkout
+        </span>
       </div>
 
-      <form onSubmit={(e) => { void handlePlace(e); }} className="grid grid-cols-1 gap-8 lg:grid-cols-3">
-        {/* Form fields */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Delivery info */}
-          <section className="rounded-xl border p-5 space-y-4">
-            <h2 className="font-semibold text-lg">Delivery Details</h2>
+      {/* Phones: collapsible item list with the running total, above the form. */}
+      {cart && (
+        <details className="group mb-6 rounded-xl border bg-card lg:hidden">
+          <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-2 px-4 font-medium [&::-webkit-details-marker]:hidden">
+            <span className="flex items-center gap-2">
+              Order summary
+              <ChevronDown aria-hidden className="h-4 w-4 transition-transform group-open:rotate-180" />
+            </span>
+            <span className="tabular-nums text-link">{formatMoney(totals.total_pkr, "PKR")}</span>
+          </summary>
+          <div className="border-t px-4 py-3">
+            <SummaryItems cart={cart} />
+          </div>
+        </details>
+      )}
 
-            {addresses.length > 0 && (
-              <div className="space-y-1.5">
-                <Label htmlFor="saved-address">Send to a saved address</Label>
-                <select
-                  id="saved-address"
-                  defaultValue=""
-                  onChange={(e) => fillFromSavedAddress(e.target.value)}
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                >
-                  <option value="">Choose a recipient…</option>
-                  {addresses.map((a) => (
-                    <option key={a.id} value={a.id}>
-                      {a.recipient_name}, {a.line1}, {a.city_name}{a.is_default ? " (default)" : ""}
-                    </option>
+      <form
+        noValidate
+        onSubmit={(e) => void handleSubmit(onValid, onInvalid)(e)}
+        className="grid grid-cols-1 gap-6 lg:grid-cols-3 lg:gap-8"
+      >
+        <div className="space-y-6 lg:col-span-2">
+          {errorList.length > 0 && (
+            <Alert variant="destructive" ref={errorSummaryRef} tabIndex={-1} aria-labelledby="error-summary-title">
+              <AlertTitle id="error-summary-title">
+                {errorList.length === 1 ? "1 thing needs fixing" : `${errorList.length} things need fixing`} before we
+                can place your order
+              </AlertTitle>
+              <AlertDescription>
+                <ul className="mt-2 list-disc space-y-1 ps-5">
+                  {errorList.map((e) => (
+                    <li key={e.name}>
+                      <a href={`#${e.name}`} className="underline underline-offset-2 hover:no-underline">
+                        {e.label}: {e.message}
+                      </a>
+                    </li>
                   ))}
-                </select>
-              </div>
-            )}
+                </ul>
+              </AlertDescription>
+            </Alert>
+          )}
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <Label htmlFor="city">Delivery City *</Label>
-                <select
-                  id="city"
-                  required
-                  value={form.delivery_city_id}
-                  onChange={(e) => {
-                    set("delivery_city_id", e.target.value);
-                    useDeliveryStore.getState().setCity(e.target.value || null);
-                  }}
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                >
-                  <option value="">Select city…</option>
-                  {cities.filter((c) => c.is_active).map((c) => (
-                    <option key={c.id} value={c.id}>{c.name}</option>
-                  ))}
-                </select>
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="delivery_date">Delivery Date *</Label>
-                <Input
-                  id="delivery_date"
-                  type="date"
-                  required
-                  min={today}
-                  value={form.delivery_date}
-                  onChange={(e) => set("delivery_date", e.target.value)}
-                />
-              </div>
-            </div>
+          <DeliveryDetailsSection
+            register={register}
+            errors={errors}
+            cities={cities}
+            addresses={addresses}
+            selectedAddressId={selectedAddressId}
+            onSelectAddress={selectAddress}
+            minDate={today}
+            onCityChange={(id) => useDeliveryStore.getState().setCity(id || null)}
+          />
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <Label htmlFor="recipient_name">Recipient Name *</Label>
-                <Input
-                  id="recipient_name"
-                  required
-                  autoComplete="shipping name"
-                  minLength={2}
-                  placeholder="Full name of recipient"
-                  value={form.recipient_name}
-                  onChange={(e) => set("recipient_name", e.target.value)}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="recipient_phone">Recipient Phone *</Label>
-                <Input
-                  id="recipient_phone"
-                  type="tel"
-                  inputMode="tel"
-                  required
-                  autoComplete="shipping tel"
-                  placeholder="+92 300 1234567"
-                  value={form.recipient_phone}
-                  onChange={(e) => set("recipient_phone", e.target.value)}
-                />
-              </div>
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="address_line1">Address *</Label>
-              <Input
-                id="address_line1"
-                required
-                autoComplete="shipping address-line1"
-                minLength={5}
-                placeholder="House/flat, street, area"
-                value={form.address_line1}
-                onChange={(e) => set("address_line1", e.target.value)}
-              />
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <Label htmlFor="address_line2">Apartment / Floor (optional)</Label>
-                <Input
-                  id="address_line2"
-                  autoComplete="shipping address-line2"
-                  placeholder="e.g. Flat 3B"
-                  value={form.address_line2 ?? ""}
-                  onChange={(e) => set("address_line2", e.target.value)}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="landmark">Nearby Landmark (optional)</Label>
-                <Input
-                  id="landmark"
-                  placeholder="e.g. Near McDonalds"
-                  value={form.landmark ?? ""}
-                  onChange={(e) => set("landmark", e.target.value)}
-                />
-              </div>
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="notes">Order Notes (optional)</Label>
-              <Input
-                id="notes"
-                placeholder="Special instructions for your order"
-                value={form.notes ?? ""}
-                onChange={(e) => set("notes", e.target.value)}
-              />
-            </div>
-          </section>
-
-          {/* Payment method */}
-          <section className="rounded-xl border p-5 space-y-4">
-            <h2 className="font-semibold text-lg">Payment Method</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {([
-                { value: "cod", label: "Cash on Delivery", desc: "Pay when delivered" },
-                { value: "bank_transfer", label: "Bank Transfer", desc: "Transfer & send proof" },
-              ] as { value: PaymentMethod; label: string; desc: string }[]).map((pm) => (
-                <button
-                  key={pm.value}
-                  type="button"
-                  aria-pressed={form.payment_method === pm.value}
-                  onClick={() => set("payment_method", pm.value)}
-                  className={`rounded-lg border-2 p-4 text-left transition-colors ${
-                    form.payment_method === pm.value
-                      ? "border-primary bg-primary-soft"
-                      : "border-input hover:border-primary-400"
-                  }`}
-                >
-                  <p className="font-medium">{pm.label}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">{pm.desc}</p>
-                </button>
-              ))}
-            </div>
-            {form.payment_method === "bank_transfer" && (
-              <div className="rounded-lg bg-muted p-4 text-sm space-y-1">
-                <p className="font-medium">Bank Transfer Details</p>
-                <p>Account: {process.env.NEXT_PUBLIC_BANK_ACCOUNT_NAME ?? "Tahaif Gifts — MCB Bank"}</p>
-                <p>IBAN: {process.env.NEXT_PUBLIC_BANK_IBAN ?? "—"}</p>
-                <p className="text-muted-foreground">After placing your order, transfer the total amount and upload your payment receipt on the confirmation page.</p>
-              </div>
-            )}
-          </section>
+          <PaymentMethodSection
+            value={paymentMethod}
+            onChange={(m: PaymentMethod) => setValue("payment_method", m, { shouldDirty: true })}
+          />
         </div>
 
-        {/* Order summary */}
         <div className="lg:col-span-1">
-          <div className="rounded-xl border p-5 space-y-4 sticky top-20">
-            <h2 className="font-semibold text-lg">Order Summary</h2>
-            <Separator />
-
-            {cart && (
-              <div className="space-y-2 text-sm max-h-48 overflow-y-auto">
-                {cart.items.map((item) => (
-                  <div key={item.id} className="flex justify-between gap-2">
-                    <span className="text-muted-foreground line-clamp-1">
-                      {item.product_name}
-                      {item.variant_name ? ` (${item.variant_name})` : ""}
-                      {" ×"}{item.qty}
-                    </span>
-                    <span className="shrink-0">{pkr(item.line_total_pkr)}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            <Separator />
-
-            <div className="space-y-2 text-sm">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Subtotal</span>
-                <span>{pkr(summary.subtotal_pkr)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Delivery</span>
-                <span aria-live="polite">
-                  {isQuoting
-                    ? "Calculating…"
-                    : quote
-                      ? pkr(quote.delivery_pkr)
-                      : "Select city"}
-                </span>
-              </div>
-              {summary.coupon_discount_pkr > 0 && (
-                <div className="flex justify-between text-success">
-                  <span>Coupon {appliedCoupon}</span>
-                  <span>−{pkr(summary.coupon_discount_pkr)}</span>
-                </div>
-              )}
-              {summary.loyalty_discount_pkr > 0 && (
-                <div className="flex justify-between text-success">
-                  <span>{summary.loyalty_points_used} loyalty points</span>
-                  <span>−{pkr(summary.loyalty_discount_pkr)}</span>
-                </div>
-              )}
-            </div>
-
-            <Separator />
-
-            {/* Coupon */}
-            <div className="space-y-1.5">
-              <Label htmlFor="coupon">Coupon code</Label>
-              {appliedCoupon ? (
-                <div className="flex items-center justify-between rounded-md border px-3 py-2 text-sm">
-                  <span className="font-mono">{appliedCoupon}</span>
-                  <button
-                    type="button"
-                    onClick={() => { setAppliedCoupon(null); setCouponInput(""); }}
-                    className="text-muted-foreground hover:text-destructive"
-                  >
-                    Remove
-                  </button>
-                </div>
-              ) : (
-                <div className="flex gap-2">
-                  <Input
-                    id="coupon"
-                    value={couponInput}
-                    onChange={(e) => setCouponInput(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); applyCoupon(); } }}
-                    placeholder="EID10"
-                    aria-describedby={couponError ? "coupon-error" : undefined}
-                  />
-                  <Button type="button" variant="secondary" onClick={applyCoupon} disabled={!couponInput.trim()}>
-                    Apply
-                  </Button>
-                </div>
-              )}
-              {couponError && <p id="coupon-error" role="alert" className="text-xs text-destructive">{couponError}</p>}
-            </div>
-
-            {/* Loyalty */}
-            {pointsBalance > 0 && (
-              <label htmlFor="use-loyalty" className="flex items-start gap-2 text-sm cursor-pointer">
-                <input
-                  id="use-loyalty"
-                  type="checkbox"
-                  checked={useLoyalty}
-                  onChange={(e) => setUseLoyalty(e.target.checked)}
-                  className="mt-0.5 h-4 w-4 accent-primary-700"
-                />
-                <span>
-                  Use my {pointsBalance} loyalty points
-                  <span className="block text-xs text-muted-foreground">Each point is worth Rs 1.</span>
-                </span>
-              </label>
-            )}
-
-            <Separator />
-
-            <div className="flex justify-between font-semibold">
-              <span>Total</span>
-              <span className="text-link">{pkr(summary.total_pkr)}</span>
-            </div>
-            {quote && quote.currency !== "PKR" ? (
-              <p className="rounded-md bg-muted px-3 py-2 text-sm">
-                You&apos;ll be charged{" "}
-                <strong>{formatMoney(quote.total_charged, quote.currency)}</strong>{" "}
-                ({quote.currency}, at today&apos;s rate).
-              </p>
-            ) : displayCurrency !== "PKR" ? (
-              <p className="rounded-md bg-muted px-3 py-2 text-xs text-muted-foreground">
-                {form.payment_method === "cod" ? "Cash on delivery is" : "Bank transfers are"} paid in
-                rupees. That&apos;s <Price pkr={summary.total_pkr} /> in {displayCurrency}.
-              </p>
-            ) : null}
-
-            {error && (
-              <div role="alert" className="rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-                {error}
-              </div>
-            )}
-
-            <Button
-              type="submit"
-              size="lg"
-              className="w-full"
-              loading={isPlacing}
-            >
-              {isPlacing ? "Placing Order…" : "Place Order"}
-            </Button>
-            <p className="text-xs text-center text-muted-foreground">
-              Fields marked * are required. By placing your order, you agree to our{" "}
-              <Link href="/terms" className="underline">Terms</Link>
-            </p>
-          </div>
+          <OrderSummary
+            cart={cart}
+            totals={totals}
+            quote={quote}
+            isQuoting={isQuoting}
+            hasCity={!!cityId}
+            appliedCoupon={appliedCoupon}
+            couponError={couponError}
+            onApplyCoupon={applyCoupon}
+            onRemoveCoupon={() => setAppliedCoupon(null)}
+            pointsBalance={pointsBalance}
+            useLoyalty={useLoyalty}
+            onUseLoyaltyChange={setUseLoyalty}
+            displayCurrency={displayCurrency}
+            paymentMethod={paymentMethod}
+            placeError={placeError}
+            isPlacing={isPlacing}
+          />
         </div>
       </form>
     </div>

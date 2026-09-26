@@ -35,7 +35,7 @@ test.describe("COD checkout flow", () => {
     await page.fill('[name="address_line1"]', "House 1, Street 1, Gulberg III");
 
     // Select a city
-    const citySelect = page.locator('[name="delivery_city_id"], select').first();
+    const citySelect = page.locator('select[name="delivery_city_id"]');
     if (await citySelect.count() > 0) {
       await citySelect.selectOption({ index: 1 });
     }
@@ -47,7 +47,9 @@ test.describe("COD checkout flow", () => {
     await page.fill('[name="delivery_date"]', dateStr);
 
     // COD payment
-    await page.getByRole("button", { name: /cash on delivery|cod/i }).click();
+    // Payment methods are radio cards: click the card, then confirm the radio is selected.
+    await page.locator("label", { hasText: /cash on delivery|cod/i }).click();
+    await expect(page.getByRole("radio", { name: /cash on delivery|cod/i })).toBeChecked();
 
     // Place order
     await page.getByRole("button", { name: /place order|confirm/i }).click();
