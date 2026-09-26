@@ -19,6 +19,28 @@ export class ApiError extends Error {
   }
 }
 
+type ValidationIssue = { msg?: unknown; loc?: unknown };
+
+/**
+ * FastAPI sends `detail` as a string for HTTPExceptions but as a list of issues
+ * for request validation (422). Always return a readable string: rendering the
+ * raw list as a React child crashes the page.
+ */
+export function errorMessage(detail: unknown): string | undefined {
+  if (typeof detail === "string") return detail;
+  if (Array.isArray(detail)) {
+    const messages = detail
+      .map((issue: ValidationIssue) => {
+        if (typeof issue?.msg !== "string") return null;
+        // "Value error, …" is pydantic's prefix; drop it for people.
+        return issue.msg.replace(/^Value error, /, "");
+      })
+      .filter((m): m is string => !!m);
+    if (messages.length > 0) return messages.join(" ");
+  }
+  return undefined;
+}
+
 export async function apiFetch<T>(
   path: string,
   options: RequestOptions = {},
@@ -41,8 +63,8 @@ export async function apiFetch<T>(
   });
 
   if (!res.ok) {
-    const data = (await res.json().catch(() => ({}))) as { detail?: string };
-    throw new ApiError(res.status, data?.detail ?? res.statusText, data);
+    const data = (await res.json().catch(() => ({}))) as { detail?: unknown };
+    throw new ApiError(res.status, errorMessage(data?.detail) ?? res.statusText, data);
   }
 
   if (res.status === 204) return undefined as T;
