@@ -44,3 +44,8 @@ class CartRead(BaseModel):
     item_count: int
     subtotal_pkr: int
     items: list[CartItemRead]
+    guest_token: str | None = Field(
+        default=None,
+        description="Guest carts only: send back as the X-Cart-Token header on cart and checkout calls. "
+        "Absent for signed-in carts (a guest cart sent with a signed-in request is merged into it).",
+    )

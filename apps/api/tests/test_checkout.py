@@ -203,10 +203,10 @@ async def test_quote_invalid_city_returns_400(
 
 
 @pytest.mark.asyncio
-async def test_quote_requires_auth(client: AsyncClient, city: City) -> None:
+async def test_quote_as_guest_without_a_cart_is_empty_cart(client: AsyncClient, city: City) -> None:
     city_id = str(city.id)
     resp = await client.post(f"/api/v1/checkout/quote?city_id={city_id}")
-    assert resp.status_code == 401
+    assert resp.status_code == 400  # empty cart, not 401: guests can check out (ADR 0004)
 
 
 # ── POST /checkout/place ──────────────────────────────────────────────────────
@@ -383,7 +383,7 @@ async def test_place_order_accepts_idempotency_key(
 
 
 @pytest.mark.asyncio
-async def test_place_order_requires_auth(client: AsyncClient, city: City) -> None:
+async def test_place_order_as_guest_requires_contact_details(client: AsyncClient, city: City) -> None:
     city_id = str(city.id)
     resp = await client.post(
         "/api/v1/checkout/place",
@@ -391,12 +391,13 @@ async def test_place_order_requires_auth(client: AsyncClient, city: City) -> Non
             "payment_method": "cod",
             "delivery_city_id": city_id,
             "delivery_date": _TOMORROW,
-            "recipient_name": "X",
+            "recipient_name": "Ammi Jaan",
             "recipient_phone": "+923001234500",
             "address_line1": "Somewhere Street 1",
         },
     )
-    assert resp.status_code == 401
+    assert resp.status_code == 422
+    assert "email and phone" in resp.json()["detail"]
 
 
 # ── GET /orders/me ────────────────────────────────────────────────────────────

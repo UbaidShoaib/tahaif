@@ -2,7 +2,7 @@ import uuid
 from datetime import date, datetime
 from decimal import Decimal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, EmailStr, Field
 
 from app.models.order import FulfillmentStatus, OrderStatus, PaymentMethod
 
@@ -19,6 +19,9 @@ class CheckoutPlace(BaseModel):
     notes: str | None = Field(default=None, max_length=500)
     coupon_code: str | None = Field(default=None, max_length=50)
     use_loyalty_points: bool = False
+    # Required for guest checkout (no signed-in user); ignored for signed-in buyers. ADR 0004.
+    contact_email: EmailStr | None = None
+    contact_phone: str | None = Field(default=None, min_length=7, max_length=30)
 
 
 class QuoteLineItem(BaseModel):

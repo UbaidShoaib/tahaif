@@ -1,4 +1,8 @@
+import hashlib
+import secrets
 import uuid
+from dataclasses import dataclass
+from datetime import UTC, datetime, timedelta
 
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -13,6 +17,27 @@ _NOT_FOUND = HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Item n
 _OUT_OF_STOCK = HTTPException(
     status_code=status.HTTP_409_CONFLICT, detail="Selected variant is out of stock"
 )
+GUEST_CART_TTL = timedelta(days=30)
+
+
+@dataclass(frozen=True)
+class CartOwner:
+    """Whose cart this is: a signed-in user, a guest (by the X-Cart-Token they hold), or both.
+
+    With both, the guest cart is merged into the user's cart (ADR 0004).
+    """
+
+    user_id: uuid.UUID | None = None
+    guest_token: str | None = None
+
+
+def hash_token(token: str) -> str:
+    """Only this hash is stored, so a database leak doesn't expose usable cart tokens."""
+    return hashlib.sha256(token.encode()).hexdigest()
+
+
+def new_guest_token() -> str:
+    return secrets.token_urlsafe(32)
 
 
 
@@ -54,7 +79,9 @@ def _item_to_read(item: CartItem) -> CartItemRead:
     )
 
 
-def _cart_to_read(cart: Cart) -> CartRead:
+def cart_to_read(cart: Cart | None, guest_token: str | None = None) -> CartRead:
+    if cart is None:
+        return CartRead(id=None, item_count=0, subtotal_pkr=0, items=[], guest_token=None)
     item_reads = [_item_to_read(i) for i in cart.items]
     subtotal = sum(r.line_total_pkr for r in item_reads)
     return CartRead(
@@ -62,16 +89,70 @@ def _cart_to_read(cart: Cart) -> CartRead:
         item_count=sum(r.qty for r in item_reads),
         subtotal_pkr=subtotal,
         items=item_reads,
+        guest_token=guest_token if cart.user_id is None else None,
     )
 
 
-async def get_cart(db: AsyncSession, user_id: uuid.UUID) -> CartRead:
+def _as_owner(owner: CartOwner | uuid.UUID) -> CartOwner:
+    return owner if isinstance(owner, CartOwner) else CartOwner(user_id=owner)
+
+
+async def _merge_guest_cart(repo: CartRepository, guest: Cart, user_cart: Cart) -> Cart:
+    """Move a guest cart's lines into the user's cart, then delete the guest cart."""
+    for item in list(guest.items):
+        same = next(
+            (i for i in user_cart.items if i.product_id == item.product_id and i.variant_id == item.variant_id),
+            None,
+        )
+        if same:
+            same.qty += item.qty
+            same.line_total_pkr = _unit_price(same.product, same.variant) * same.qty
+            if not same.greeting_message and item.greeting_message:
+                same.greeting_message = item.greeting_message
+            await repo.delete_item(item)
+        else:
+            await repo.move_item(item, user_cart)
+    await repo.delete_cart(await repo.reload(guest))
+    return await repo.reload(user_cart)
+
+
+async def resolve_cart(
+    db: AsyncSession, owner: CartOwner | uuid.UUID, *, create: bool
+) -> tuple[Cart | None, str | None]:
+    """The owner's cart and the guest token to hand back (None for signed-in carts).
+
+    A guest without a cart gets a new token and cart only when ``create`` is set
+    (i.e. when adding an item), so browsing never creates empty carts.
+    """
+    owner = _as_owner(owner)
     repo = CartRepository(db)
-    cart = await repo.get_or_create_for_user(user_id)
-    return _cart_to_read(cart)
+
+    if owner.user_id:
+        cart = await repo.get_or_create_for_user(owner.user_id)
+        if owner.guest_token:
+            guest = await repo.get_by_session(hash_token(owner.guest_token))
+            if guest:
+                cart = await _merge_guest_cart(repo, guest, cart)
+        return cart, None
+
+    if owner.guest_token:
+        guest = await repo.get_by_session(hash_token(owner.guest_token))
+        if guest and (guest.expires_at is None or guest.expires_at > datetime.now(UTC)):
+            guest.expires_at = datetime.now(UTC) + GUEST_CART_TTL  # sliding expiry
+            return guest, owner.guest_token
+
+    if not create:
+        return None, None
+    token = new_guest_token()
+    return await repo.create_for_session(hash_token(token), datetime.now(UTC) + GUEST_CART_TTL), token
 
 
-async def add_item(db: AsyncSession, user_id: uuid.UUID, body: CartItemAdd) -> CartRead:
+async def get_cart(db: AsyncSession, owner: CartOwner | uuid.UUID) -> CartRead:
+    cart, token = await resolve_cart(db, owner, create=False)
+    return cart_to_read(cart, token)
+
+
+async def add_item(db: AsyncSession, owner: CartOwner | uuid.UUID, body: CartItemAdd) -> CartRead:
     repo = CartRepository(db)
     prod_repo = ProductRepository(db)
 
@@ -87,7 +168,8 @@ async def add_item(db: AsyncSession, user_id: uuid.UUID, body: CartItemAdd) -> C
         if variant.stock_qty < body.qty:
             raise _OUT_OF_STOCK
 
-    cart = await repo.get_or_create_for_user(user_id)
+    cart, token = await resolve_cart(db, owner, create=True)
+    assert cart is not None
 
     # If same product+variant already in cart, increase qty
     existing = next(
@@ -119,22 +201,18 @@ async def add_item(db: AsyncSession, user_id: uuid.UUID, body: CartItemAdd) -> C
             recipient_phone=body.recipient_phone,
         )
 
-    # Expire cached items collection so selectinload re-fetches fresh data
-    db.expire(cart, ["items"])
-    # Reload cart with fresh relations
-    cart = await repo.get_or_create_for_user(user_id)
-    return _cart_to_read(cart)
+    return cart_to_read(await repo.reload(cart), token)
 
 
 async def update_item(
-    db: AsyncSession, user_id: uuid.UUID, item_id: uuid.UUID, body: CartItemUpdate
+    db: AsyncSession, owner: CartOwner | uuid.UUID, item_id: uuid.UUID, body: CartItemUpdate
 ) -> CartRead:
     repo = CartRepository(db)
     prod_repo = ProductRepository(db)
 
-    cart = await repo.get_or_create_for_user(user_id)
-    item = await repo.get_item(item_id, cart.id)
-    if not item:
+    cart, token = await resolve_cart(db, owner, create=False)
+    item = await repo.get_item(item_id, cart.id) if cart else None
+    if not cart or not item:
         raise _NOT_FOUND
 
     if body.qty == 0:
@@ -157,25 +235,22 @@ async def update_item(
                 item.recipient_phone = body.recipient_phone
             await db.flush()
 
-    db.expire(cart, ["items"])
-    cart = await repo.get_or_create_for_user(user_id)
-    return _cart_to_read(cart)
+    return cart_to_read(await repo.reload(cart), token)
 
 
-async def remove_item(db: AsyncSession, user_id: uuid.UUID, item_id: uuid.UUID) -> CartRead:
+async def remove_item(db: AsyncSession, owner: CartOwner | uuid.UUID, item_id: uuid.UUID) -> CartRead:
     repo = CartRepository(db)
-    cart = await repo.get_or_create_for_user(user_id)
-    item = await repo.get_item(item_id, cart.id)
-    if not item:
+    cart, token = await resolve_cart(db, owner, create=False)
+    item = await repo.get_item(item_id, cart.id) if cart else None
+    if not cart or not item:
         raise _NOT_FOUND
     await repo.delete_item(item)
-    db.expire(cart, ["items"])
-    cart = await repo.get_or_create_for_user(user_id)
-    return _cart_to_read(cart)
+    return cart_to_read(await repo.reload(cart), token)
 
 
-async def clear_cart(db: AsyncSession, user_id: uuid.UUID) -> CartRead:
+async def clear_cart(db: AsyncSession, owner: CartOwner | uuid.UUID) -> CartRead:
     repo = CartRepository(db)
-    cart = await repo.get_or_create_for_user(user_id)
-    await repo.clear(cart)
-    return _cart_to_read(cart)
+    cart, token = await resolve_cart(db, owner, create=False)
+    if cart:
+        await repo.clear(cart)
+    return cart_to_read(cart, token)

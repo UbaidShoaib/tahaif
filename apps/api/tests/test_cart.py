@@ -98,9 +98,11 @@ async def test_get_cart_empty(client: AsyncClient, customer: User) -> None:
 
 
 @pytest.mark.asyncio
-async def test_get_cart_requires_auth(client: AsyncClient) -> None:
+async def test_get_cart_as_guest_without_token_is_empty(client: AsyncClient) -> None:
+    """Guests can view their (empty) cart; nothing is created until they add something (ADR 0004)."""
     resp = await client.get("/api/v1/cart")
-    assert resp.status_code == 401
+    assert resp.status_code == 200
+    assert resp.json() == {"id": None, "item_count": 0, "subtotal_pkr": 0, "items": [], "guest_token": None}
 
 
 # ── POST /cart/items ──────────────────────────────────────────────────────────
@@ -188,10 +190,12 @@ async def test_add_nonexistent_product_returns_404(client: AsyncClient, customer
 
 
 @pytest.mark.asyncio
-async def test_add_item_requires_auth(client: AsyncClient, product: Product) -> None:
+async def test_add_item_as_guest_issues_a_cart_token(client: AsyncClient, product: Product) -> None:
     product_id = str(product.id)
     resp = await client.post("/api/v1/cart/items", json={"product_id": product_id, "qty": 1})
-    assert resp.status_code == 401
+    assert resp.status_code == 201
+    assert resp.json()["item_count"] == 1
+    assert len(resp.json()["guest_token"]) >= 40
 
 
 # ── PATCH /cart/items/{item_id} ───────────────────────────────────────────────
@@ -307,6 +311,7 @@ async def test_clear_cart(client: AsyncClient, customer: User, product: Product)
 
 
 @pytest.mark.asyncio
-async def test_clear_cart_requires_auth(client: AsyncClient) -> None:
+async def test_clear_cart_as_guest_without_token_is_a_no_op(client: AsyncClient) -> None:
     resp = await client.delete("/api/v1/cart")
-    assert resp.status_code == 401
+    assert resp.status_code == 200
+    assert resp.json()["item_count"] == 0

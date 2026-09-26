@@ -5,9 +5,10 @@ from decimal import Decimal
 from typing import TYPE_CHECKING
 
 import structlog
-from fastapi import HTTPException, status
+from fastapi import HTTPException, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.integrations.s3_client import upload_proof
 from app.models.loyalty import Coupon, CouponType
 from app.models.order import (
     CartItem,
@@ -21,7 +22,6 @@ from app.repositories.cart_repository import CartRepository
 from app.repositories.catalog_repository import CityRepository, ProductRepository
 from app.repositories.loyalty_repository import CouponRepository, LoyaltyRepository
 from app.repositories.order_repository import OrderRepository
-from app.schemas.cart import CartRead
 from app.schemas.order import (
     CheckoutPlace,
     CheckoutQuote,
@@ -30,8 +30,8 @@ from app.schemas.order import (
     OrderRead,
     QuoteLineItem,
 )
-from app.services import delivery_service, fx_service, loyalty_service
-from app.services.cart_service import _cart_to_read, _unit_price
+from app.services import cart_service, delivery_service, fx_service, loyalty_service
+from app.services.cart_service import CartOwner, _unit_price
 
 logger = structlog.get_logger()
 
@@ -68,7 +68,7 @@ _LOCAL_METHODS = frozenset({PaymentMethod.cod, PaymentMethod.bank_transfer})
 
 async def _price(
     db: AsyncSession,
-    user: User,
+    user: User | None,
     subtotal_pkr: int,
     delivery_pkr: int,
     coupon_code: str | None,
@@ -107,6 +107,8 @@ async def _price(
     points_used = 0
     loyalty_discount = 0
     if use_loyalty_points:
+        if user is None:
+            raise _bad_request("Sign in to use your loyalty points")
         wallet = await LoyaltyRepository(db).get_wallet(user.id)
         remaining = subtotal_pkr + delivery_pkr - coupon_discount
         if wallet and wallet.balance_points > 0 and remaining > 0:
@@ -117,7 +119,7 @@ async def _price(
     if payment_method in _LOCAL_METHODS:
         currency, fx_rate = "PKR", Decimal("1")
     else:
-        currency, fx_rate = await fx_service.resolve_charge_currency(db, user.currency_pref)
+        currency, fx_rate = await fx_service.resolve_charge_currency(db, user.currency_pref if user else None)
     return _Pricing(
         coupon=coupon,
         coupon_discount_pkr=coupon_discount,
@@ -132,13 +134,18 @@ async def _price(
 
 async def quote(
     db: AsyncSession,
-    user: User,
+    user: User | None,
     city_id: uuid.UUID,
     coupon_code: str | None = None,
     use_loyalty_points: bool = False,
     payment_method: PaymentMethod = PaymentMethod.cod,
+    guest_token: str | None = None,
 ) -> CheckoutQuote:
-    cart_read = await _cart_to_read_with_db(db, user.id)
+    """Totals preview for a signed-in buyer or a guest (ADR 0004)."""
+    cart, _ = await cart_service.resolve_cart(
+        db, CartOwner(user_id=user.id if user else None, guest_token=guest_token), create=False
+    )
+    cart_read = cart_service.cart_to_read(cart)
     if not cart_read.items:
         raise _EMPTY_CART
 
@@ -189,10 +196,16 @@ async def quote(
 
 async def place_order(
     db: AsyncSession,
-    user: User,
+    user: User | None,
     body: CheckoutPlace,
     idempotency_key: str | None = None,
+    guest_token: str | None = None,
 ) -> OrderRead:
+    """Place an order for a signed-in buyer or a guest (ADR 0004).
+
+    Guests must give an email and phone for the confirmation; they can use
+    coupons but not loyalty points, and earn no points.
+    """
     cart_repo = CartRepository(db)
     order_repo = OrderRepository(db)
     city_repo = CityRepository(db)
@@ -204,7 +217,15 @@ async def place_order(
         if existing:
             return _order_to_read(existing)
 
-    cart = await cart_repo.get_by_user(user.id)
+    if user is None and (not body.contact_email or not body.contact_phone):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Enter your email and phone so we can confirm your order",
+        )
+
+    cart, _ = await cart_service.resolve_cart(
+        db, CartOwner(user_id=user.id if user else None, guest_token=guest_token), create=False
+    )
     if not cart or not cart.items:
         raise _EMPTY_CART
 
@@ -259,7 +280,9 @@ async def place_order(
 
     # ── Create order ───────────────────────────────────────────────────────────
     order = await order_repo.create(
-        user_id=user.id,
+        user_id=user.id if user else None,
+        contact_email=None if user else str(body.contact_email),
+        contact_phone=None if user else body.contact_phone,
         idempotency_key=idempotency_key,
         currency=currency,
         fx_rate_to_pkr=fx_rate,
@@ -331,7 +354,7 @@ async def place_order(
         applied_coupon.used_count += 1
         await db.flush()
 
-    if pricing.loyalty_points_used > 0:
+    if user and pricing.loyalty_points_used > 0:
         await LoyaltyRepository(db).burn_points(
             user_id=user.id,
             points=pricing.loyalty_points_used,
@@ -339,7 +362,8 @@ async def place_order(
             order_id=order.id,
         )
 
-    await loyalty_service.award_for_order(db, user.id, order.id, total_pkr)
+    if user:
+        await loyalty_service.award_for_order(db, user.id, order.id, total_pkr)
 
     # Enqueue order confirmation notifications (best-effort). Runs inside a
     # SAVEPOINT so a failure here (e.g. outbox insert error) rolls back only
@@ -353,8 +377,8 @@ async def place_order(
             await enqueue_order_confirmation(
                 db=db,
                 order_id=order.id,
-                user_email=user.email,
-                user_phone=user.phone,
+                user_email=user.email if user else str(body.contact_email),
+                user_phone=user.phone if user else body.contact_phone,
                 order_total_pkr=total_pkr,
                 public_token=order_reloaded_for_notif.public_token,
             )
@@ -428,7 +452,54 @@ def _order_to_read(order: Order) -> OrderRead:
     )
 
 
-async def _cart_to_read_with_db(db: AsyncSession, user_id: uuid.UUID) -> CartRead:
-    repo = CartRepository(db)
-    cart = await repo.get_or_create_for_user(user_id)
-    return _cart_to_read(cart)
+# ── Bank-transfer receipts ─────────────────────────────────────────────────────
+
+MAX_PROOF_BYTES = 10 * 1024 * 1024
+
+
+async def upload_transfer_proof(
+    db: AsyncSession,
+    *,
+    file: UploadFile,
+    user: User | None = None,
+    order_id: uuid.UUID | None = None,
+    public_token: uuid.UUID | None = None,
+) -> str:
+    """Attach a bank-transfer receipt to an order and mark it for verification.
+
+    Signed-in buyers address the order by id (it must be theirs); guests by its
+    public token, the same capability that opens the tracking page (ADR 0004).
+    At most 10 MB is read, so an oversized upload can't exhaust memory.
+    """
+    repo = OrderRepository(db)
+    if public_token is not None:
+        order = await repo.get_by_public_token(public_token)
+    elif order_id is not None and user is not None:
+        order = await repo.get_by_id(order_id)
+        if order and order.user_id != user.id:
+            order = None
+    else:
+        order = None
+    if not order:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Order not found")
+
+    if not order.payments:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No payment record found")
+    payment = order.payments[0]
+    if payment.method != PaymentMethod.bank_transfer:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Proof upload is only for bank transfer orders",
+        )
+
+    data = await file.read(MAX_PROOF_BYTES + 1)
+    url = await upload_proof(
+        order_id=str(order.id),
+        filename=file.filename or "receipt.jpg",
+        data=data,
+        content_type=file.content_type or "image/jpeg",
+    )
+    payment.proof_url = url
+    payment.status = PaymentStatus.awaiting_verification
+    await db.flush()
+    return url

@@ -129,6 +129,9 @@ class Order(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     user_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
     )
+    # Buyer contact for guest orders (no user); null for signed-in orders. ADR 0004.
+    contact_email: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    contact_phone: Mapped[str | None] = mapped_column(String(30), nullable=True)
     currency: Mapped[str] = mapped_column(String(3), nullable=False)
     fx_rate_to_pkr: Mapped[Decimal] = mapped_column(Numeric(18, 6), default=Decimal("1"), nullable=False)
     subtotal_pkr: Mapped[int] = mapped_column(BigInteger, nullable=False)

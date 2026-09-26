@@ -2,48 +2,57 @@ import hashlib
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Header, HTTPException, Query, UploadFile, status
+from fastapi import APIRouter, Header, Query, Request, UploadFile, status
 
 from app.core.deps import DB, CurrentUser
-from app.integrations.s3_client import upload_proof
+from app.core.guest import OptionalUser
+from app.core.rate_limit import limiter
 from app.models.order import PaymentMethod
-from app.repositories.order_repository import OrderRepository
 from app.schemas.order import CheckoutPlace, CheckoutQuote, OrderRead
 from app.services import checkout_service
 
 router = APIRouter(tags=["orders"])
 
+# Quote and place work for signed-in buyers (Bearer token) and for guests
+# (X-Cart-Token header from the cart). See ADR 0004.
+CartToken = Annotated[str | None, Header(alias="x-cart-token", max_length=128)]
+
 
 @router.post("/checkout/quote", response_model=CheckoutQuote)
 async def checkout_quote(
     city_id: uuid.UUID,
-    user: CurrentUser,
+    user: OptionalUser,
     db: DB,
     coupon_code: Annotated[str | None, Query(max_length=50)] = None,
     use_loyalty_points: bool = False,
     payment_method: PaymentMethod = PaymentMethod.cod,
+    x_cart_token: CartToken = None,
 ) -> CheckoutQuote:
     """Preview totals, including coupon and loyalty discounts and the charge currency.
 
     COD and bank transfer are always charged in PKR. An invalid coupon returns
-    400 with the same message checkout would give.
+    400 with the same message checkout would give. Guests can't use loyalty points.
     """
     return await checkout_service.quote(
         db, user, city_id, coupon_code=coupon_code, use_loyalty_points=use_loyalty_points,
-        payment_method=payment_method,
+        payment_method=payment_method, guest_token=x_cart_token,
     )
 
 
 @router.post("/checkout/place", response_model=OrderRead, status_code=status.HTTP_201_CREATED)
+@limiter.limit("10/minute")
 async def checkout_place(
+    request: Request,  # noqa: ARG001 — required by slowapi
     body: CheckoutPlace,
-    user: CurrentUser,
+    user: OptionalUser,
     db: DB,
     idempotency_key: Annotated[str | None, Header(alias="idempotency-key")] = None,
+    x_cart_token: CartToken = None,
 ) -> OrderRead:
+    """Place the order. Guests must include `contact_email` and `contact_phone`."""
     # Hash the raw key so that the stored value has a consistent length
     hashed_key = hashlib.sha256(idempotency_key.encode()).hexdigest()[:64] if idempotency_key else None
-    return await checkout_service.place_order(db, user, body, hashed_key)
+    return await checkout_service.place_order(db, user, body, hashed_key, guest_token=x_cart_token)
 
 
 @router.get("/orders/me", response_model=list[OrderRead])
@@ -63,34 +72,19 @@ async def upload_transfer_proof(
     user: CurrentUser,
     db: DB,
 ) -> dict[str, str]:
-    """Upload bank-transfer payment proof (image or PDF, max 10 MB)."""
-    repo = OrderRepository(db)
-    order = await repo.get_by_id(order_id)
+    """Upload bank-transfer payment proof (image or PDF, max 10 MB) for one of your orders."""
+    url = await checkout_service.upload_transfer_proof(db, file=file, user=user, order_id=order_id)
+    return {"proof_url": url}
 
-    if not order or order.user_id != user.id:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Order not found")
 
-    if not order.payments:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No payment record found")
-
-    payment = order.payments[0]
-    from app.models.order import PaymentMethod, PaymentStatus
-    if payment.method != PaymentMethod.bank_transfer:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Proof upload is only for bank transfer orders",
-        )
-
-    data = await file.read()
-    url = await upload_proof(
-        order_id=str(order_id),
-        filename=file.filename or "receipt.jpg",
-        data=data,
-        content_type=file.content_type or "image/jpeg",
-    )
-
-    payment.proof_url = url
-    payment.status = PaymentStatus.awaiting_verification
-    await db.flush()
-
+@router.post("/orders/by-token/{public_token}/proof", status_code=status.HTTP_200_OK)
+@limiter.limit("10/hour")
+async def upload_transfer_proof_by_token(
+    request: Request,  # noqa: ARG001 — required by slowapi
+    public_token: uuid.UUID,
+    file: UploadFile,
+    db: DB,
+) -> dict[str, str]:
+    """Guest version: the order's public token (from the confirmation/tracking link) authorises it."""
+    url = await checkout_service.upload_transfer_proof(db, file=file, public_token=public_token)
     return {"proof_url": url}

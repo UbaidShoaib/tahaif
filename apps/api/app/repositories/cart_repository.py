@@ -42,6 +42,30 @@ class CartRepository:
             cart = result.scalar_one()
         return cart
 
+    async def get_by_session(self, token_hash: str) -> Cart | None:
+        """A guest cart by the hash of its token (ADR 0004)."""
+        result = await self._db.execute(
+            self._with_items().where(Cart.session_token == token_hash, Cart.user_id.is_(None))
+        )
+        return result.scalar_one_or_none()
+
+    async def create_for_session(self, token_hash: str, expires_at: datetime) -> Cart:
+        cart = Cart(session_token=token_hash, created_at=datetime.now(UTC), expires_at=expires_at)
+        self._db.add(cart)
+        await self._db.flush()
+        result = await self._db.execute(self._with_items().where(Cart.id == cart.id))
+        return result.scalar_one()
+
+    async def reload(self, cart: Cart) -> Cart:
+        """Fresh copy of a cart with its items, after items were changed."""
+        self._db.expire(cart, ["items"])
+        result = await self._db.execute(self._with_items().where(Cart.id == cart.id))
+        return result.scalar_one()
+
+    async def move_item(self, item: CartItem, to_cart: Cart) -> None:
+        item.cart_id = to_cart.id
+        await self._db.flush()
+
     async def add_item(self, cart: Cart, **kwargs: object) -> CartItem:
         item = CartItem(cart_id=cart.id, **kwargs)
         self._db.add(item)
