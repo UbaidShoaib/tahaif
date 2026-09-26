@@ -112,7 +112,7 @@ export default function VendorOrdersPage() {
     return (
       <div className="container mx-auto px-4 py-16 text-center">
         <p className="text-muted-foreground mb-6">Please sign in to view your fulfillments.</p>
-        <Link href="/login" className="text-sm text-primary-700 dark:text-primary-300 hover:underline">
+        <Link href="/login" className="text-sm text-link hover:underline">
           Sign In
         </Link>
       </div>
@@ -131,7 +131,7 @@ export default function VendorOrdersPage() {
     <div className="container mx-auto px-4 py-8 max-w-4xl">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">Fulfillments</h1>
-        <Link href="/vendor/dashboard" className="text-sm text-primary-700 dark:text-primary-300 hover:underline">
+        <Link href="/vendor/dashboard" className="text-sm text-link hover:underline">
           ← Dashboard
         </Link>
       </div>
@@ -182,7 +182,7 @@ export default function VendorOrdersPage() {
                   </div>
 
                   {nextStatus && awaitingPayment && (
-                    <span className="text-xs font-medium text-amber-700 dark:text-amber-400">
+                    <span className="text-xs font-medium text-warning">
                       Awaiting payment
                     </span>
                   )}

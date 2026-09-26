@@ -127,7 +127,7 @@ export default function AccountPage() {
             href={href}
             className="flex items-center gap-2 rounded-xl border p-4 text-sm font-medium hover:border-primary-700 transition-colors"
           >
-            <Icon className="h-4 w-4 text-primary-700 dark:text-primary-300" aria-hidden />
+            <Icon className="h-4 w-4 text-link" aria-hidden />
             {label}
           </Link>
         ))}
@@ -155,7 +155,7 @@ export default function AccountPage() {
         </div>
         <div className="flex items-center gap-3">
           <Button type="submit" disabled={saving}>{saving ? "Saving…" : "Save changes"}</Button>
-          {saved && <span role="status" className="text-sm text-primary-700 dark:text-primary-300">Saved</span>}
+          {saved && <span role="status" className="text-sm text-link">Saved</span>}
         </div>
       </form>
 

@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useCurrencyStore } from "@/stores/currency.store";
 import type { CurrencyCode } from "@/lib/account";
 
-export function CurrencySelect() {
+export function CurrencySelect({ showLabel = false }: { showLabel?: boolean }) {
   const currency = useCurrencyStore((s) => s.currency);
   const rates = useCurrencyStore((s) => s.rates);
   const setCurrency = useCurrencyStore((s) => s.setCurrency);
@@ -14,8 +14,8 @@ export function CurrencySelect() {
   if (codes.length < 2) return null; // nothing to choose until FX rates exist
 
   return (
-    <label className="flex items-center gap-1 text-sm">
-      <span className="sr-only">Currency</span>
+    <label className={showLabel ? "flex w-full items-center justify-between gap-2 text-sm" : "flex items-center gap-1 text-sm"}>
+      <span className={showLabel ? "text-muted-foreground" : "sr-only"}>Currency</span>
       <select
         id="currency-select"
         value={currency}

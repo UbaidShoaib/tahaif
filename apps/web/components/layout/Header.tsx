@@ -51,7 +51,7 @@ export function Header() {
           </button>
 
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-2 font-bold text-xl text-primary-700 dark:text-primary-300">
+          <Link href="/" className="flex items-center gap-2 font-bold text-xl text-link">
             <Gift className="h-6 w-6" />
             <span>تحائف Tahaif</span>
           </Link>
@@ -63,7 +63,7 @@ export function Header() {
                 key={l.href}
                 href={l.href}
                 aria-current={pathname === l.href ? "page" : undefined}
-                className="hover:text-primary-700 dark:hover:text-primary-300 transition-colors"
+                className="hover:text-link transition-colors"
               >
                 {l.label}
               </Link>
@@ -154,9 +154,8 @@ export function Header() {
                   <li><Link href="/register" className="flex min-h-11 items-center rounded-md px-2 font-medium hover:bg-muted">Sign up</Link></li>
                 </>
               )}
-              <li className="flex min-h-11 items-center justify-between px-2">
-                <span className="text-sm text-muted-foreground">Currency</span>
-                <CurrencySelect />
+              <li className="flex items-center px-2 empty:hidden">
+                <CurrencySelect showLabel />
               </li>
             </ul>
           </nav>

@@ -10,7 +10,7 @@ function StarRating({ rating, max = 5 }: { rating: number; max?: number }) {
   return (
     <span role="img" className="flex gap-0.5" aria-label={`${rating} out of ${max} stars`}>
       {Array.from({ length: max }).map((_, i) => (
-        <span key={i} aria-hidden className={i < rating ? "text-gold-dark dark:text-gold" : "text-muted-foreground"}>
+        <span key={i} aria-hidden className={i < rating ? "text-star" : "text-muted-foreground"}>
           {i < rating ? "★" : "☆"}
         </span>
       ))}
@@ -101,10 +101,10 @@ export function ReviewsSection({ productId, initialReviews }: Props) {
       {/* Submit form */}
       {!accessToken ? (
         <p className="text-sm text-muted-foreground">
-          <Link href={`/login?callbackUrl=${encodeURIComponent(pathname)}`} className="text-primary-700 dark:text-primary-300 hover:underline">Sign in</Link> to leave a review.
+          <Link href={`/login?callbackUrl=${encodeURIComponent(pathname)}`} className="text-link hover:underline">Sign in</Link> to leave a review.
         </p>
       ) : submitted ? (
-        <div className="border border-primary-700/30 bg-primary-700/5 rounded-xl p-4 text-sm text-primary-700 dark:text-primary-300 font-medium">
+        <div className="border border-primary-700/30 bg-primary-700/5 rounded-xl p-4 text-sm text-link font-medium">
           Thanks for your review! It will appear after moderation.
         </div>
       ) : (
@@ -122,7 +122,7 @@ export function ReviewsSection({ productId, initialReviews }: Props) {
                   type="button"
                   onClick={() => setRating(n)}
                   aria-pressed={n === rating}
-                  className={`inline-flex h-11 w-11 items-center justify-center rounded-md text-2xl ${n <= rating ? "text-gold-dark dark:text-gold" : "text-muted-foreground"}`}
+                  className={`inline-flex h-11 w-11 items-center justify-center rounded-md text-2xl ${n <= rating ? "text-star" : "text-muted-foreground"}`}
                   aria-label={`${n} star`}
                 >
                   <span aria-hidden>{n <= rating ? "★" : "☆"}</span>

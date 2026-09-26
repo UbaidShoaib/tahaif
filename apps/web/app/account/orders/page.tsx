@@ -149,7 +149,7 @@ export default function OrdersPage() {
 
                 <Link
                   href={`/track/${order.public_token}`}
-                  className="shrink-0 text-sm font-medium text-primary-700 dark:text-primary-300 hover:underline"
+                  className="shrink-0 text-sm font-medium text-link hover:underline"
                 >
                   Track Order →
                 </Link>

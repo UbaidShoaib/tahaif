@@ -120,7 +120,7 @@ export default function CartPage() {
             <Separator />
             <div className="flex justify-between font-semibold">
               <span>Subtotal</span>
-              <span className="text-primary-700 dark:text-primary-300"><Price pkr={cart.subtotal_pkr} /></span>
+              <span className="text-link"><Price pkr={cart.subtotal_pkr} /></span>
             </div>
             <Button className="w-full gap-2" size="lg" asChild>
               <Link href="/checkout">

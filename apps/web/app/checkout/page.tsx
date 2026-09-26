@@ -359,7 +359,7 @@ export default function CheckoutPage() {
                   onClick={() => set("payment_method", pm.value)}
                   className={`rounded-lg border-2 p-4 text-left transition-colors ${
                     form.payment_method === pm.value
-                      ? "border-primary-700 bg-primary-50 dark:bg-primary-900/30"
+                      ? "border-primary bg-primary-soft"
                       : "border-input hover:border-primary-400"
                   }`}
                 >
@@ -418,13 +418,13 @@ export default function CheckoutPage() {
                 </span>
               </div>
               {summary.coupon_discount_pkr > 0 && (
-                <div className="flex justify-between text-primary-700 dark:text-primary-400">
+                <div className="flex justify-between text-success">
                   <span>Coupon {appliedCoupon}</span>
                   <span>−{pkr(summary.coupon_discount_pkr)}</span>
                 </div>
               )}
               {summary.loyalty_discount_pkr > 0 && (
-                <div className="flex justify-between text-primary-700 dark:text-primary-400">
+                <div className="flex justify-between text-success">
                   <span>{summary.loyalty_points_used} loyalty points</span>
                   <span>−{pkr(summary.loyalty_discount_pkr)}</span>
                 </div>
@@ -486,7 +486,7 @@ export default function CheckoutPage() {
 
             <div className="flex justify-between font-semibold">
               <span>Total</span>
-              <span className="text-primary-700 dark:text-primary-300">{pkr(summary.total_pkr)}</span>
+              <span className="text-link">{pkr(summary.total_pkr)}</span>
             </div>
             {quote && quote.currency !== "PKR" ? (
               <p className="rounded-md bg-muted px-3 py-2 text-sm">

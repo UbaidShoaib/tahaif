@@ -42,11 +42,11 @@ export function ProductCard({ product, cityId }: Props) {
           {product.vendor && (
             <p className="text-xs text-muted-foreground truncate">{product.vendor.name}</p>
           )}
-          <h3 className="font-medium text-sm leading-snug line-clamp-2 group-hover:text-primary-700 dark:group-hover:text-primary-300 transition-colors">
+          <h3 className="font-medium text-sm leading-snug line-clamp-2 group-hover:text-link transition-colors">
             {product.name}
           </h3>
           <div className="flex items-baseline gap-1 pt-0.5">
-            <span className="font-semibold text-sm text-primary-700 dark:text-primary-400">
+            <span className="font-semibold text-sm text-link">
               {lowestVariantDelta > 0 ? "From " : ""}
               <Price pkr={displayPrice + lowestVariantDelta} />
             </span>

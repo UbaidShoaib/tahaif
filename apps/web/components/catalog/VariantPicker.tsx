@@ -74,7 +74,7 @@ export function VariantPicker({ product }: Props) {
     <div className="space-y-5">
       {/* Price */}
       <div className="flex items-baseline gap-2">
-        <span className="text-3xl font-bold text-primary-700 dark:text-primary-400">
+        <span className="text-3xl font-bold text-link">
           <Price pkr={totalPrice} />
         </span>
         {selected && selected.price_delta_pkr > 0 && (
@@ -100,7 +100,7 @@ export function VariantPicker({ product }: Props) {
                 className={cn(
                   "rounded-lg border px-4 py-2 text-sm font-medium transition-colors",
                   selected?.id === v.id
-                    ? "border-primary-700 bg-primary-50 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300"
+                    ? "border-primary bg-primary-soft text-primary-soft-foreground"
                     : "border-border hover:border-primary-400",
                   v.stock_qty === 0 && "cursor-not-allowed text-muted-foreground line-through",
                 )}
@@ -163,7 +163,7 @@ export function VariantPicker({ product }: Props) {
       )}
 
       {selected && selected.stock_qty > 0 && selected.stock_qty <= 5 && (
-        <p className="text-xs text-amber-700 dark:text-amber-400 font-medium">
+        <p className="text-xs text-warning font-medium">
           Only {selected.stock_qty} left!
         </p>
       )}

@@ -41,14 +41,14 @@ export function CartItemRow({ item }: { item: CartItemRead }) {
       <div className="flex flex-1 flex-col gap-1 min-w-0">
         <Link
           href={`/p/${item.product_slug}`}
-          className="text-sm font-medium leading-tight hover:text-primary-700 dark:hover:text-primary-300 line-clamp-2"
+          className="text-sm font-medium leading-tight hover:text-link line-clamp-2"
         >
           {item.product_name}
         </Link>
         {item.variant_name && (
           <span className="text-xs text-muted-foreground">{item.variant_name}</span>
         )}
-        <span className="text-sm font-semibold text-primary-700 dark:text-primary-300">
+        <span className="text-sm font-semibold text-link">
           <Price pkr={item.line_total_pkr} />
         </span>
       </div>

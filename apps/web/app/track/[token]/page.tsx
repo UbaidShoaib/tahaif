@@ -110,7 +110,7 @@ export default async function TrackPage({
                       {step.label}
                     </p>
                     {isCurrent && (
-                      <p className="text-xs text-primary-700 dark:text-primary-300 font-medium">Current status</p>
+                      <p className="text-xs text-link font-medium">Current status</p>
                     )}
                   </div>
                 </div>
@@ -130,9 +130,9 @@ export default async function TrackPage({
             </h2>
             <span className={`text-xs rounded-full px-2.5 py-1 font-medium ${
               f.status === "delivered"
-                ? "bg-green-100 text-green-700"
+                ? "bg-success-soft text-success-foreground"
                 : f.status === "dispatched" || f.status === "out_for_delivery"
-                  ? "bg-blue-100 text-blue-700"
+                  ? "bg-info-soft text-info"
                   : "bg-muted text-muted-foreground"
             }`}>
               {FULFILLMENT_STATUS_LABELS[f.status] ?? f.status}
@@ -178,7 +178,7 @@ export default async function TrackPage({
               </div>
             )}
             {f.delivered_at && (
-              <div className="flex items-center gap-2 text-green-600">
+              <div className="flex items-center gap-2 text-success">
                 <CheckCircle className="h-3.5 w-3.5" />
                 <span>
                   Delivered:{" "}
@@ -213,7 +213,7 @@ export default async function TrackPage({
         <Separator />
         <div className="flex justify-between font-semibold">
           <span>Total</span>
-          <span className="text-primary-700 dark:text-primary-300">{formatPrice(order.total_pkr)}</span>
+          <span className="text-link">{formatPrice(order.total_pkr)}</span>
         </div>
         {order.currency !== "PKR" && (
           <div className="flex justify-between text-sm text-muted-foreground">

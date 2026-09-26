@@ -63,8 +63,8 @@ export function CartDrawer() {
         ref={panelRef}
         inert={!isDrawerOpen}
         aria-hidden={!isDrawerOpen}
-        className={`fixed right-0 top-0 z-50 flex h-full w-full max-w-sm flex-col bg-background shadow-2xl transition-transform duration-300 ease-in-out ${
-          isDrawerOpen ? "translate-x-0" : "translate-x-full"
+        className={`fixed right-0 top-0 z-50 flex h-full w-full max-w-sm flex-col bg-background transition-transform duration-300 ease-in-out ${
+          isDrawerOpen ? "translate-x-0 shadow-2xl" : "translate-x-full"
         }`}
         role="dialog"
         aria-label="Shopping cart"

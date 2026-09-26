@@ -1,5 +1,8 @@
 import type { Config } from "tailwindcss";
 
+/** A color backed by a bare-HSL CSS variable in styles/globals.css, with opacity support. */
+const token = (name: string) => `hsl(var(--${name}) / <alpha-value>)`;
+
 const config: Config = {
   darkMode: ["class"],
   content: [
@@ -9,10 +12,20 @@ const config: Config = {
   ],
   theme: {
     extend: {
+      screens: {
+        xs: "375px",
+      },
       colors: {
-        // Anaar (pomegranate berry) — ADR 0003. Use 700+ for text and CTA backgrounds.
+        // Anaar (pomegranate berry) — ADR 0003.
+        // `primary` / `primary-hover` / `primary-foreground` follow the theme (berry in
+        // light, pink with a dark label in dark mode) and are for the main CTA only.
+        // The numbered scale is fixed; use 700+ for text and filled backgrounds.
         primary: {
-          DEFAULT: "#9f1f50",
+          DEFAULT: token("primary"),
+          hover: token("primary-hover"),
+          foreground: token("primary-foreground"),
+          soft: token("primary-soft"),
+          "soft-foreground": token("primary-soft-foreground"),
           50: "#fdf2f6",
           100: "#fce7ef",
           200: "#f9cfe0",
@@ -24,52 +37,73 @@ const config: Config = {
           800: "#831a44",
           900: "#6b173a",
           950: "#420a21",
-          foreground: "#ffffff",
         },
         // Zari (antique gold) — decorative only, never text on light backgrounds or buttons.
         gold: {
-          DEFAULT: "#d4a017",
-          soft: "#fdf8e7",
-          ink: "#7a5406",
+          DEFAULT: token("gold"),
+          foreground: token("gold-foreground"),
+          soft: token("gold-soft"),
+          ink: token("gold-ink"),
           dark: "#a16207",
         },
-        border: "hsl(var(--border))",
-        input: "hsl(var(--input))",
-        ring: "hsl(var(--ring))",
-        background: "hsl(var(--background))",
-        foreground: "hsl(var(--foreground))",
-        secondary: {
-          DEFAULT: "hsl(var(--secondary))",
-          foreground: "hsl(var(--secondary-foreground))",
+        link: token("link"),
+        star: token("star"),
+        background: { DEFAULT: token("background"), alt: token("background-alt") },
+        foreground: { DEFAULT: token("foreground"), secondary: token("foreground-secondary") },
+        border: token("border"),
+        input: token("input"),
+        ring: token("ring"),
+        secondary: { DEFAULT: token("secondary"), foreground: token("secondary-foreground") },
+        muted: { DEFAULT: token("muted"), foreground: token("muted-foreground") },
+        accent: { DEFAULT: token("accent"), foreground: token("accent-foreground") },
+        card: { DEFAULT: token("card"), foreground: token("card-foreground") },
+        popover: { DEFAULT: token("popover"), foreground: token("popover-foreground") },
+        success: {
+          DEFAULT: token("success"),
+          soft: token("success-soft"),
+          foreground: token("success-foreground"),
         },
+        warning: { DEFAULT: token("warning"), soft: token("warning-soft") },
         destructive: {
-          DEFAULT: "hsl(var(--destructive))",
-          foreground: "hsl(var(--destructive-foreground))",
+          DEFAULT: token("destructive"),
+          soft: token("destructive-soft"),
+          foreground: token("destructive-foreground"),
         },
-        muted: {
-          DEFAULT: "hsl(var(--muted))",
-          foreground: "hsl(var(--muted-foreground))",
-        },
-        accent: {
-          DEFAULT: "hsl(var(--accent))",
-          foreground: "hsl(var(--accent-foreground))",
-        },
-        card: {
-          DEFAULT: "hsl(var(--card))",
-          foreground: "hsl(var(--card-foreground))",
-        },
-        popover: {
-          DEFAULT: "hsl(var(--popover))",
-          foreground: "hsl(var(--popover-foreground))",
-        },
-      },
-      borderRadius: {
-        lg: "var(--radius)",
-        md: "calc(var(--radius) - 2px)",
-        sm: "calc(var(--radius) - 4px)",
+        info: { DEFAULT: token("info"), soft: token("info-soft") },
       },
       fontFamily: {
-        sans: ["Inter", "system-ui", "sans-serif"],
+        sans: ["var(--font-inter)", "system-ui", "sans-serif"],
+        display: ["var(--font-fraunces)", "Georgia", "serif"],
+      },
+      fontSize: {
+        // Fluid headings: mobile → desktop sizes from the redesign plan §3.3.
+        display: ["clamp(2.25rem, 1.5rem + 3vw, 3.5rem)", { lineHeight: "1.1", fontWeight: "600" }],
+        h1: ["clamp(1.75rem, 1.4rem + 1.2vw, 2.25rem)", { lineHeight: "1.2", fontWeight: "600" }],
+        h2: ["clamp(1.375rem, 1.1rem + 1vw, 1.75rem)", { lineHeight: "1.25", fontWeight: "500" }],
+        h3: ["clamp(1.125rem, 1rem + 0.4vw, 1.25rem)", { lineHeight: "1.35", fontWeight: "600" }],
+      },
+      spacing: {
+        "4.5": "1.125rem",
+        "18": "4.5rem",
+      },
+      minHeight: { tap: "2.75rem" },
+      minWidth: { tap: "2.75rem" },
+      borderRadius: {
+        sm: "var(--radius-sm)",
+        DEFAULT: "var(--radius)",
+        md: "var(--radius)",
+        lg: "var(--radius-lg)",
+        xl: "var(--radius-xl)",
+        "2xl": "var(--radius-2xl)",
+      },
+      boxShadow: {
+        sm: "var(--shadow-sm)",
+        DEFAULT: "var(--shadow-md)",
+        md: "var(--shadow-md)",
+        lg: "var(--shadow-lg)",
+      },
+      transitionTimingFunction: {
+        out: "var(--ease-out)",
       },
     },
   },

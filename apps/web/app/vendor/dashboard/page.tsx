@@ -52,7 +52,7 @@ export default function VendorDashboardPage() {
       <div className="container mx-auto px-4 py-16 text-center">
         <h1 className="text-2xl font-bold mb-4">Vendor Portal</h1>
         <p className="text-destructive mb-4">{error}</p>
-        <Link href="/" className="text-sm text-primary-700 dark:text-primary-300 hover:underline">
+        <Link href="/" className="text-sm text-link hover:underline">
           Return to store
         </Link>
       </div>
@@ -85,7 +85,7 @@ export default function VendorDashboardPage() {
           className="border rounded-xl p-6 hover:border-primary-700 hover:shadow-sm transition-all group"
         >
           <div className="text-3xl mb-3">📦</div>
-          <h2 className="text-lg font-semibold group-hover:text-primary-700 dark:group-hover:text-primary-300">Fulfillments</h2>
+          <h2 className="text-lg font-semibold group-hover:text-link">Fulfillments</h2>
           <p className="text-sm text-muted-foreground mt-1">
             View and update delivery status for your orders.
           </p>
@@ -96,7 +96,7 @@ export default function VendorDashboardPage() {
           className="border rounded-xl p-6 hover:border-primary-700 hover:shadow-sm transition-all group"
         >
           <div className="text-3xl mb-3">🛍️</div>
-          <h2 className="text-lg font-semibold group-hover:text-primary-700 dark:group-hover:text-primary-300">Products</h2>
+          <h2 className="text-lg font-semibold group-hover:text-link">Products</h2>
           <p className="text-sm text-muted-foreground mt-1">
             Browse the products listed under your store.
           </p>

@@ -57,7 +57,8 @@ export function RegisterForm() {
     }
   };
 
-  const strengthColor = ["bg-red-400", "bg-orange-400", "bg-yellow-400", "bg-primary-500"][strength - 1] ?? "bg-muted";
+  const strengthColor = ["bg-destructive", "bg-warning", "bg-gold", "bg-success"][strength - 1] ?? "bg-muted";
+  const strengthLabel = ["Weak", "Fair", "Good", "Strong"][strength - 1] ?? "Too short";
 
   return (
     <div className="space-y-4">
@@ -89,10 +90,15 @@ export function RegisterForm() {
           <Label htmlFor="password">Password</Label>
           <Input id="password" type="password" autoComplete="new-password" {...register("password")} />
           {password && (
-            <div className="flex gap-1 mt-1">
-              {[1, 2, 3, 4].map((i) => (
-                <div key={i} className={`h-1 flex-1 rounded-full ${i <= strength ? strengthColor : "bg-muted"}`} />
-              ))}
+            <div className="mt-1 flex items-center gap-2">
+              <div className="flex flex-1 gap-1" aria-hidden>
+                {[1, 2, 3, 4].map((i) => (
+                  <div key={i} className={`h-1 flex-1 rounded-full ${i <= strength ? strengthColor : "bg-muted"}`} />
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground" aria-live="polite">
+                Strength: {strengthLabel}
+              </p>
             </div>
           )}
           {errors.password && <p className="text-xs text-destructive">{errors.password.message}</p>}
@@ -105,7 +111,7 @@ export function RegisterForm() {
 
       <p className="text-center text-sm text-muted-foreground">
         Already have an account?{" "}
-        <Link href="/login" className="text-primary-700 dark:text-primary-300 hover:underline font-medium">
+        <Link href="/login" className="text-link hover:underline font-medium">
           Sign in
         </Link>
       </p>

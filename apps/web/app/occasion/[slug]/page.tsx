@@ -82,7 +82,7 @@ export default async function OccasionPage({ params }: Props) {
                 href={`/occasion/${o.slug}`}
                 className={`block rounded-lg px-3 py-2 text-sm transition-colors ${
                   o.slug === slug
-                    ? "bg-primary-100 text-primary-700 font-medium dark:bg-primary-900/40 dark:text-primary-300"
+                    ? "bg-primary-soft text-primary-soft-foreground font-medium"
                     : "hover:bg-muted text-foreground"
                 }`}
               >

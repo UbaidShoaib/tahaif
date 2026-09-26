@@ -75,7 +75,7 @@ export default async function HomePage() {
               <Link
                 key={o.slug}
                 href={`/occasion/${o.slug}`}
-                className="flex items-center gap-2 bg-background border rounded-full px-4 py-2 text-sm font-medium hover:border-primary-700 hover:text-primary-700 dark:hover:text-primary-300 transition-colors"
+                className="flex items-center gap-2 bg-background border rounded-full px-4 py-2 text-sm font-medium hover:border-primary-700 hover:text-link transition-colors"
               >
                 <span aria-hidden>{o.emoji}</span>
                 <span>{o.name}</span>
@@ -111,7 +111,7 @@ export default async function HomePage() {
           <div className="container mx-auto">
             <div className="flex items-baseline justify-between mb-8">
               <h2 className="text-2xl font-bold">Featured gifts</h2>
-              <Link href="/search" className="text-sm text-primary-700 dark:text-primary-300 hover:underline font-medium">
+              <Link href="/search" className="text-sm text-link hover:underline font-medium">
                 View all →
               </Link>
             </div>
@@ -130,8 +130,8 @@ export default async function HomePage() {
           <div className="grid md:grid-cols-3 gap-8">
             {FEATURES.map((f) => (
               <div key={f.title} className="flex gap-4 items-start">
-                <div className="p-3 rounded-lg bg-primary-100 dark:bg-primary-900/30">
-                  <f.icon className="h-6 w-6 text-primary-700 dark:text-primary-300" />
+                <div className="p-3 rounded-lg bg-primary-soft">
+                  <f.icon className="h-6 w-6 text-link" />
                 </div>
                 <div>
                   <h3 className="font-semibold">{f.title}</h3>
@@ -146,7 +146,7 @@ export default async function HomePage() {
       {/* CTA */}
       <section className="py-16 px-4 text-center">
         <div className="container mx-auto max-w-xl space-y-4">
-          <Flower className="h-10 w-10 mx-auto text-primary-700 dark:text-primary-300" />
+          <Flower className="h-10 w-10 mx-auto text-link" />
           <h2 className="text-2xl font-bold">Ready to send a gift?</h2>
           <p className="text-muted-foreground">
             Browse our catalog and find the perfect gift for any occasion.

@@ -223,7 +223,7 @@ export default function AddressesPage() {
                       <p className="font-medium text-base">
                         {a.recipient_name}
                         {a.is_default && (
-                          <span className="ml-2 rounded-full bg-primary-50 px-2 py-0.5 text-xs font-semibold text-primary-700 dark:bg-primary-900/30 dark:text-primary-300">Default</span>
+                          <span className="ml-2 rounded-full bg-primary-soft px-2 py-0.5 text-xs font-semibold text-primary-soft-foreground">Default</span>
                         )}
                       </p>
                       <p>{a.line1}{a.line2 ? `, ${a.line2}` : ""}</p>
@@ -232,9 +232,9 @@ export default function AddressesPage() {
                     </div>
                     <div className="flex flex-wrap gap-3 text-sm">
                       {!a.is_default && (
-                        <button type="button" onClick={() => { void makeDefault(a.id); }} className="text-primary-700 dark:text-primary-300 hover:underline">Make default</button>
+                        <button type="button" onClick={() => { void makeDefault(a.id); }} className="text-link hover:underline">Make default</button>
                       )}
-                      <button type="button" onClick={() => open(a)} className="text-primary-700 dark:text-primary-300 hover:underline">Edit</button>
+                      <button type="button" onClick={() => open(a)} className="text-link hover:underline">Edit</button>
                       <button type="button" onClick={() => setConfirmDelete(a.id)} className="text-muted-foreground hover:text-destructive">Delete</button>
                     </div>
                   </div>

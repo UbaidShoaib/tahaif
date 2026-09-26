@@ -54,7 +54,7 @@ export default async function CategoryPage({ params }: Props) {
                 href={`/c/${cat.slug}`}
                 className={`block rounded-lg px-3 py-2 text-sm transition-colors ${
                   cat.slug === categorySlug
-                    ? "bg-primary-100 text-primary-700 font-medium dark:bg-primary-900/40 dark:text-primary-300"
+                    ? "bg-primary-soft text-primary-soft-foreground font-medium"
                     : "hover:bg-muted text-foreground"
                 }`}
               >

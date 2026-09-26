@@ -51,13 +51,13 @@ export default async function SuccessPage({
   return (
     <div className="container mx-auto px-4 py-12 max-w-2xl">
       {/* Success banner */}
-      <div className="rounded-2xl border border-primary-200 bg-primary-50 dark:bg-primary-900/20 dark:border-primary-800 px-6 py-8 text-center mb-8 space-y-3">
-        <CheckCircle className="h-12 w-12 mx-auto text-primary-700 dark:text-primary-300" />
+      <div className="rounded-2xl border border-primary/30 bg-primary-soft px-6 py-8 text-center mb-8 space-y-3">
+        <CheckCircle className="h-12 w-12 mx-auto text-link" />
         <h1 className="text-2xl font-bold">Order Placed Successfully!</h1>
         <p className="text-muted-foreground text-sm">
           We&apos;ve received your order and will confirm shortly.
         </p>
-        <p className="font-mono text-xs bg-primary-100 dark:bg-primary-800/40 rounded-lg px-3 py-1.5 inline-block">
+        <p className="font-mono text-xs bg-background rounded-lg px-3 py-1.5 inline-block">
           Order #{order.public_token}
         </p>
       </div>
@@ -148,7 +148,7 @@ export default async function SuccessPage({
             <span>{formatPrice(order.delivery_pkr)}</span>
           </div>
           {order.discount_pkr > 0 && (
-            <div className="flex justify-between text-green-600">
+            <div className="flex justify-between text-success">
               <span>Discount</span>
               <span>-{formatPrice(order.discount_pkr)}</span>
             </div>
@@ -156,7 +156,7 @@ export default async function SuccessPage({
           <Separator />
           <div className="flex justify-between font-semibold text-base">
             <span>Total</span>
-            <span className="text-primary-700 dark:text-primary-300">{formatPrice(order.total_pkr)}</span>
+            <span className="text-link">{formatPrice(order.total_pkr)}</span>
           </div>
           {order.currency !== "PKR" && (
             <div className="flex justify-between text-sm text-muted-foreground">
@@ -169,7 +169,7 @@ export default async function SuccessPage({
 
       {/* Bank transfer proof upload */}
       {order.payment_method === "bank_transfer" && (
-        <div className="mt-6 rounded-xl border border-amber-200 bg-amber-50 dark:bg-amber-900/20 dark:border-amber-800 p-5 space-y-3">
+        <div className="mt-6 rounded-xl border border-warning/40 bg-warning-soft p-5 space-y-3">
           <h3 className="font-semibold text-sm">Upload Payment Receipt</h3>
           <p className="text-xs text-muted-foreground">
             Transfer <span className="font-medium">{formatPrice(order.total_pkr)}</span> to our bank account

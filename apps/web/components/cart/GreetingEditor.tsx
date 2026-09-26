@@ -31,7 +31,7 @@ export function GreetingEditor({ item }: { item: CartItemRead }) {
   if (!editing) {
     return (
       <div className="flex items-start gap-2 pb-3 text-sm">
-        <MessageSquareHeart className="mt-0.5 h-4 w-4 shrink-0 text-primary-700 dark:text-primary-300" aria-hidden />
+        <MessageSquareHeart className="mt-0.5 h-4 w-4 shrink-0 text-link" aria-hidden />
         {item.greeting_message ? (
           <p className="flex-1 italic text-muted-foreground">“{item.greeting_message}”</p>
         ) : (
@@ -40,7 +40,7 @@ export function GreetingEditor({ item }: { item: CartItemRead }) {
         <button
           type="button"
           onClick={() => { setDraft(item.greeting_message ?? ""); setEditing(true); }}
-          className="text-primary-700 dark:text-primary-300 hover:underline"
+          className="text-link hover:underline"
         >
           {item.greeting_message ? "Edit message" : "Add a message"}
         </button>
@@ -67,7 +67,7 @@ export function GreetingEditor({ item }: { item: CartItemRead }) {
             type="button"
             disabled={saving}
             onClick={() => { void save(); }}
-            className="font-medium text-primary-700 dark:text-primary-300 hover:underline disabled:opacity-50"
+            className="font-medium text-link hover:underline disabled:opacity-50"
           >
             {saving ? "Saving…" : "Save message"}
           </button>

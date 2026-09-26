@@ -116,7 +116,7 @@ export default async function ProductPage({ params }: Props) {
           {product.vendor && (
             <Link
               href={`/vendor/${product.vendor.slug}`}
-              className="text-sm text-primary-700 dark:text-primary-300 font-medium hover:underline"
+              className="text-sm text-link font-medium hover:underline"
             >
               {product.vendor.name}
             </Link>
@@ -135,7 +135,7 @@ export default async function ProductPage({ params }: Props) {
           {availableCities.length > 0 && (
             <div className="space-y-2 pt-2">
               <h3 className="text-sm font-semibold flex items-center gap-1.5">
-                <Truck className="h-4 w-4 text-primary-700 dark:text-primary-300" />
+                <Truck className="h-4 w-4 text-link" />
                 Delivery available in
               </h3>
               <div className="grid grid-cols-2 gap-2">
