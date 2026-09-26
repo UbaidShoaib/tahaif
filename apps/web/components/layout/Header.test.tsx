@@ -5,7 +5,8 @@ import { Header } from "@/components/layout/Header";
 import { useAuthStore } from "@/stores/auth.store";
 import { useCartStore } from "@/stores/cart.store";
 
-vi.mock("next/navigation", () => ({ usePathname: () => "/" }));
+vi.mock("next/navigation", () => ({ usePathname: () => "/", useRouter: () => ({ push: vi.fn() }) }));
+vi.mock("@/components/layout/DeliveryPicker", () => ({ DeliveryPicker: () => null }));
 vi.mock("@/stores/auth.store", () => ({ useAuthStore: vi.fn() }));
 vi.mock("@/stores/cart.store", () => ({ useCartStore: vi.fn() }));
 vi.mock("@/components/cart/CartDrawer", () => ({ CartDrawer: () => null }));
@@ -18,19 +19,27 @@ describe("Header", () => {
     vi.mocked(useCartStore).mockReturnValue({ cart: { item_count: 2 }, fetchCart: vi.fn(), openDrawer: vi.fn() });
   });
 
-  it("opens and closes the mobile menu with the category links", async () => {
+  it("opens the mobile menu as a dialog with the category links, and closes it", async () => {
     render(<Header />);
     const toggle = screen.getByRole("button", { name: "Open menu" });
     expect(toggle).toHaveAttribute("aria-expanded", "false");
-    expect(screen.queryByRole("navigation", { name: "Mobile navigation" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
 
     await userEvent.click(toggle);
+    const menu = screen.getByRole("dialog", { name: "Menu" });
     const mobileNav = screen.getByRole("navigation", { name: "Mobile navigation" });
+    expect(menu).toContainElement(mobileNav);
     expect(mobileNav).toHaveTextContent("Cakes");
-    expect(screen.getByRole("button", { name: "Close menu" })).toHaveAttribute("aria-expanded", "true");
+    expect(mobileNav).toHaveTextContent("Birthday");
 
     await userEvent.click(screen.getByRole("button", { name: "Close menu" }));
-    expect(screen.queryByRole("navigation", { name: "Mobile navigation" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(toggle).toHaveFocus();
+  });
+
+  it("has a header search box that goes to the results page", () => {
+    render(<Header />);
+    expect(screen.getByRole("search")).toContainElement(screen.getByRole("searchbox", { name: "Search gifts" }));
   });
 
   it("has a search link and announces the cart count", () => {

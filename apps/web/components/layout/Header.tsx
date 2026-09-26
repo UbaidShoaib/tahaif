@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { useAuthStore } from "@/stores/auth.store";
 import { useCartStore } from "@/stores/cart.store";
@@ -9,15 +9,11 @@ import { Button } from "@/components/ui/button";
 import { CartDrawer } from "@/components/cart/CartDrawer";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { CurrencySelect } from "@/components/layout/CurrencySelect";
-import { ShoppingBag, Gift, User, LogOut, Search, Menu, X } from "lucide-react";
-
-const NAV_LINKS = [
-  { href: "/c/cakes", label: "Cakes" },
-  { href: "/c/flowers", label: "Flowers" },
-  { href: "/c/chocolates", label: "Chocolates" },
-  { href: "/c/perfumes", label: "Perfumes" },
-  { href: "/search", label: "All Gifts" },
-];
+import { DeliveryPicker } from "@/components/layout/DeliveryPicker";
+import { HeaderSearch } from "@/components/layout/HeaderSearch";
+import { MobileNav } from "@/components/layout/MobileNav";
+import { NAV_LINKS } from "@/components/layout/nav-links";
+import { ShoppingBag, Gift, User, LogOut, Search } from "lucide-react";
 
 export function Header() {
   const { user, logout } = useAuthStore();
@@ -28,36 +24,26 @@ export function Header() {
   }, [user, fetchCart]);
 
   const itemCount = cart?.item_count ?? 0;
-  const [menuOpen, setMenuOpen] = useState(false);
   const pathname = usePathname();
-
-  // Close the mobile menu after navigating.
-  useEffect(() => setMenuOpen(false), [pathname]);
 
   return (
     <>
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container mx-auto flex h-16 items-center justify-between px-4">
-          {/* Mobile menu toggle */}
-          <button
-            type="button"
-            onClick={() => setMenuOpen((o) => !o)}
-            className="inline-flex h-11 w-11 items-center justify-center rounded-md hover:bg-muted transition-colors md:hidden"
-            aria-expanded={menuOpen}
-            aria-controls="mobile-nav"
-            aria-label={menuOpen ? "Close menu" : "Open menu"}
-          >
-            {menuOpen ? <X className="h-5 w-5" aria-hidden /> : <Menu className="h-5 w-5" aria-hidden />}
-          </button>
+        <div className="container mx-auto flex h-16 items-center justify-between gap-2 px-4">
+          <div className="flex min-w-0 items-center gap-1">
+            <MobileNav />
 
-          {/* Logo */}
-          <Link href="/" className="flex items-center gap-2 font-bold text-xl text-link">
-            <Gift className="h-6 w-6" />
-            <span>تحائف Tahaif</span>
-          </Link>
+            {/* Logo — the icon and Urdu name drop on very narrow phones so the cart stays on screen. */}
+            <Link href="/" className="flex shrink-0 items-center gap-2 whitespace-nowrap text-lg font-bold text-link xs:text-xl">
+              <Gift aria-hidden className="hidden h-6 w-6 xs:block" />
+              <span>
+                <span className="hidden xs:inline">تحائف </span>Tahaif
+              </span>
+            </Link>
+          </div>
 
           {/* Nav */}
-          <nav aria-label="Main navigation" className="hidden md:flex items-center gap-6 text-sm font-medium">
+          <nav aria-label="Main navigation" className="hidden lg:flex items-center gap-5 whitespace-nowrap text-sm font-medium">
             {NAV_LINKS.map((l) => (
               <Link
                 key={l.href}
@@ -72,10 +58,12 @@ export function Header() {
 
           {/* Right side */}
           <div className="flex items-center gap-1 sm:gap-2">
+            <HeaderSearch className="hidden w-44 lg:block xl:w-56" />
+            <DeliveryPicker compact className="hidden xl:flex" />
             <Link
               href="/search"
               aria-label="Search gifts"
-              className="inline-flex h-11 w-11 items-center justify-center rounded-md hover:bg-muted transition-colors"
+              className="inline-flex h-11 w-11 items-center justify-center rounded-md hover:bg-muted transition-colors lg:hidden"
             >
               <Search className="h-5 w-5" aria-hidden />
             </Link>
@@ -122,44 +110,6 @@ export function Header() {
           </div>
         </div>
 
-        {/* Mobile menu (stopgap until the Sheet-based MobileNav) */}
-        {menuOpen && (
-          <nav id="mobile-nav" aria-label="Mobile navigation" className="border-t bg-background md:hidden">
-            <ul className="container mx-auto flex flex-col px-4 py-2">
-              {NAV_LINKS.map((l) => (
-                <li key={l.href}>
-                  <Link
-                    href={l.href}
-                    aria-current={pathname === l.href ? "page" : undefined}
-                    className="flex min-h-11 items-center rounded-md px-2 font-medium hover:bg-muted"
-                  >
-                    {l.label}
-                  </Link>
-                </li>
-              ))}
-              <li className="my-2 border-t" aria-hidden />
-              {user ? (
-                <li>
-                  <button
-                    type="button"
-                    onClick={() => { void logout(); }}
-                    className="flex min-h-11 w-full items-center gap-2 rounded-md px-2 font-medium hover:bg-muted"
-                  >
-                    <LogOut className="h-4 w-4" aria-hidden /> Log out
-                  </button>
-                </li>
-              ) : (
-                <>
-                  <li><Link href="/login" className="flex min-h-11 items-center rounded-md px-2 font-medium hover:bg-muted">Log in</Link></li>
-                  <li><Link href="/register" className="flex min-h-11 items-center rounded-md px-2 font-medium hover:bg-muted">Sign up</Link></li>
-                </>
-              )}
-              <li className="flex items-center px-2 empty:hidden">
-                <CurrencySelect showLabel />
-              </li>
-            </ul>
-          </nav>
-        )}
       </header>
 
       <CartDrawer />

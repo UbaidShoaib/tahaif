@@ -6,7 +6,8 @@ import { Search, MapPin } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { ProductGrid } from "@/components/catalog/ProductGrid";
 import { ProductCardSkeleton } from "@/components/ui/skeleton";
-import type { City, Product } from "@/lib/catalog";
+import type { Product } from "@/lib/catalog";
+import { useDeliveryStore } from "@/stores/delivery.store";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api/v1";
 
@@ -14,21 +15,26 @@ function SearchPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const initialQ = searchParams.get("q") ?? "";
-  const initialCity = searchParams.get("city_id") ?? "";
+  const deliverTo = useDeliveryStore((s) => s.cityId);
+  const setDeliverTo = useDeliveryStore((s) => s.setCity);
+  const cities = useDeliveryStore((s) => s.cities);
+  const loadCities = useDeliveryStore((s) => s.loadCities);
+  // A city in the URL wins; otherwise start from the buyer's "Deliver to" choice.
+  const initialCity = searchParams.get("city_id") ?? deliverTo ?? "";
 
   const [query, setQuery] = useState(initialQ);
-  const [cityId, setCityId] = useState(initialCity);
-  const [cities, setCities] = useState<City[]>([]);
+  const [cityId, setCityIdState] = useState(initialCity);
+  const setCityId = (id: string) => {
+    setCityIdState(id);
+    setDeliverTo(id || null);
+  };
   const [products, setProducts] = useState<Product[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    fetch(`${API_BASE}/cities`, { credentials: "include" })
-      .then((r) => r.json())
-      .then((data: City[]) => setCities(data))
-      .catch(() => {});
-  }, []);
+    void loadCities();
+  }, [loadCities]);
 
   const fetchProducts = useCallback(async (q: string, city: string) => {
     setLoading(true);

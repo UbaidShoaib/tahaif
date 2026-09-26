@@ -13,6 +13,7 @@ import { Separator } from "@/components/ui/separator";
 import { formatMoney } from "@/lib/money";
 import { Price } from "@/components/money/Price";
 import { useCurrencyStore } from "@/stores/currency.store";
+import { useDeliveryStore } from "@/stores/delivery.store";
 import { ApiError } from "@/lib/api";
 import { accountApi, type AddressRead } from "@/lib/account";
 import { loyaltyApi } from "@/lib/loyalty";
@@ -52,7 +53,7 @@ export default function CheckoutPage() {
 
   const [form, setForm] = useState<CheckoutPlace>({
     payment_method: "cod",
-    delivery_city_id: "",
+    delivery_city_id: useDeliveryStore.getState().cityId ?? "",
     delivery_date: today,
     recipient_name: "",
     recipient_phone: "",
@@ -248,7 +249,10 @@ export default function CheckoutPage() {
                   id="city"
                   required
                   value={form.delivery_city_id}
-                  onChange={(e) => set("delivery_city_id", e.target.value)}
+                  onChange={(e) => {
+                    set("delivery_city_id", e.target.value);
+                    useDeliveryStore.getState().setCity(e.target.value || null);
+                  }}
                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
                   <option value="">Select city…</option>
