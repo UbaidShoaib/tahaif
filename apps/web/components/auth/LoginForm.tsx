@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import Link from "next/link";
+import { useHydrated } from "@/hooks/use-hydrated";
 
 const schema = z.object({
   email: z.string().email("Enter a valid email"),
@@ -21,6 +22,7 @@ const schema = z.object({
 type FormData = z.infer<typeof schema>;
 
 export function LoginForm() {
+  const hydrated = useHydrated();
   const router = useRouter();
   const params = useSearchParams();
   const { setSession } = useAuthStore();
@@ -61,6 +63,8 @@ export function LoginForm() {
       )}
 
       <form onSubmit={(e) => { void handleSubmit(onSubmit)(e); }} className="space-y-4">
+        {/* Disabled until hydrated so nothing typed early is wiped (hooks/use-hydrated.ts). */}
+        <fieldset disabled={!hydrated} className="space-y-4">
         <div className="space-y-1">
           <Label htmlFor="email">Email</Label>
           <Input id="email" type="email" placeholder="you@example.com" autoComplete="email" {...register("email")} />
@@ -81,6 +85,7 @@ export function LoginForm() {
         <Button type="submit" className="w-full" loading={isSubmitting}>
           Sign in
         </Button>
+        </fieldset>
       </form>
 
       <p className="text-center text-sm text-muted-foreground">

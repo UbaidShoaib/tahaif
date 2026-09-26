@@ -16,6 +16,7 @@ import { accountApi, type AddressRead } from "@/lib/account";
 import { loyaltyApi } from "@/lib/loyalty";
 import { formatMoney } from "@/lib/money";
 import { captureEvent } from "@/components/providers";
+import { useHydrated } from "@/hooks/use-hydrated";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { FormField } from "@/components/ui/form-field";
@@ -59,6 +60,7 @@ export default function CheckoutPage() {
   const [selectedAddressId, setSelectedAddressId] = useState("");
 
   const [today] = useState(localToday);
+  const hydrated = useHydrated();
   const [errorList, setErrorList] = useState<{ name: string; label: string; message: string }[]>([]);
   // Bumped on every failed submit so a repeat attempt re-focuses the summary.
   const [invalidAttempt, setInvalidAttempt] = useState(0);
@@ -312,6 +314,8 @@ export default function CheckoutPage() {
         onSubmit={(e) => void handleSubmit(onValid, onInvalid)(e)}
         className="grid grid-cols-1 gap-6 lg:grid-cols-3 lg:gap-8"
       >
+        {/* Disabled until hydrated so nothing typed early is wiped (hooks/use-hydrated.ts). */}
+        <fieldset disabled={!hydrated} className="contents">
         <div className="space-y-6 lg:col-span-2">
           {errorList.length > 0 && (
             <Alert variant="destructive" ref={errorSummaryRef} tabIndex={-1} aria-labelledby="error-summary-title">
@@ -411,6 +415,7 @@ export default function CheckoutPage() {
             isPlacing={isPlacing}
           />
         </div>
+        </fieldset>
       </form>
     </div>
   );

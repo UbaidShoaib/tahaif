@@ -17,6 +17,7 @@ import { toast } from "@/components/ui/toast";
 import { useCartStore } from "@/stores/cart.store";
 import { useDeliveryStore } from "@/stores/delivery.store";
 import { captureEvent } from "@/components/providers";
+import { useHydrated } from "@/hooks/use-hydrated";
 
 type Props = {
   product: Product;
@@ -56,6 +57,7 @@ export function VariantPicker({ product, cities = [] }: Props) {
   const deliverTo = useDeliveryStore((s) => s.cityId);
   const setDeliverTo = useDeliveryStore((s) => s.setCity);
   const now = useMinuteClock();
+  const hydrated = useHydrated();
   const cityFieldId = useId();
 
   const available = product.product_cities
@@ -262,7 +264,8 @@ export function VariantPicker({ product, cities = [] }: Props) {
           <Button
             size="lg"
             className="flex-1 gap-2 md:w-full"
-            disabled={!inStock}
+            // Disabled until hydrated: a tap on the server-rendered button would do nothing.
+            disabled={!inStock || !hydrated}
             loading={isAdding}
             onClick={() => {
               void handleAddToCart();

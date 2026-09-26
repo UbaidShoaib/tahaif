@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import Link from "next/link";
+import { useHydrated } from "@/hooks/use-hydrated";
 
 const schema = z.object({
   full_name: z.string().min(2, "Name must be at least 2 characters"),
@@ -26,6 +27,7 @@ const schema = z.object({
 type FormData = z.infer<typeof schema>;
 
 export function RegisterForm() {
+  const hydrated = useHydrated();
   const router = useRouter();
   const { setSession } = useAuthStore();
   const [error, setError] = useState<string | null>(null);
@@ -74,6 +76,8 @@ export function RegisterForm() {
       )}
 
       <form onSubmit={(e) => { void handleSubmit(onSubmit)(e); }} className="space-y-4">
+        {/* Disabled until hydrated so nothing typed early is wiped (hooks/use-hydrated.ts). */}
+        <fieldset disabled={!hydrated} className="space-y-4">
         <div className="space-y-1">
           <Label htmlFor="full_name">Full name</Label>
           <Input id="full_name" placeholder="Ahmed Khan" autoComplete="name" {...register("full_name")} />
@@ -107,6 +111,7 @@ export function RegisterForm() {
         <Button type="submit" className="w-full" loading={isSubmitting}>
           Create account
         </Button>
+        </fieldset>
       </form>
 
       <p className="text-center text-sm text-muted-foreground">
