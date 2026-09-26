@@ -19,6 +19,7 @@ from app.schemas.catalog import (
     ProductCreate,
     ProductImageRead,
     ProductRead,
+    ProductSort,
     ProductUpdate,
     VendorCreate,
     VendorRead,
@@ -121,6 +122,13 @@ async def list_products(
     occasion_id: uuid.UUID | None = Query(default=None),  # noqa: B008
     page: int = Query(default=1, ge=1),  # noqa: B008
     page_size: int = Query(default=20, ge=1, le=100),  # noqa: B008
+    sort: ProductSort = Query(  # noqa: B008
+        default="recommended",
+        description="recommended (A–Z), price_asc, price_desc or newest. "
+        "Price uses the city's price when city_id is given.",
+    ),
+    min_price_pkr: int | None = Query(default=None, ge=0, description="Minimum price in paisa"),  # noqa: B008
+    max_price_pkr: int | None = Query(default=None, ge=0, description="Maximum price in paisa"),  # noqa: B008
 ) -> PaginatedProducts:
     response.headers["Cache-Control"] = _CACHE_PRODUCTS
     return await catalog_service.list_products(
@@ -131,6 +139,9 @@ async def list_products(
         occasion_id=occasion_id,
         page=page,
         page_size=page_size,
+        sort=sort,
+        min_price_pkr=min_price_pkr,
+        max_price_pkr=max_price_pkr,
     )
 
 

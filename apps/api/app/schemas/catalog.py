@@ -1,6 +1,7 @@
 import uuid
 from datetime import datetime, time
 from decimal import Decimal
+from typing import Literal
 
 from pydantic import BaseModel, Field
 
@@ -216,6 +217,10 @@ class OccasionUpdate(BaseModel):
 
 
 # ── List responses ────────────────────────────────────────────────────────────
+
+ProductSort = Literal["recommended", "price_asc", "price_desc", "newest"]
+"""Storefront listing order. "recommended" keeps the historical alphabetical order."""
+
 
 class PaginatedProducts(BaseModel):
     items: list[ProductRead]

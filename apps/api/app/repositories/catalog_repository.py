@@ -193,7 +193,16 @@ class ProductRepository:
         active_only: bool = True,
         page: int = 1,
         page_size: int = 20,
+        sort: str = "recommended",
+        min_price_pkr: int | None = None,
+        max_price_pkr: int | None = None,
     ) -> tuple[list[Product], int]:
+        """Paginated products.
+
+        Price filters and price sorting use the city's price override when
+        ``city_id`` is given (what the buyer will actually pay there), and the
+        base price otherwise.
+        """
         q = self._with_relations()
         if active_only:
             q = q.where(Product.is_active.is_(True))
@@ -201,21 +210,33 @@ class ProductRepository:
             q = q.where(Product.vendor_id == vendor_id)
         if category_id:
             q = q.where(Product.category_id == category_id)
+        price: Any = Product.base_price_pkr
         if city_id:
             q = q.join(Product.product_cities).where(
                 ProductCity.city_id == city_id,
                 ProductCity.is_available.is_(True),
             )
+            price = func.coalesce(ProductCity.price_override_pkr, Product.base_price_pkr)
         if occasion_id:
             q = q.join(
                 product_occasions_table,
                 Product.id == product_occasions_table.c.product_id,
             ).where(product_occasions_table.c.occasion_id == occasion_id)
+        if min_price_pkr is not None:
+            q = q.where(price >= min_price_pkr)
+        if max_price_pkr is not None:
+            q = q.where(price <= max_price_pkr)
 
         count_q = select(func.count()).select_from(q.subquery())
         total = (await self._db.execute(count_q)).scalar_one()
 
-        q = q.order_by(Product.name).offset((page - 1) * page_size).limit(page_size)
+        # Product.id last keeps pages stable when the primary key ties.
+        order: tuple[Any, ...] = {
+            "price_asc": (price.asc(), Product.name, Product.id),
+            "price_desc": (price.desc(), Product.name, Product.id),
+            "newest": (Product.created_at.desc(), Product.id),
+        }.get(sort, (Product.name, Product.id))
+        q = q.order_by(*order).offset((page - 1) * page_size).limit(page_size)
         items = list((await self._db.execute(q)).scalars().unique().all())
         return items, total
 

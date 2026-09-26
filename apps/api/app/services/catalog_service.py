@@ -25,6 +25,7 @@ from app.schemas.catalog import (
     ProductCityUpsert,
     ProductCreate,
     ProductRead,
+    ProductSort,
     ProductUpdate,
     VendorCreate,
     VendorUpdate,
@@ -183,7 +184,15 @@ async def list_products(
     occasion_id: uuid.UUID | None = None,
     page: int = 1,
     page_size: int = 20,
+    sort: ProductSort = "recommended",
+    min_price_pkr: int | None = None,
+    max_price_pkr: int | None = None,
 ) -> PaginatedProducts:
+    if min_price_pkr is not None and max_price_pkr is not None and min_price_pkr > max_price_pkr:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="min_price_pkr must not be greater than max_price_pkr",
+        )
     repo = ProductRepository(db)
     items, total = await repo.list(
         city_id=city_id,
@@ -192,6 +201,9 @@ async def list_products(
         occasion_id=occasion_id,
         page=page,
         page_size=page_size,
+        sort=sort,
+        min_price_pkr=min_price_pkr,
+        max_price_pkr=max_price_pkr,
     )
     return PaginatedProducts(
         items=[ProductRead.model_validate(p) for p in items],
