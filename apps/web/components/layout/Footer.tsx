@@ -1,72 +1,80 @@
 import Link from "next/link";
+import { getTranslations } from "next-intl/server";
 import { Banknote, Gift, Lock, MapPinned } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
+import { NAV_LINKS } from "@/components/layout/nav-links";
 
-export function Footer() {
+const linkClass = "inline-flex min-h-9 items-center hover:text-foreground transition-colors";
+
+export async function Footer() {
+  const t = await getTranslations();
+
+  const columns: { heading: string; links: { href: string; label: string }[] }[] = [
+    { heading: t("footer.shop"), links: NAV_LINKS.map((l) => ({ href: l.href, label: t(`nav.${l.key}`) })) },
+    {
+      heading: t("footer.account"),
+      links: [
+        { href: "/login", label: t("footer.login") },
+        { href: "/register", label: t("footer.register") },
+        { href: "/account/orders", label: t("footer.myOrders") },
+        { href: "/account/addresses", label: t("footer.addresses") },
+      ],
+    },
+    {
+      heading: t("footer.help"),
+      links: [
+        { href: "/faq", label: t("footer.faq") },
+        { href: "/contact", label: t("footer.contact") },
+        { href: "/terms", label: t("footer.terms") },
+        { href: "/privacy", label: t("footer.privacy") },
+        { href: "/refund", label: t("footer.refund") },
+      ],
+    },
+  ];
+
   return (
     <footer className="border-t bg-muted/40">
       <div className="container mx-auto px-4 py-10">
         <div className="grid grid-cols-2 gap-8 md:grid-cols-4">
           <div className="col-span-2 md:col-span-1">
-            <Link href="/" className="flex items-center gap-2 font-bold text-lg text-link">
-              <Gift className="h-5 w-5" />
+            <Link href="/" className="flex items-center gap-2 text-lg font-bold text-link">
+              <Gift aria-hidden className="h-5 w-5" />
               <span>Tahaif</span>
             </Link>
-            <p className="mt-2 text-sm text-muted-foreground">
-              Send gifts to your loved ones across Pakistan. Cakes, flowers, perfumes and more.
-            </p>
+            <p className="mt-2 text-sm text-muted-foreground">{t("footer.tagline")}</p>
           </div>
 
-          <div>
-            <h3 className="font-semibold text-sm mb-3">Shop</h3>
-            <ul className="space-y-2 text-sm text-muted-foreground">
-              <li><Link href="/c/cakes" className="hover:text-foreground transition-colors">Cakes</Link></li>
-              <li><Link href="/c/flowers" className="hover:text-foreground transition-colors">Flowers</Link></li>
-              <li><Link href="/c/chocolates" className="hover:text-foreground transition-colors">Chocolates</Link></li>
-              <li><Link href="/c/perfumes" className="hover:text-foreground transition-colors">Perfumes</Link></li>
-              <li><Link href="/search" className="hover:text-foreground transition-colors">All Gifts</Link></li>
-            </ul>
-          </div>
-
-          <div>
-            <h3 className="font-semibold text-sm mb-3">Account</h3>
-            <ul className="space-y-2 text-sm text-muted-foreground">
-              <li><Link href="/login" className="hover:text-foreground transition-colors">Login</Link></li>
-              <li><Link href="/register" className="hover:text-foreground transition-colors">Register</Link></li>
-              <li><Link href="/account/orders" className="hover:text-foreground transition-colors">My Orders</Link></li>
-              <li><Link href="/account/addresses" className="hover:text-foreground transition-colors">Addresses</Link></li>
-            </ul>
-          </div>
-
-          <div>
-            <h3 className="font-semibold text-sm mb-3">Help</h3>
-            <ul className="space-y-2 text-sm text-muted-foreground">
-              <li><Link href="/faq" className="hover:text-foreground transition-colors">FAQ</Link></li>
-              <li><Link href="/contact" className="hover:text-foreground transition-colors">Contact Us</Link></li>
-              <li><Link href="/terms" className="hover:text-foreground transition-colors">Terms of Service</Link></li>
-              <li><Link href="/privacy" className="hover:text-foreground transition-colors">Privacy Policy</Link></li>
-              <li><Link href="/refund" className="hover:text-foreground transition-colors">Refund Policy</Link></li>
-            </ul>
-          </div>
+          {columns.map((col) => (
+            <nav key={col.heading} aria-label={col.heading}>
+              <h2 className="mb-3 font-sans text-sm font-semibold tracking-normal">{col.heading}</h2>
+              <ul className="space-y-1 text-sm text-muted-foreground">
+                {col.links.map((l) => (
+                  <li key={l.href}>
+                    <Link href={l.href} className={linkClass}>
+                      {l.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </nav>
+          ))}
         </div>
 
         <Separator className="my-6" />
 
         <div className="flex flex-col items-center justify-between gap-4 md:flex-row">
-          <p className="text-sm text-muted-foreground">
-            © {new Date().getFullYear()} Tahaif. All rights reserved.
-          </p>
+          <p className="text-sm text-muted-foreground">{t("footer.rights", { year: new Date().getFullYear() })}</p>
           {/* Only claims we can back up today; no refund promise until the Refund
               Policy is published (docs/questions.md Q17). */}
           <ul className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-sm text-muted-foreground">
             <li className="flex items-center gap-1.5">
-              <Lock aria-hidden className="h-4 w-4" /> Secure checkout
+              <Lock aria-hidden className="h-4 w-4" /> {t("footer.secureCheckout")}
             </li>
             <li className="flex items-center gap-1.5">
-              <Banknote aria-hidden className="h-4 w-4" /> Cash on delivery
+              <Banknote aria-hidden className="h-4 w-4" /> {t("footer.cod")}
             </li>
             <li className="flex items-center gap-1.5">
-              <MapPinned aria-hidden className="h-4 w-4" /> Online order tracking
+              <MapPinned aria-hidden className="h-4 w-4" /> {t("footer.tracking")}
             </li>
           </ul>
         </div>

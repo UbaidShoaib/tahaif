@@ -139,7 +139,7 @@ export default function VendorOrdersPage() {
       </div>
 
       <div className="mb-5">
-        <label htmlFor="status-filter" className="text-sm font-medium mr-3">
+        <label htmlFor="status-filter" className="text-sm font-medium me-3">
           Filter by status:
         </label>
         <select
@@ -175,7 +175,7 @@ export default function VendorOrdersPage() {
                 <div className="flex flex-wrap items-start justify-between gap-3 mb-3">
                   <div>
                     <OrderStatusBadge status={f.status} kind="fulfillment" />
-                    <span className="ml-3 text-xs text-muted-foreground">
+                    <span className="ms-3 text-xs text-muted-foreground">
                       Deliver by {formatDate(f.delivery_date)}
                     </span>
                   </div>

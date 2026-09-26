@@ -26,7 +26,7 @@ export function ProductGallery({ images, productName }: { images: ProductImage[]
     setIndex(next);
     const track = trackRef.current;
     const slide = track?.children[next] as HTMLElement | undefined;
-    if (track && slide) track.scrollTo({ left: slide.offsetLeft, behavior: "smooth" });
+    if (track && slide) track.scrollTo?.({ left: slide.offsetLeft, behavior: "smooth" });
   };
 
   // Keep the index in sync when the buyer swipes.

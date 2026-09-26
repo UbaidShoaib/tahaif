@@ -118,11 +118,11 @@ export default async function SuccessPage({
             <p className="text-sm text-muted-foreground">Placed on</p>
             <p className="font-medium">{placedDate}</p>
           </div>
-          <div className="text-right">
+          <div className="text-end">
             <p className="text-sm text-muted-foreground">Status</p>
             <OrderStatusBadge status={order.status} />
           </div>
-          <div className="text-right">
+          <div className="text-end">
             <p className="text-sm text-muted-foreground">Payment</p>
             <p className="font-medium">
               {PAYMENT_LABELS[order.payment_method ?? ""] ?? order.payment_method}
@@ -221,7 +221,7 @@ export default async function SuccessPage({
         <Button asChild className="flex-1 gap-2">
           <Link href={`/track/${order.public_token}`}>
             Track Order
-            <ArrowRight className="h-4 w-4" />
+            <ArrowRight aria-hidden className="h-4 w-4 rtl:rotate-180" />
           </Link>
         </Button>
         <Button variant="outline" asChild className="flex-1">

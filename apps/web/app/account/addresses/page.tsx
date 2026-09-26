@@ -223,7 +223,7 @@ export default function AddressesPage() {
                       <p className="font-medium text-base">
                         {a.recipient_name}
                         {a.is_default && (
-                          <span className="ml-2 rounded-full bg-primary-soft px-2 py-0.5 text-xs font-semibold text-primary-soft-foreground">Default</span>
+                          <span className="ms-2 rounded-full bg-primary-soft px-2 py-0.5 text-xs font-semibold text-primary-soft-foreground">Default</span>
                         )}
                       </p>
                       <p>{a.line1}{a.line2 ? `, ${a.line2}` : ""}</p>

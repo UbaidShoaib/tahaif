@@ -72,8 +72,10 @@ const config: Config = {
         info: { DEFAULT: token("info"), soft: token("info-soft") },
       },
       fontFamily: {
-        sans: ["var(--font-inter)", "system-ui", "sans-serif"],
-        display: ["var(--font-fraunces)", "Georgia", "serif"],
+        // Naskh after the Latin faces: browsers fall back per glyph, so Urdu text
+        // (including the تحائف wordmark) gets Naskh while English keeps Inter/Fraunces.
+        sans: ["var(--font-inter)", "var(--font-naskh)", "system-ui", "sans-serif"],
+        display: ["var(--font-fraunces)", "var(--font-naskh)", "Georgia", "serif"],
       },
       fontSize: {
         // Fluid headings: mobile → desktop sizes from the redesign plan §3.3.

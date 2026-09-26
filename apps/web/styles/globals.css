@@ -134,6 +134,14 @@
   h2 {
     @apply font-display tracking-tight;
   }
+  /* Urdu script needs more line height and no negative tracking (fonts: tailwind.config.ts). */
+  html[lang="ur"] body {
+    line-height: 1.8;
+  }
+  html[lang="ur"] h1,
+  html[lang="ur"] h2 {
+    @apply tracking-normal;
+  }
   /* Form fields use the stronger --input border, never the decorative one. */
   input:not([type="checkbox"]):not([type="radio"]),
   select,

@@ -2,6 +2,7 @@
 
 import { useEffect, useId } from "react";
 import { MapPin } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useDeliveryStore } from "@/stores/delivery.store";
 import { Select } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
@@ -12,6 +13,7 @@ import { cn } from "@/lib/utils";
  */
 export function DeliveryPicker({ compact = false, className }: { compact?: boolean; className?: string }) {
   const id = useId();
+  const t = useTranslations("header");
   const cities = useDeliveryStore((s) => s.cities);
   const cityId = useDeliveryStore((s) => s.cityId);
   const setCity = useDeliveryStore((s) => s.setCity);
@@ -28,7 +30,7 @@ export function DeliveryPicker({ compact = false, className }: { compact?: boole
       <label htmlFor={id} className={cn("flex items-center gap-1.5 whitespace-nowrap text-sm", !compact && "font-medium")}>
         <MapPin aria-hidden className="h-4 w-4 shrink-0 text-link" />
         {/* In the header the pin icon stands in for the words; screen readers still hear them. */}
-        <span className={cn(compact && "sr-only")}>Deliver to</span>
+        <span className={cn(compact && "sr-only")}>{t("deliverTo")}</span>
       </label>
       <Select
         id={id}
@@ -36,7 +38,7 @@ export function DeliveryPicker({ compact = false, className }: { compact?: boole
         onChange={(e) => setCity(e.target.value || null)}
         className={cn(compact && "h-9 w-auto border-transparent bg-transparent ps-1 font-medium hover:border-input sm:text-sm")}
       >
-        <option value="">Any city</option>
+        <option value="">{t("anyCity")}</option>
         {cities.map((c) => (
           <option key={c.id} value={c.id}>
             {c.name}

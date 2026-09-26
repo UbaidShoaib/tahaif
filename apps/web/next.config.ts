@@ -1,6 +1,10 @@
 import path from "path";
 import type { NextConfig } from "next";
+import createNextIntlPlugin from "next-intl/plugin";
 import { imageHosts } from "./lib/image-hosts";
+
+// Locale from a cookie, no URL prefix (i18n/request.ts, ADR 0005).
+const withNextIntl = createNextIntlPlugin("./i18n/request.ts");
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 const API_HOST = new URL(API_URL).host;
@@ -76,4 +80,4 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
 };
 
-export default nextConfig;
+export default withNextIntl(nextConfig);

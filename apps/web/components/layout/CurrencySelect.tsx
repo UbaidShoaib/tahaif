@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { useCurrencyStore } from "@/stores/currency.store";
 import type { CurrencyCode } from "@/lib/account";
 
@@ -9,13 +10,14 @@ export function CurrencySelect({ showLabel = false }: { showLabel?: boolean }) {
   const rates = useCurrencyStore((s) => s.rates);
   const setCurrency = useCurrencyStore((s) => s.setCurrency);
   const [error, setError] = useState<string | null>(null);
+  const t = useTranslations("header");
   const codes = Object.keys(rates).sort((a, b) => (a === "PKR" ? -1 : b === "PKR" ? 1 : a.localeCompare(b)));
 
   if (codes.length < 2) return null; // nothing to choose until FX rates exist
 
   return (
     <label className={showLabel ? "flex w-full items-center justify-between gap-2 text-sm" : "flex items-center gap-1 text-sm"}>
-      <span className={showLabel ? "text-muted-foreground" : "sr-only"}>Currency</span>
+      <span className={showLabel ? "text-muted-foreground" : "sr-only"}>{t("currency")}</span>
       <select
         id="currency-select"
         value={currency}

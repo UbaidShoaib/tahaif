@@ -60,7 +60,7 @@ export default function CartPage() {
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">
           Your Cart
-          <span className="ml-2 text-base font-normal text-muted-foreground">
+          <span className="ms-2 text-base font-normal text-muted-foreground">
             ({cart.item_count} {cart.item_count === 1 ? "item" : "items"})
           </span>
         </h1>
@@ -111,7 +111,7 @@ export default function CartPage() {
             <Button className="w-full gap-2" size="lg" asChild>
               <Link href="/checkout">
                 Proceed to Checkout
-                <ArrowRight className="h-4 w-4" />
+                <ArrowRight aria-hidden className="h-4 w-4 rtl:rotate-180" />
               </Link>
             </Button>
             <Button variant="outline" className="w-full" asChild>

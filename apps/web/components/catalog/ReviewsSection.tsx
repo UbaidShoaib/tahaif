@@ -82,7 +82,7 @@ export function ReviewsSection({ productId, initialReviews }: Props) {
               <div className="flex items-center gap-3 mb-2">
                 <Rating value={r.rating} size="sm" />
                 {r.title && <span className="font-semibold text-sm">{r.title}</span>}
-                <span className="text-xs text-muted-foreground ml-auto">
+                <span className="text-xs text-muted-foreground ms-auto">
                   {formatDate(r.created_at)}
                 </span>
               </div>

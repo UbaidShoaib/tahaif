@@ -3,12 +3,14 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Search } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 
 /** Search box that sends the buyer to /search?q=… (the results page does the searching). */
 export function HeaderSearch({ className, onSubmitted }: { className?: string; onSubmitted?: () => void }) {
   const router = useRouter();
   const [q, setQ] = useState("");
+  const t = useTranslations("header");
 
   return (
     <form
@@ -26,8 +28,8 @@ export function HeaderSearch({ className, onSubmitted }: { className?: string; o
         type="search"
         value={q}
         onChange={(e) => setQ(e.target.value)}
-        aria-label="Search gifts"
-        placeholder="Search gifts…"
+        aria-label={t("searchGifts")}
+        placeholder={t("searchPlaceholder")}
         enterKeyHint="search"
         className="h-10 w-full rounded-full border border-input bg-background ps-9 pe-4 text-base placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:text-sm"
       />

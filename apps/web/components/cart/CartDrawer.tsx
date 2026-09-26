@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { Gift } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useCartStore } from "@/stores/cart.store";
 import { CartItemRow } from "@/components/cart/CartItemRow";
 import { Button } from "@/components/ui/button";
@@ -15,6 +16,7 @@ import { useDeliveryCityName } from "@/stores/delivery.store";
 export function CartDrawer() {
   const { cart, isDrawerOpen, closeDrawer, isFetching } = useCartStore();
   const cityName = useDeliveryCityName();
+  const t = useTranslations("cart");
   const count = cart?.item_count ?? 0;
   const hasItems = !!cart && cart.items.length > 0;
 
@@ -22,9 +24,9 @@ export function CartDrawer() {
     <Sheet open={isDrawerOpen} onOpenChange={(open) => { if (!open) closeDrawer(); }}>
       <SheetContent
         side="end"
-        title="Your cart"
-        closeLabel="Close cart"
-        headerExtra={count > 0 ? <Badge variant="brand">{count} {count === 1 ? "item" : "items"}</Badge> : null}
+        title={t("title")}
+        closeLabel={t("close")}
+        headerExtra={count > 0 ? <Badge variant="brand">{t("items", { count })}</Badge> : null}
       >
         {/* Items */}
         <div className="flex-1 overflow-y-auto px-4" aria-busy={isFetching || undefined}>
@@ -50,11 +52,11 @@ export function CartDrawer() {
             <EmptyState
               icon={Gift}
               as="h3"
-              title="Your cart is empty"
-              description="Add a gift to start an order."
+              title={t("empty")}
+              description={t("emptyHint")}
               action={
                 <Button variant="outline" onClick={closeDrawer} asChild>
-                  <Link href="/search">Browse Gifts</Link>
+                  <Link href="/search">{t("browse")}</Link>
                 </Button>
               }
             />
@@ -65,19 +67,19 @@ export function CartDrawer() {
         {hasItems && (
           <div className="space-y-3 border-t px-4 py-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
             <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Subtotal</span>
+              <span className="text-muted-foreground">{t("subtotal")}</span>
               <span className="font-semibold" aria-live="polite">
                 <Price pkr={cart.subtotal_pkr} />
               </span>
             </div>
             <p className="text-xs text-muted-foreground">
-              {cityName ? `Delivery fee to ${cityName} is added at checkout.` : "Delivery fee calculated at checkout."}
+              {cityName ? t("feeToCity", { city: cityName }) : t("feeAtCheckout")}
             </p>
             <Button className="w-full" size="lg" onClick={closeDrawer} asChild>
-              <Link href="/checkout">Checkout</Link>
+              <Link href="/checkout">{t("checkout")}</Link>
             </Button>
             <Button variant="ghost" className="w-full" onClick={closeDrawer} asChild>
-              <Link href="/cart">View Cart</Link>
+              <Link href="/cart">{t("viewCart")}</Link>
             </Button>
           </div>
         )}
