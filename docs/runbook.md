@@ -208,3 +208,29 @@ container (Compose is started with `--env-file .env` for this reason).
 | FX rate refresh | Daily 00:00 UTC | `workers/fx_rate_worker.py` via arq — **not yet scheduled on Railway; needs a cron-triggered job or always-on worker** |
 | Outbox drain | Every 5 minutes | `workers/outbox_worker.py` via arq — **same; not yet scheduled** |
 | DB vacuum | Managed by Postgres | Railway Postgres template handles autovacuum by default |
+
+---
+
+## 9. Running the E2E suite locally
+
+The Playwright specs in `apps/web/tests/` need the real stack; they don't mock the API.
+
+```bash
+docker compose -f infra/docker-compose.yml up -d
+cd apps/api
+uv run alembic upgrade head && uv run python scripts/seed.py
+# TESTING=1 turns off the rate limiter. Without it, registration is capped at
+# 10/hour per IP and a few runs start failing with "Too many requests".
+TESTING=1 uv run uvicorn app.main:app --port 8000
+
+cd ../web
+pnpm build && pnpm start -p 3000     # a production build; `next dev` is slower and flakier
+pnpm exec playwright install chromium  # once; or run with channel "chrome" to use installed Chrome
+pnpm exec playwright test
+```
+
+Expect 8 passed and 1 skipped: "vendor can mark fulfillment as dispatched" skips
+unless the seed has a pending fulfilment and a vendor login (`E2E_VENDOR_EMAIL` /
+`E2E_VENDOR_PASSWORD`).
+
+Never run the API with `TESTING=1` outside local testing.
