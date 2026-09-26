@@ -1,15 +1,17 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useAuthStore } from "@/stores/auth.store";
 import { loyaltyApi, type ReviewCreate, type ReviewRead } from "@/lib/loyalty";
 
 function StarRating({ rating, max = 5 }: { rating: number; max?: number }) {
   return (
-    <span className="flex gap-0.5" aria-label={`${rating} out of ${max} stars`}>
+    <span role="img" className="flex gap-0.5" aria-label={`${rating} out of ${max} stars`}>
       {Array.from({ length: max }).map((_, i) => (
-        <span key={i} className={i < rating ? "text-amber-400" : "text-muted"}>
-          ★
+        <span key={i} aria-hidden className={i < rating ? "text-gold-dark dark:text-gold" : "text-muted-foreground"}>
+          {i < rating ? "★" : "☆"}
         </span>
       ))}
     </span>
@@ -31,6 +33,7 @@ interface Props {
 
 export function ReviewsSection({ productId, initialReviews }: Props) {
   const { accessToken } = useAuthStore();
+  const pathname = usePathname();
   const reviews = initialReviews;
   const [rating, setRating] = useState(5);
   const [title, setTitle] = useState("");
@@ -98,34 +101,35 @@ export function ReviewsSection({ productId, initialReviews }: Props) {
       {/* Submit form */}
       {!accessToken ? (
         <p className="text-sm text-muted-foreground">
-          <a href="/login" className="text-[#16a34a] hover:underline">Sign in</a> to leave a review.
+          <Link href={`/login?callbackUrl=${encodeURIComponent(pathname)}`} className="text-primary-700 dark:text-primary-300 hover:underline">Sign in</Link> to leave a review.
         </p>
       ) : submitted ? (
-        <div className="border border-[#16a34a]/30 bg-[#16a34a]/5 rounded-xl p-4 text-sm text-[#16a34a] font-medium">
+        <div className="border border-primary-700/30 bg-primary-700/5 rounded-xl p-4 text-sm text-primary-700 dark:text-primary-300 font-medium">
           Thanks for your review! It will appear after moderation.
         </div>
       ) : (
         <form onSubmit={(e) => { void handleSubmit(e); }} className="border rounded-xl p-5 space-y-4">
           <h3 className="font-semibold">Write a Review</h3>
 
-          {error && <p className="text-sm text-destructive">{error}</p>}
+          {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
 
-          <div>
-            <label className="text-sm font-medium mb-1 block">Rating</label>
+          <fieldset>
+            <legend className="text-sm font-medium mb-1 block">Rating</legend>
             <div className="flex gap-1">
               {[1, 2, 3, 4, 5].map((n) => (
                 <button
                   key={n}
                   type="button"
                   onClick={() => setRating(n)}
-                  className={`text-2xl ${n <= rating ? "text-amber-400" : "text-muted"}`}
+                  aria-pressed={n === rating}
+                  className={`inline-flex h-11 w-11 items-center justify-center rounded-md text-2xl ${n <= rating ? "text-gold-dark dark:text-gold" : "text-muted-foreground"}`}
                   aria-label={`${n} star`}
                 >
-                  ★
+                  <span aria-hidden>{n <= rating ? "★" : "☆"}</span>
                 </button>
               ))}
             </div>
-          </div>
+          </fieldset>
 
           <div>
             <label htmlFor="review-title" className="text-sm font-medium mb-1 block">
@@ -138,7 +142,7 @@ export function ReviewsSection({ productId, initialReviews }: Props) {
               onChange={(e) => setTitle(e.target.value)}
               maxLength={255}
               placeholder="Summary of your experience"
-              className="w-full border rounded-lg px-3 py-2 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-[#16a34a]/40"
+              className="w-full border rounded-lg px-3 py-2 text-sm bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             />
           </div>
 
@@ -152,14 +156,14 @@ export function ReviewsSection({ productId, initialReviews }: Props) {
               onChange={(e) => setBody(e.target.value)}
               rows={3}
               placeholder="Tell others about your experience…"
-              className="w-full border rounded-lg px-3 py-2 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-[#16a34a]/40 resize-none"
+              className="w-full border rounded-lg px-3 py-2 text-sm bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring resize-none"
             />
           </div>
 
           <button
             type="submit"
             disabled={submitting}
-            className="bg-[#16a34a] text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-[#15803d] disabled:opacity-50 transition-colors"
+            className="bg-primary-700 text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-primary-800 disabled:opacity-50 transition-colors"
           >
             {submitting ? "Submitting…" : "Submit Review"}
           </button>

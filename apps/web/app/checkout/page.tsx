@@ -205,8 +205,12 @@ export default function CheckoutPage() {
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl">
       <div className="flex items-center gap-3 mb-6">
-        <Link href="/cart" className="text-muted-foreground hover:text-foreground transition-colors">
-          <ArrowLeft className="h-5 w-5" />
+        <Link
+          href="/cart"
+          aria-label="Back to cart"
+          className="inline-flex h-11 w-11 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+        >
+          <ArrowLeft className="h-5 w-5" aria-hidden />
         </Link>
         <h1 className="text-2xl font-bold">Checkout</h1>
       </div>
@@ -272,6 +276,7 @@ export default function CheckoutPage() {
                 <Input
                   id="recipient_name"
                   required
+                  autoComplete="shipping name"
                   minLength={2}
                   placeholder="Full name of recipient"
                   value={form.recipient_name}
@@ -282,7 +287,10 @@ export default function CheckoutPage() {
                 <Label htmlFor="recipient_phone">Recipient Phone *</Label>
                 <Input
                   id="recipient_phone"
+                  type="tel"
+                  inputMode="tel"
                   required
+                  autoComplete="shipping tel"
                   placeholder="+92 300 1234567"
                   value={form.recipient_phone}
                   onChange={(e) => set("recipient_phone", e.target.value)}
@@ -295,6 +303,7 @@ export default function CheckoutPage() {
               <Input
                 id="address_line1"
                 required
+                autoComplete="shipping address-line1"
                 minLength={5}
                 placeholder="House/flat, street, area"
                 value={form.address_line1}
@@ -307,6 +316,7 @@ export default function CheckoutPage() {
                 <Label htmlFor="address_line2">Apartment / Floor (optional)</Label>
                 <Input
                   id="address_line2"
+                  autoComplete="shipping address-line2"
                   placeholder="e.g. Flat 3B"
                   value={form.address_line2 ?? ""}
                   onChange={(e) => set("address_line2", e.target.value)}
@@ -345,11 +355,12 @@ export default function CheckoutPage() {
                 <button
                   key={pm.value}
                   type="button"
+                  aria-pressed={form.payment_method === pm.value}
                   onClick={() => set("payment_method", pm.value)}
                   className={`rounded-lg border-2 p-4 text-left transition-colors ${
                     form.payment_method === pm.value
-                      ? "border-primary-600 bg-primary-50 dark:bg-primary-900/20"
-                      : "border-border hover:border-primary-300"
+                      ? "border-primary-700 bg-primary-50 dark:bg-primary-900/30"
+                      : "border-input hover:border-primary-400"
                   }`}
                 >
                   <p className="font-medium">{pm.label}</p>
@@ -398,7 +409,7 @@ export default function CheckoutPage() {
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Delivery</span>
-                <span>
+                <span aria-live="polite">
                   {isQuoting
                     ? "Calculating…"
                     : quote
@@ -462,7 +473,7 @@ export default function CheckoutPage() {
                   type="checkbox"
                   checked={useLoyalty}
                   onChange={(e) => setUseLoyalty(e.target.checked)}
-                  className="mt-0.5 h-4 w-4 accent-[#16a34a]"
+                  className="mt-0.5 h-4 w-4 accent-primary-700"
                 />
                 <span>
                   Use my {pointsBalance} loyalty points
@@ -475,7 +486,7 @@ export default function CheckoutPage() {
 
             <div className="flex justify-between font-semibold">
               <span>Total</span>
-              <span className="text-primary-600">{pkr(summary.total_pkr)}</span>
+              <span className="text-primary-700 dark:text-primary-300">{pkr(summary.total_pkr)}</span>
             </div>
             {quote && quote.currency !== "PKR" ? (
               <p className="rounded-md bg-muted px-3 py-2 text-sm">
@@ -491,7 +502,7 @@ export default function CheckoutPage() {
             ) : null}
 
             {error && (
-              <div className="rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+              <div role="alert" className="rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
                 {error}
               </div>
             )}
@@ -500,12 +511,12 @@ export default function CheckoutPage() {
               type="submit"
               size="lg"
               className="w-full"
-              disabled={isPlacing || !form.delivery_city_id || !form.recipient_name || !form.recipient_phone || !form.address_line1}
+              loading={isPlacing}
             >
               {isPlacing ? "Placing Order…" : "Place Order"}
             </Button>
             <p className="text-xs text-center text-muted-foreground">
-              By placing your order, you agree to our{" "}
+              Fields marked * are required. By placing your order, you agree to our{" "}
               <Link href="/terms" className="underline">Terms</Link>
             </p>
           </div>

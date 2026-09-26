@@ -24,7 +24,7 @@ export function CurrencySelect() {
           setError(null);
           setCurrency(e.target.value as CurrencyCode).catch(() => setError("Could not save your currency"));
         }}
-        className="h-9 rounded-md border bg-background px-2 text-sm"
+        className="h-11 rounded-md border border-input bg-background px-2 text-sm"
       >
         {codes.map((c) => (
           <option key={c} value={c}>{c}</option>

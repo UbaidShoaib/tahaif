@@ -37,7 +37,7 @@ export default async function HomePage() {
   return (
     <div>
       {/* Hero */}
-      <section className="bg-gradient-to-br from-primary-600 to-primary-800 text-white py-20 px-4">
+      <section className="bg-gradient-to-br from-primary-700 to-primary-800 text-white py-20 px-4">
         <div className="container mx-auto max-w-3xl text-center space-y-6">
           <div className="inline-flex items-center gap-2 bg-white/20 rounded-full px-4 py-1.5 text-sm font-medium">
             <Gift className="h-4 w-4" />
@@ -50,18 +50,18 @@ export default async function HomePage() {
             Cakes, flowers, perfumes and more — delivered to your loved ones in Karachi, Lahore, Islamabad and beyond.
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <Link href="/search">
-              <Button size="lg" variant="secondary" className="gap-2">
-                <ShoppingBag className="h-5 w-5" />
+            <Button size="lg" variant="secondary" className="gap-2" asChild>
+              <Link href="/search">
+                <ShoppingBag className="h-5 w-5" aria-hidden />
                 Browse all gifts
-              </Button>
-            </Link>
-            <Link href="/c/cakes">
-              <Button size="lg" variant="outline" className="gap-2 border-white bg-transparent text-white hover:bg-white/10 hover:text-white">
-                <Cake className="h-5 w-5" />
+              </Link>
+            </Button>
+            <Button size="lg" variant="outline" className="gap-2 border-white bg-transparent text-white hover:bg-white/10 hover:text-white" asChild>
+              <Link href="/c/cakes">
+                <Cake className="h-5 w-5" aria-hidden />
                 Shop cakes
-              </Button>
-            </Link>
+              </Link>
+            </Button>
           </div>
         </div>
       </section>
@@ -75,9 +75,9 @@ export default async function HomePage() {
               <Link
                 key={o.slug}
                 href={`/occasion/${o.slug}`}
-                className="flex items-center gap-2 bg-background border rounded-full px-4 py-2 text-sm font-medium hover:border-primary-600 hover:text-primary-600 transition-colors"
+                className="flex items-center gap-2 bg-background border rounded-full px-4 py-2 text-sm font-medium hover:border-primary-700 hover:text-primary-700 dark:hover:text-primary-300 transition-colors"
               >
-                <span>{o.emoji}</span>
+                <span aria-hidden>{o.emoji}</span>
                 <span>{o.name}</span>
               </Link>
             ))}
@@ -94,7 +94,7 @@ export default async function HomePage() {
               <Link key={cat.slug} href={`/c/${cat.slug}`}>
                 <Card className="hover:border-primary-500 hover:shadow-md transition-all cursor-pointer h-full">
                   <CardContent className="p-4 text-center space-y-2">
-                    <div className="text-4xl">{cat.emoji}</div>
+                    <div className="text-4xl" aria-hidden>{cat.emoji}</div>
                     <div className="font-semibold text-sm">{cat.name}</div>
                     <div className="text-xs text-muted-foreground">{cat.desc}</div>
                   </CardContent>
@@ -111,7 +111,7 @@ export default async function HomePage() {
           <div className="container mx-auto">
             <div className="flex items-baseline justify-between mb-8">
               <h2 className="text-2xl font-bold">Featured gifts</h2>
-              <Link href="/search" className="text-sm text-primary-600 hover:underline font-medium">
+              <Link href="/search" className="text-sm text-primary-700 dark:text-primary-300 hover:underline font-medium">
                 View all →
               </Link>
             </div>
@@ -131,7 +131,7 @@ export default async function HomePage() {
             {FEATURES.map((f) => (
               <div key={f.title} className="flex gap-4 items-start">
                 <div className="p-3 rounded-lg bg-primary-100 dark:bg-primary-900/30">
-                  <f.icon className="h-6 w-6 text-primary-600" />
+                  <f.icon className="h-6 w-6 text-primary-700 dark:text-primary-300" />
                 </div>
                 <div>
                   <h3 className="font-semibold">{f.title}</h3>
@@ -146,14 +146,14 @@ export default async function HomePage() {
       {/* CTA */}
       <section className="py-16 px-4 text-center">
         <div className="container mx-auto max-w-xl space-y-4">
-          <Flower className="h-10 w-10 mx-auto text-primary-600" />
+          <Flower className="h-10 w-10 mx-auto text-primary-700 dark:text-primary-300" />
           <h2 className="text-2xl font-bold">Ready to send a gift?</h2>
           <p className="text-muted-foreground">
             Browse our catalog and find the perfect gift for any occasion.
           </p>
-          <Link href="/search">
-            <Button size="lg">Browse all gifts</Button>
-          </Link>
+          <Button size="lg" asChild>
+            <Link href="/search">Browse all gifts</Link>
+          </Button>
         </div>
       </section>
     </div>

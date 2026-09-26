@@ -24,6 +24,7 @@ export function VariantPicker({ product }: Props) {
   const [isAdding, setIsAdding] = useState(false);
   const [addedFeedback, setAddedFeedback] = useState(false);
   const [greeting, setGreeting] = useState("");
+  const [addError, setAddError] = useState<string | null>(null);
 
   const { user } = useAuthStore();
   const { addItem } = useCartStore();
@@ -39,6 +40,7 @@ export function VariantPicker({ product }: Props) {
       return;
     }
     setIsAdding(true);
+    setAddError(null);
     try {
       const message = greeting.trim();
       await addItem({
@@ -58,6 +60,11 @@ export function VariantPicker({ product }: Props) {
       setTimeout(() => setAddedFeedback(false), 2000);
     } catch (err) {
       console.error("Add to cart failed:", err);
+      setAddError(
+        err instanceof Error && err.message
+          ? `Couldn't add this gift to your cart: ${err.message}`
+          : "Couldn't add this gift to your cart. Please try again.",
+      );
     } finally {
       setIsAdding(false);
     }
@@ -87,13 +94,15 @@ export function VariantPicker({ product }: Props) {
             {activeVariants.map((v) => (
               <button
                 key={v.id}
+                type="button"
+                aria-pressed={selected?.id === v.id}
                 onClick={() => setSelected(v)}
                 className={cn(
                   "rounded-lg border px-4 py-2 text-sm font-medium transition-colors",
                   selected?.id === v.id
-                    ? "border-primary-600 bg-primary-50 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300"
+                    ? "border-primary-700 bg-primary-50 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300"
                     : "border-border hover:border-primary-400",
-                  v.stock_qty === 0 && "opacity-40 cursor-not-allowed",
+                  v.stock_qty === 0 && "cursor-not-allowed text-muted-foreground line-through",
                 )}
                 disabled={v.stock_qty === 0}
               >
@@ -117,7 +126,7 @@ export function VariantPicker({ product }: Props) {
           rows={3}
           onChange={(e) => setGreeting(e.target.value)}
           placeholder="Happy birthday, Ammi! Wish I could be there. Love, Ali"
-          className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600"
+          className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-700"
           aria-describedby="greeting-help"
         />
         <p id="greeting-help" className="flex justify-between text-xs text-muted-foreground">
@@ -143,8 +152,18 @@ export function VariantPicker({ product }: Props) {
               : "Out of Stock"}
       </Button>
 
+      <p aria-live="polite" className="sr-only">
+        {addedFeedback ? `${product.name} added to your cart` : ""}
+      </p>
+
+      {addError && (
+        <p role="alert" className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+          {addError}
+        </p>
+      )}
+
       {selected && selected.stock_qty > 0 && selected.stock_qty <= 5 && (
-        <p className="text-xs text-orange-600 font-medium">
+        <p className="text-xs text-amber-700 dark:text-amber-400 font-medium">
           Only {selected.stock_qty} left!
         </p>
       )}

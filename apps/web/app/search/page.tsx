@@ -72,11 +72,13 @@ function SearchPageInner() {
       <div className="max-w-2xl mx-auto mb-10 space-y-3">
         <h1 className="text-3xl font-bold text-center mb-6">Find the perfect gift</h1>
 
-        <div className="relative">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground pointer-events-none" />
+        <div role="search" className="relative">
+          <Search aria-hidden className="absolute left-3.5 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground pointer-events-none" />
           <Input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
+            type="search"
+            aria-label="Search gifts"
             placeholder="Search cakes, flowers, perfumes…"
             className="pl-10 h-12 text-base"
             autoFocus
@@ -90,10 +92,12 @@ function SearchPageInner() {
             <span className="text-sm text-muted-foreground shrink-0">Deliver to:</span>
             <div className="flex gap-2 flex-wrap">
               <button
+                type="button"
+                aria-pressed={!cityId}
                 onClick={() => setCityId("")}
-                className={`rounded-full px-3 py-1 text-sm font-medium border transition-colors ${
+                className={`inline-flex min-h-11 items-center rounded-full px-4 text-sm font-medium border transition-colors ${
                   !cityId
-                    ? "bg-primary-600 text-white border-primary-600"
+                    ? "bg-primary-700 text-white border-primary-700"
                     : "border-border hover:border-primary-400 text-foreground"
                 }`}
               >
@@ -102,10 +106,12 @@ function SearchPageInner() {
               {cities.map((c) => (
                 <button
                   key={c.id}
+                  type="button"
+                  aria-pressed={cityId === c.id}
                   onClick={() => setCityId(c.id)}
-                  className={`rounded-full px-3 py-1 text-sm font-medium border transition-colors ${
+                  className={`inline-flex min-h-11 items-center rounded-full px-4 text-sm font-medium border transition-colors ${
                     cityId === c.id
-                      ? "bg-primary-600 text-white border-primary-600"
+                      ? "bg-primary-700 text-white border-primary-700"
                       : "border-border hover:border-primary-400 text-foreground"
                   }`}
                 >
@@ -128,7 +134,7 @@ function SearchPageInner() {
         ) : (
           <>
             {(query || cityId) && (
-              <p className="text-sm text-muted-foreground mb-4">
+              <p aria-live="polite" className="text-sm text-muted-foreground mb-4">
                 {total} result{total !== 1 ? "s" : ""}
                 {query ? ` for "${query}"` : ""}
                 {cityId

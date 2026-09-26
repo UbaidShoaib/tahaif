@@ -28,7 +28,7 @@ export default function CartPage() {
           Your cart is saved when you&apos;re logged in.
         </p>
         <Button asChild>
-          <Link href="/login?next=/cart">Sign in</Link>
+          <Link href="/login?callbackUrl=/cart">Sign in</Link>
         </Button>
       </div>
     );
@@ -120,7 +120,7 @@ export default function CartPage() {
             <Separator />
             <div className="flex justify-between font-semibold">
               <span>Subtotal</span>
-              <span className="text-primary-600"><Price pkr={cart.subtotal_pkr} /></span>
+              <span className="text-primary-700 dark:text-primary-300"><Price pkr={cart.subtotal_pkr} /></span>
             </div>
             <Button className="w-full gap-2" size="lg" asChild>
               <Link href="/checkout">
