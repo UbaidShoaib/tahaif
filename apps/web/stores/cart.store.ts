@@ -45,7 +45,9 @@ export const useCartStore = create<CartState>((set) => ({
   addItem: async (body) => {
     const token = getToken();
     const cart = await cartApi.addItem(body, token);
-    set({ cart, isDrawerOpen: true });
+    // The product page confirms with a toast that has a "View cart" action; opening
+    // the modal drawer on every add would steal focus and hide the page.
+    set({ cart });
   },
 
   updateItem: async (itemId, body) => {
