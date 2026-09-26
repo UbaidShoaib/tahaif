@@ -6,12 +6,12 @@ const BASE = process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3000";
 
 test.describe("Bank transfer checkout + proof upload", () => {
   test.beforeEach(async ({ page }) => {
-    const email = `bt_${Date.now()}@test.tahaif.invalid`;
+    const email = `bt_${Date.now()}@example.com`;
     await page.goto(`${BASE}/register`);
     await page.fill('[name="full_name"]', "BT Tester");
     await page.fill('[name="email"]', email);
     await page.fill('[name="password"]', "Test1234!");
-    await page.getByRole("button", { name: /register/i }).click();
+    await page.getByRole("button", { name: /create account|register/i }).click();
     await expect(page).toHaveURL(/\/$|\/search/, { timeout: 10_000 });
   });
 
@@ -19,6 +19,8 @@ test.describe("Bank transfer checkout + proof upload", () => {
     await page.goto(`${BASE}/search`);
     await page.locator("a[href^='/p/']").first().click();
     await page.getByRole("button", { name: /add to cart/i }).first().click();
+    // Wait for the add to finish before leaving the page, or checkout can load an empty cart.
+    await expect(page.getByText("Added to your cart", { exact: true })).toBeVisible({ timeout: 5_000 });
     await page.goto(`${BASE}/checkout`);
 
     // Fill form
@@ -46,7 +48,7 @@ test.describe("Bank transfer checkout + proof upload", () => {
     await expect(page).toHaveURL(/success|track/, { timeout: 20_000 });
 
     // Proof upload section must appear
-    await expect(page.getByText(/upload.*receipt|payment receipt/i)).toBeVisible({ timeout: 5_000 });
+    await expect(page.getByText(/upload your bank transfer receipt/i)).toBeVisible({ timeout: 5_000 });
     await expect(page.getByRole("button", { name: /upload receipt/i })).toBeVisible();
   });
 });

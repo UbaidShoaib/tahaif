@@ -12,13 +12,13 @@ test.describe("Guest checkout flow", () => {
 
     // No sign-in redirect: the gift goes straight into a guest cart.
     await page.getByRole("button", { name: /add to cart/i }).first().click();
-    await expect(page.getByText(/added to your cart/i)).toBeVisible({ timeout: 5_000 });
+    await expect(page.getByText("Added to your cart", { exact: true })).toBeVisible({ timeout: 5_000 });
     await expect(page).not.toHaveURL(/login/);
 
     await page.goto(`${BASE}/checkout`);
     await expect(page.getByRole("heading", { name: /your details/i })).toBeVisible();
 
-    await page.fill('[name="contact_email"]', `guest_${Date.now()}@test.tahaif.invalid`);
+    await page.fill('[name="contact_email"]', `guest_${Date.now()}@example.com`);
     await page.fill('[name="contact_phone"]', "+44 7700 900123");
     await page.fill('[name="recipient_name"]', "Guest Recipient");
     await page.fill('[name="recipient_phone"]', "+92 300 1234567");

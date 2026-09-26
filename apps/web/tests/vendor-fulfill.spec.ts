@@ -6,7 +6,7 @@ test.describe("Vendor fulfillment portal", () => {
   test.beforeEach(async ({ page }) => {
     // Login as a seeded vendor account
     await page.goto(`${BASE}/login`);
-    await page.fill('[name="email"]', process.env.E2E_VENDOR_EMAIL ?? "vendor@test.tahaif.invalid");
+    await page.fill('[name="email"]', process.env.E2E_VENDOR_EMAIL ?? "vendor@example.com");
     await page.fill('[name="password"]', process.env.E2E_VENDOR_PASSWORD ?? "Test1234!");
     await page.getByRole("button", { name: /login|sign in/i }).click();
     // Tolerate auth failure in CI without seed data

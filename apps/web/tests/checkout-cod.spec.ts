@@ -5,12 +5,12 @@ const BASE = process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3000";
 test.describe("COD checkout flow", () => {
   test.beforeEach(async ({ page }) => {
     // Seed: register and log in with a fresh account
-    const email = `cod_${Date.now()}@test.tahaif.invalid`;
+    const email = `cod_${Date.now()}@example.com`;
     await page.goto(`${BASE}/register`);
     await page.fill('[name="full_name"]', "COD Tester");
     await page.fill('[name="email"]', email);
     await page.fill('[name="password"]', "Test1234!");
-    await page.getByRole("button", { name: /register/i }).click();
+    await page.getByRole("button", { name: /create account|register/i }).click();
     await expect(page).toHaveURL(/\/$|\/search/, { timeout: 10_000 });
   });
 
@@ -23,7 +23,7 @@ test.describe("COD checkout flow", () => {
 
     // Add to cart
     await page.getByRole("button", { name: /add to cart/i }).first().click();
-    await expect(page.getByText(/cart/i)).toBeVisible({ timeout: 5_000 });
+    await expect(page.getByText("Added to your cart", { exact: true })).toBeVisible({ timeout: 5_000 });
 
     // Go to checkout
     await page.goto(`${BASE}/checkout`);
@@ -48,7 +48,7 @@ test.describe("COD checkout flow", () => {
 
     // COD payment
     // Payment methods are radio cards: click the card, then confirm the radio is selected.
-    await page.locator("label", { hasText: /cash on delivery|cod/i }).click();
+    await page.locator("label", { hasText: /cash on delivery/i }).click();
     await expect(page.getByRole("radio", { name: /cash on delivery|cod/i })).toBeChecked();
 
     // Place order
@@ -56,6 +56,6 @@ test.describe("COD checkout flow", () => {
 
     // Should land on success page
     await expect(page).toHaveURL(/success|track/, { timeout: 20_000 });
-    await expect(page.getByText(/order placed|confirmed/i)).toBeVisible({ timeout: 5_000 });
+    await expect(page.getByRole("heading", { level: 1, name: /order (is )?placed|confirmed/i })).toBeVisible({ timeout: 5_000 });
   });
 });
