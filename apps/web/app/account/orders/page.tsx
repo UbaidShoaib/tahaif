@@ -4,11 +4,13 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useAuthStore } from "@/stores/auth.store";
 import { cartApi, type OrderRead } from "@/lib/cart";
+import { Gift, Package } from "lucide-react";
 import { OrderStatusBadge } from "@/components/orders/OrderStatusBadge";
-
-function formatPKR(paisa: number) {
-  return `PKR ${(paisa / 100).toLocaleString("en-PK", { minimumFractionDigits: 0 })}`;
-}
+import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Skeleton } from "@/components/ui/skeleton";
+import { formatMoney } from "@/lib/money";
+import { orderNumber } from "@/lib/orders";
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("en-GB", {
@@ -39,53 +41,71 @@ export default function OrdersPage() {
 
   if (authLoading || loading) {
     return (
-      <div className="container mx-auto px-4 py-16 text-center">
-        <p className="text-muted-foreground">Loading your orders…</p>
+      <div className="container mx-auto max-w-3xl px-4 py-8">
+        <h1 className="mb-6 text-h1">My orders</h1>
+        <ul aria-busy="true" aria-label="Loading your orders" className="space-y-4">
+          {[1, 2, 3].map((n) => (
+            <li key={n} className="space-y-2 rounded-xl border p-5">
+              <Skeleton className="h-5 w-32" />
+              <Skeleton className="h-4 w-48" />
+              <Skeleton className="h-5 w-24" />
+            </li>
+          ))}
+        </ul>
       </div>
     );
   }
 
   if (!accessToken) {
     return (
-      <div className="container mx-auto px-4 py-16 text-center">
-        <h1 className="text-2xl font-bold mb-4">My Orders</h1>
-        <p className="text-muted-foreground mb-6">
-          Please sign in to view your orders.
-        </p>
-        <Link
-          href="/login"
-          className="inline-block bg-primary-700 text-white px-6 py-2 rounded-lg font-medium hover:bg-primary-800 transition-colors"
-        >
-          Sign In
-        </Link>
+      <div className="container mx-auto max-w-md px-4 py-16">
+        <EmptyState
+          icon={Package}
+          as="h1"
+          title="Sign in to see your orders"
+          description="Ordered as a guest? Use the tracking link from your confirmation email."
+          action={
+            <Button asChild>
+              <Link href="/login?callbackUrl=/account/orders">Sign in</Link>
+            </Button>
+          }
+        />
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="container mx-auto px-4 py-16 text-center">
-        <p className="text-destructive">{error}</p>
+      <div className="container mx-auto max-w-md px-4 py-16">
+        <EmptyState
+          as="h1"
+          title="We couldn't load your orders"
+          description={error}
+          action={
+            <Button variant="outline" onClick={() => window.location.reload()}>
+              Try again
+            </Button>
+          }
+        />
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-3xl">
-      <h1 className="text-2xl font-bold mb-6">My Orders</h1>
+    <div className="container mx-auto max-w-3xl px-4 py-8">
+      <h1 className="mb-6 text-h1">My orders</h1>
 
       {orders.length === 0 ? (
-        <div className="text-center py-16">
-          <p className="text-muted-foreground mb-6">
-            You haven&apos;t placed any orders yet.
-          </p>
-          <Link
-            href="/"
-            className="inline-block bg-primary-700 text-white px-6 py-2 rounded-lg font-medium hover:bg-primary-800 transition-colors"
-          >
-            Start Shopping
-          </Link>
-        </div>
+        <EmptyState
+          icon={Gift}
+          title="No orders yet"
+          description="When you send a gift, you'll be able to follow it here."
+          action={
+            <Button asChild>
+              <Link href="/search">Find a gift</Link>
+            </Button>
+          }
+        />
       ) : (
         <ul className="space-y-4">
           {orders.map((order) => {
@@ -101,7 +121,7 @@ export default function OrdersPage() {
                   <div className="flex items-center gap-3 mb-1">
                     <OrderStatusBadge status={order.status} />
                     <span className="text-xs text-muted-foreground">
-                      {formatDate(order.placed_at)}
+                      {formatDate(order.placed_at)} · <span className="font-mono">{orderNumber(order.public_token)}</span>
                     </span>
                   </div>
 
@@ -111,15 +131,16 @@ export default function OrdersPage() {
                   </p>
 
                   <p className="text-base font-semibold mt-1">
-                    {formatPKR(order.total_pkr)}
+                    {formatMoney(order.total_pkr, "PKR")}
                   </p>
                 </div>
 
                 <Link
                   href={`/track/${order.public_token}`}
-                  className="shrink-0 text-sm font-medium text-link hover:underline"
+                  className="inline-flex min-h-11 shrink-0 items-center text-sm font-medium text-link hover:underline"
                 >
-                  Track Order →
+                  Track order<span className="sr-only"> {orderNumber(order.public_token)}</span>
+                  <span aria-hidden>&nbsp;→</span>
                 </Link>
               </li>
             );

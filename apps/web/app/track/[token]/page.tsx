@@ -7,7 +7,6 @@ import {
   CheckCircle,
   Clock,
   Truck,
-  Gift,
   RotateCcw,
 } from "lucide-react";
 import { cartApi } from "@/lib/cart";
@@ -16,6 +15,9 @@ import { formatMoney } from "@/lib/money";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { OrderStatusBadge } from "@/components/orders/OrderStatusBadge";
+import { OrderTimeline } from "@/components/orders/OrderTimeline";
+import { ShareTracking } from "@/components/orders/ShareTracking";
+import { orderNumber } from "@/lib/orders";
 
 export const dynamic = "force-dynamic";
 
@@ -26,20 +28,9 @@ export async function generateMetadata({
 }) {
   const { token } = await params;
   return {
-    title: `Track Order #${token.slice(0, 8).toUpperCase()} — Tahaif`,
+    title: `Track order ${orderNumber(token)}`,
   };
 }
-
-const STATUS_STEPS = [
-  { key: "pending_payment", label: "Order Placed", icon: Gift },
-  { key: "paid", label: "Payment Confirmed", icon: CheckCircle },
-  { key: "preparing", label: "Preparing", icon: Package },
-  { key: "dispatched", label: "Dispatched", icon: Truck },
-  { key: "out_for_delivery", label: "Out for Delivery", icon: Truck },
-  { key: "delivered", label: "Delivered", icon: CheckCircle },
-];
-
-const STATUS_ORDER = STATUS_STEPS.map((s) => s.key);
 
 export default async function TrackPage({
   params,
@@ -55,61 +46,26 @@ export default async function TrackPage({
     notFound();
   }
 
-  const currentStep = STATUS_ORDER.indexOf(order.status);
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-2xl">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold">Track Your Order</h1>
-        <p className="text-muted-foreground text-sm mt-1 font-mono">
-          #{order.public_token}
+        <h1 className="text-h1">Track your order</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Order number <strong className="font-mono text-foreground">{orderNumber(String(order.public_token))}</strong>
         </p>
+        <div className="mt-3">
+          <ShareTracking publicToken={String(order.public_token)} />
+        </div>
       </div>
 
       {/* Status timeline */}
-      <div className="rounded-xl border p-5 mb-6">
-        <div className="relative">
-          {/* Progress line */}
-          <div className="absolute left-4 top-4 bottom-4 w-0.5 bg-muted" />
-          <div
-            className="absolute left-4 top-4 w-0.5 bg-primary-700 transition-all duration-500"
-            style={{
-              height: currentStep >= 0
-                ? `${(currentStep / (STATUS_STEPS.length - 1)) * 100}%`
-                : "0%",
-            }}
-          />
-
-          <div className="space-y-6">
-            {STATUS_STEPS.map((step, i) => {
-              const isCompleted = i <= currentStep;
-              const isCurrent = i === currentStep;
-              const Icon = step.icon;
-              return (
-                <div key={step.key} className="flex items-center gap-4 relative">
-                  <div
-                    className={`relative z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${
-                      isCompleted
-                        ? "border-primary-700 bg-primary-700 text-white"
-                        : "border-muted bg-background text-muted-foreground"
-                    } ${isCurrent ? "ring-2 ring-primary-200 ring-offset-2" : ""}`}
-                  >
-                    <Icon className="h-4 w-4" />
-                  </div>
-                  <div>
-                    <p className={`text-sm font-medium ${isCompleted ? "text-foreground" : "text-muted-foreground"}`}>
-                      {step.label}
-                    </p>
-                    {isCurrent && (
-                      <p className="text-xs text-link font-medium">Current status</p>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </div>
+      <section aria-labelledby="progress-heading" className="mb-6 rounded-xl border bg-card p-5">
+        <h2 id="progress-heading" className="sr-only">
+          Progress
+        </h2>
+        <OrderTimeline status={order.status} />
+      </section>
 
       {/* Fulfillments */}
       {order.fulfillments.map((f) => (

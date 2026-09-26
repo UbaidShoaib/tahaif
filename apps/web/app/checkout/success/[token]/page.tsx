@@ -8,21 +8,12 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { ProofUpload } from "@/components/checkout/ProofUpload";
 import { GuestOrderNote } from "@/components/checkout/GuestOrderNote";
+import { OrderStatusBadge } from "@/components/orders/OrderStatusBadge";
+import { ShareTracking } from "@/components/orders/ShareTracking";
+import { CopyButton } from "@/components/ui/copy-button";
+import { orderNumber } from "@/lib/orders";
 
 export const dynamic = "force-dynamic";
-
-const STATUS_LABELS: Record<string, string> = {
-  pending_payment: "Pending Payment",
-  paid: "Paid",
-  preparing: "Preparing",
-  dispatched: "Dispatched",
-  out_for_delivery: "Out for Delivery",
-  delivered: "Delivered",
-  completed: "Completed",
-  cancelled: "Cancelled",
-  refunded: "Refunded",
-  on_hold: "On Hold",
-};
 
 const PAYMENT_LABELS: Record<string, string> = {
   cod: "Cash on Delivery",
@@ -43,6 +34,10 @@ export default async function SuccessPage({
     notFound();
   }
 
+  const isBank = order.payment_method === "bank_transfer";
+  const bankAccount = process.env.NEXT_PUBLIC_BANK_ACCOUNT_NAME ?? "Tahaif Gifts — MCB Bank";
+  const bankIban = process.env.NEXT_PUBLIC_BANK_IBAN ?? null;
+
   const placedDate = new Date(order.placed_at).toLocaleDateString("en-PK", {
     day: "numeric",
     month: "long",
@@ -52,16 +47,69 @@ export default async function SuccessPage({
   return (
     <div className="container mx-auto px-4 py-12 max-w-2xl">
       {/* Success banner */}
-      <div className="rounded-2xl border border-primary/30 bg-primary-soft px-6 py-8 text-center mb-8 space-y-3">
-        <CheckCircle className="h-12 w-12 mx-auto text-link" />
-        <h1 className="text-2xl font-bold">Order Placed Successfully!</h1>
-        <p className="text-muted-foreground text-sm">
-          We&apos;ve received your order and will confirm shortly.
+      <div className="mb-6 space-y-3 rounded-2xl border border-success/30 bg-success-soft px-6 py-8 text-center">
+        <CheckCircle aria-hidden className="mx-auto h-12 w-12 text-success" />
+        <h1 className="text-h1">
+          {isBank ? "Order placed — one more step" : "Thank you! Your order is placed"}
+        </h1>
+        <p className="text-sm text-foreground-secondary">
+          {isBank
+            ? "Transfer the total and upload your receipt below so we can start preparing your gift."
+            : "We'll confirm with the shop and let you know as your gift is prepared and delivered."}
         </p>
-        <p className="font-mono text-xs bg-background rounded-lg px-3 py-1.5 inline-block">
-          Order #{order.public_token}
+        <p className="inline-block rounded-lg bg-background px-3 py-1.5 text-sm">
+          Order number <strong className="font-mono">{orderNumber(String(order.public_token))}</strong>
         </p>
       </div>
+
+      {/* Bank transfer: the next action, so it comes first */}
+      {isBank && (
+        <section aria-labelledby="pay-heading" className="mb-6 space-y-4 rounded-xl border border-warning/40 bg-warning-soft p-5">
+          <h2 id="pay-heading" className="text-h3">
+            Pay by bank transfer
+          </h2>
+          <dl className="grid gap-3 text-sm sm:grid-cols-[auto_1fr_auto] sm:items-center">
+            <dt className="text-foreground-secondary">Amount</dt>
+            <dd className="font-semibold">{formatPrice(order.total_pkr)}</dd>
+            <dd className="hidden sm:block" />
+            <dt className="text-foreground-secondary">Account</dt>
+            <dd className="font-medium">{bankAccount}</dd>
+            <dd className="hidden sm:block" />
+            {bankIban && (
+              <>
+                <dt className="text-foreground-secondary">IBAN</dt>
+                <dd className="break-all font-mono">{bankIban}</dd>
+                <dd>
+                  <CopyButton value={bankIban} label="IBAN" />
+                </dd>
+              </>
+            )}
+            <dt className="text-foreground-secondary">Reference</dt>
+            <dd className="font-mono">{orderNumber(String(order.public_token))}</dd>
+            <dd>
+              <CopyButton value={orderNumber(String(order.public_token))} label="payment reference" />
+            </dd>
+          </dl>
+          <ProofUpload orderId={String(order.id)} publicToken={String(order.public_token)} />
+        </section>
+      )}
+
+      {/* What happens next */}
+      <section aria-labelledby="next-heading" className="mb-6 rounded-xl border bg-card p-5">
+        <h2 id="next-heading" className="mb-3 text-h3">
+          What happens next
+        </h2>
+        <ol className="list-decimal space-y-1.5 ps-5 text-sm text-foreground-secondary">
+          {isBank && <li>We check your receipt, usually within a few hours.</li>}
+          <li>The shop prepares your gift for the delivery date.</li>
+          <li>A rider delivers it and calls the recipient on arrival.</li>
+          {!isBank && <li>The recipient pays the rider in cash, unless you&apos;ve already paid.</li>}
+        </ol>
+        <div className="mt-4 flex flex-wrap items-center gap-3 border-t pt-4">
+          <span className="text-sm font-medium">Share the tracking link:</span>
+          <ShareTracking publicToken={String(order.public_token)} />
+        </div>
+      </section>
 
       {/* Order details */}
       <div className="rounded-xl border p-5 space-y-5">
@@ -72,9 +120,7 @@ export default async function SuccessPage({
           </div>
           <div className="text-right">
             <p className="text-sm text-muted-foreground">Status</p>
-            <p className="font-medium">
-              {STATUS_LABELS[order.status] ?? order.status}
-            </p>
+            <OrderStatusBadge status={order.status} />
           </div>
           <div className="text-right">
             <p className="text-sm text-muted-foreground">Payment</p>
@@ -167,24 +213,6 @@ export default async function SuccessPage({
           )}
         </div>
       </div>
-
-      {/* Bank transfer proof upload */}
-      {order.payment_method === "bank_transfer" && (
-        <div className="mt-6 rounded-xl border border-warning/40 bg-warning-soft p-5 space-y-3">
-          <h3 className="font-semibold text-sm">Upload Payment Receipt</h3>
-          <p className="text-xs text-muted-foreground">
-            Transfer <span className="font-medium">{formatPrice(order.total_pkr)}</span> to our bank account
-            and upload your receipt below. Bank details:
-            <span className="block mt-1 font-mono text-foreground">
-              IBAN: {process.env.NEXT_PUBLIC_BANK_IBAN ?? "—"}
-            </span>
-            <span className="block font-mono text-foreground">
-              {process.env.NEXT_PUBLIC_BANK_ACCOUNT_NAME ?? "Tahaif Gifts — MCB Bank"}
-            </span>
-          </p>
-          <ProofUpload orderId={String(order.id)} publicToken={String(order.public_token)} />
-        </div>
-      )}
 
       <GuestOrderNote />
 
