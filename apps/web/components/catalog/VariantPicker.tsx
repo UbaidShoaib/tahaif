@@ -71,9 +71,8 @@ export function VariantPicker({ product, cities = [] }: Props) {
   const chosenElsewhere = !!deliverTo && !chosen && available.length > 0;
   const deliverToName = cities.find((c) => c.id === deliverTo)?.name;
 
-  // Price for the chosen city (or the first listed one, as before, when none is chosen).
-  const pricing = chosen?.pc ?? product.product_cities[0];
-  const basePrice = pricing?.price_override_pkr ?? product.base_price_pkr;
+  // The chosen city's price, else the base price (the same rule as listings and the API).
+  const basePrice = chosen?.pc.price_override_pkr ?? product.base_price_pkr;
   const totalPrice = basePrice + (selected?.price_delta_pkr ?? 0);
   const inStock = selected ? selected.stock_qty > 0 : true;
   const eta = chosen && now ? earliestDelivery(chosen.pc, chosen.city.timezone || DEFAULT_TZ, now) : null;

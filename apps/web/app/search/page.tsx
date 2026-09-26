@@ -1,174 +1,26 @@
-"use client";
+import { Suspense } from "react";
+import type { Metadata } from "next";
+import { ProductListing } from "@/components/catalog/ProductListing";
+import { fetchListing, parseListingParams } from "@/lib/listing";
 
-import { useState, useEffect, useCallback, Suspense } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
-import { Search, MapPin } from "lucide-react";
-import { Input } from "@/components/ui/input";
-import { ProductGrid } from "@/components/catalog/ProductGrid";
-import { ProductCardSkeleton } from "@/components/ui/skeleton";
-import type { Product } from "@/lib/catalog";
-import { useDeliveryStore } from "@/stores/delivery.store";
+export const metadata: Metadata = {
+  title: "Find a gift",
+  description: "Search cakes, flowers, perfumes and more for delivery across Pakistan.",
+};
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api/v1";
+type Props = { searchParams: Promise<Record<string, string | string[] | undefined>> };
 
-function SearchPageInner() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const initialQ = searchParams.get("q") ?? "";
-  const deliverTo = useDeliveryStore((s) => s.cityId);
-  const setDeliverTo = useDeliveryStore((s) => s.setCity);
-  const cities = useDeliveryStore((s) => s.cities);
-  const loadCities = useDeliveryStore((s) => s.loadCities);
-  // A city in the URL wins; otherwise start from the buyer's "Deliver to" choice.
-  const initialCity = searchParams.get("city_id") ?? deliverTo ?? "";
-
-  const [query, setQuery] = useState(initialQ);
-  const [cityId, setCityIdState] = useState(initialCity);
-  const setCityId = (id: string) => {
-    setCityIdState(id);
-    setDeliverTo(id || null);
-  };
-  const [products, setProducts] = useState<Product[]>([]);
-  const [total, setTotal] = useState(0);
-  const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    void loadCities();
-  }, [loadCities]);
-
-  const fetchProducts = useCallback(async (q: string, city: string) => {
-    setLoading(true);
-    try {
-      // With a query, use server-side full-text search (Meilisearch with a DB
-      // fallback) so matches beyond the first page are found. Without one,
-      // browse the catalogue.
-      const term = q.trim();
-      const qs = new URLSearchParams(term ? { q: term, limit: "48" } : { page_size: "48" });
-      if (city) qs.set("city_id", city);
-      const res = await fetch(`${API_BASE}/${term ? "search" : "products"}?${qs.toString()}`, {
-        credentials: "include",
-      });
-      if (!res.ok) throw new Error("fetch failed");
-      const data = (await res.json()) as { items: Product[]; total: number };
-
-      setProducts(data.items);
-      setTotal(data.total);
-    } catch {
-      setProducts([]);
-      setTotal(0);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    const id = setTimeout(() => {
-      void fetchProducts(query, cityId);
-      const qs = new URLSearchParams();
-      if (query.trim()) qs.set("q", query);
-      if (cityId) qs.set("city_id", cityId);
-      const qstr = qs.toString();
-      router.replace(qstr ? `/search?${qstr}` : "/search", { scroll: false });
-    }, 300);
-    return () => clearTimeout(id);
-  }, [query, cityId, fetchProducts, router]);
+export default async function SearchPage({ searchParams }: Props) {
+  const params = parseListingParams(await searchParams);
+  const initial = await fetchListing({}, params, 1).catch(() => null);
 
   return (
     <div className="container mx-auto px-4 py-8">
-      {/* Search bar */}
-      <div className="max-w-2xl mx-auto mb-10 space-y-3">
-        <h1 className="text-3xl font-bold text-center mb-6">Find the perfect gift</h1>
-
-        <div role="search" className="relative">
-          <Search aria-hidden className="absolute left-3.5 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground pointer-events-none" />
-          <Input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            type="search"
-            aria-label="Search gifts"
-            placeholder="Search cakes, flowers, perfumes…"
-            className="pl-10 h-12 text-base"
-            autoFocus
-          />
-        </div>
-
-        {/* City filter */}
-        {cities.length > 0 && (
-          <div className="flex items-center gap-2 flex-wrap">
-            <MapPin className="h-4 w-4 text-muted-foreground shrink-0" />
-            <span className="text-sm text-muted-foreground shrink-0">Deliver to:</span>
-            <div className="flex gap-2 flex-wrap">
-              <button
-                type="button"
-                aria-pressed={!cityId}
-                onClick={() => setCityId("")}
-                className={`inline-flex min-h-11 items-center rounded-full px-4 text-sm font-medium border transition-colors ${
-                  !cityId
-                    ? "bg-primary-700 text-white border-primary-700"
-                    : "border-border hover:border-primary-400 text-foreground"
-                }`}
-              >
-                All cities
-              </button>
-              {cities.map((c) => (
-                <button
-                  key={c.id}
-                  type="button"
-                  aria-pressed={cityId === c.id}
-                  onClick={() => setCityId(c.id)}
-                  className={`inline-flex min-h-11 items-center rounded-full px-4 text-sm font-medium border transition-colors ${
-                    cityId === c.id
-                      ? "bg-primary-700 text-white border-primary-700"
-                      : "border-border hover:border-primary-400 text-foreground"
-                  }`}
-                >
-                  {c.name}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Results */}
-      <div>
-        {loading ? (
-          <div aria-busy="true" aria-label="Loading gifts" className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-            {Array.from({ length: 8 }).map((_, i) => (
-              <ProductCardSkeleton key={i} />
-            ))}
-          </div>
-        ) : (
-          <>
-            {(query || cityId) && (
-              <p aria-live="polite" className="text-sm text-muted-foreground mb-4">
-                {total} result{total !== 1 ? "s" : ""}
-                {query ? ` for "${query}"` : ""}
-                {cityId
-                  ? ` in ${cities.find((c) => c.id === cityId)?.name ?? "selected city"}`
-                  : ""}
-              </p>
-            )}
-            <ProductGrid
-              products={products}
-              cityId={cityId || undefined}
-              emptyMessage={
-                query || cityId
-                  ? "No results found. Try a different search or city."
-                  : "No products available."
-              }
-            />
-          </>
-        )}
-      </div>
+      <h1 className="mb-6 text-center text-h1">{params.q ? `Gifts matching “${params.q}”` : "Find the perfect gift"}</h1>
+      {/* useSearchParams in the listing needs a Suspense boundary. */}
+      <Suspense>
+        <ProductListing initial={initial} showSearch emptyTitle="No gifts match your search" />
+      </Suspense>
     </div>
-  );
-}
-
-export default function SearchPage() {
-  return (
-    <Suspense>
-      <SearchPageInner />
-    </Suspense>
   );
 }

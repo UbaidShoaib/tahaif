@@ -1,11 +1,17 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { catalogApi } from "@/lib/catalog";
-import { ProductGrid } from "@/components/catalog/ProductGrid";
+import { fetchListing, parseListingParams } from "@/lib/listing";
+import { ProductListing } from "@/components/catalog/ProductListing";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
+import { cn } from "@/lib/utils";
 
-type Props = { params: Promise<{ slug: string[] }> };
+type Props = {
+  params: Promise<{ slug: string[] }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+};
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
@@ -14,66 +20,62 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return { title: category.name };
 }
 
-export default async function CategoryPage({ params }: Props) {
+export default async function CategoryPage({ params, searchParams }: Props) {
   const { slug } = await params;
   const categorySlug = slug[0];
 
-  const [category, allCategories, { items: products }] = await Promise.all([
+  const [category, allCategories] = await Promise.all([
     catalogApi.getCategoryBySlug(categorySlug),
-    catalogApi.getCategories(),
-    catalogApi
-      .getCategoryBySlug(categorySlug)
-      .then((cat) =>
-        cat
-          ? catalogApi.getProducts({ category_id: cat.id, page_size: 48 })
-          : { items: [], total: 0, page: 1, page_size: 48 },
-      ),
+    catalogApi.getCategories().catch(() => []),
   ]);
-
   if (!category) notFound();
+
+  const scope = { category_id: category.id };
+  const initial = await fetchListing(scope, parseListingParams(await searchParams), 1).catch(() => null);
+
+  const linkClass = (active: boolean) =>
+    cn(
+      "whitespace-nowrap rounded-full px-4 text-sm font-medium transition-colors lg:block lg:rounded-lg lg:px-3",
+      active ? "bg-primary-soft text-primary-soft-foreground" : "text-foreground hover:bg-muted",
+    );
+
+  const categoryNav = (
+    <nav aria-label="Categories">
+      <h2 className="mb-2 hidden font-sans text-xs font-semibold uppercase tracking-wide text-muted-foreground lg:block">
+        Categories
+      </h2>
+      <ul className="flex gap-2 lg:block lg:space-y-0.5">
+        {allCategories.map((cat) => (
+          <li key={cat.id}>
+            <Link
+              href={`/c/${cat.slug}`}
+              aria-current={cat.slug === categorySlug ? "page" : undefined}
+              className={cn(linkClass(cat.slug === categorySlug), "flex min-h-11 items-center lg:min-h-0 lg:py-2")}
+            >
+              {cat.name}
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </nav>
+  );
 
   return (
     <div className="container mx-auto px-4 py-8">
       <Breadcrumb items={[{ label: "Home", href: "/" }, { label: category.name }]} />
+      <h1 className="mb-4 text-h1">{category.name}</h1>
 
-      <div className="flex gap-8">
-        {/* Sidebar — categories */}
-        <aside className="hidden md:block w-52 shrink-0">
-          <h3 className="font-semibold text-sm mb-3 text-muted-foreground uppercase tracking-wide">
-            Categories
-          </h3>
-          <nav aria-label="Categories" className="space-y-0.5">
-            {allCategories.map((cat) => (
-              <Link
-                key={cat.id}
-                href={`/c/${cat.slug}`}
-                className={`block rounded-lg px-3 py-2 text-sm transition-colors ${
-                  cat.slug === categorySlug
-                    ? "bg-primary-soft text-primary-soft-foreground font-medium"
-                    : "hover:bg-muted text-foreground"
-                }`}
-              >
-                {cat.name}
-              </Link>
-            ))}
-          </nav>
-        </aside>
+      {/* Phones and tablets: categories as a swipeable row instead of a hidden sidebar. */}
+      <div className="-mx-4 mb-4 overflow-x-auto px-4 pb-1 lg:hidden">{categoryNav}</div>
 
-        {/* Main */}
-        <section aria-labelledby="category-title" className="flex-1 min-w-0">
-          <div className="flex items-baseline justify-between mb-6">
-            <h1 id="category-title" className="text-2xl font-bold">{category.name}</h1>
-            <span className="text-sm text-muted-foreground">
-              {products.length} item{products.length !== 1 ? "s" : ""}
-            </span>
-          </div>
-
-          <ProductGrid
-            products={products}
-            emptyMessage={`No products in ${category.name} yet.`}
-          />
-        </section>
-      </div>
+      <Suspense>
+        <ProductListing
+          scope={scope}
+          initial={initial}
+          aside={categoryNav}
+          emptyTitle={`No ${category.name.toLowerCase()} here yet`}
+        />
+      </Suspense>
     </div>
   );
 }

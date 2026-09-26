@@ -3,10 +3,15 @@ import Image from "next/image";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { catalogApi } from "@/lib/catalog";
-import { ProductGrid } from "@/components/catalog/ProductGrid";
-import { ChevronRight } from "lucide-react";
+import { Suspense } from "react";
+import { fetchListing, parseListingParams } from "@/lib/listing";
+import { ProductListing } from "@/components/catalog/ProductListing";
+import { Breadcrumb } from "@/components/ui/breadcrumb";
 
-type Props = { params: Promise<{ slug: string }> };
+type Props = {
+  params: Promise<{ slug: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+};
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
@@ -18,33 +23,27 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-export default async function OccasionPage({ params }: Props) {
+export default async function OccasionPage({ params, searchParams }: Props) {
   const { slug } = await params;
 
   const occasion = await catalogApi.getOccasion(slug).catch(() => null);
   if (!occasion) notFound();
 
-  const { items: products } = await catalogApi
-    .getProducts({ occasion_id: occasion.id, page_size: 48 })
-    .catch(() => ({ items: [], total: 0, page: 1, page_size: 48 }));
+  const scope = { occasion_id: occasion.id };
+  const initial = await fetchListing(scope, parseListingParams(await searchParams), 1).catch(() => null);
 
   const occasions = await catalogApi.getOccasions().catch(() => []);
 
   return (
     <div className="container mx-auto px-4 py-8">
-      {/* Breadcrumb */}
-      <nav className="flex items-center gap-1.5 text-sm text-muted-foreground mb-6">
-        <Link href="/" className="hover:text-foreground transition-colors">Home</Link>
-        <ChevronRight className="h-3.5 w-3.5" />
-        <span className="text-foreground font-medium">{occasion.name}</span>
-      </nav>
+      <Breadcrumb items={[{ label: "Home", href: "/" }, { label: occasion.name }]} />
 
       {/* Banner */}
       {occasion.banner_url ? (
         <div className="relative h-48 md:h-64 rounded-2xl overflow-hidden mb-8">
           <Image
             src={occasion.banner_url}
-            alt={occasion.name}
+            alt=""
             fill
             sizes="100vw"
             className="object-cover"
@@ -53,7 +52,7 @@ export default async function OccasionPage({ params }: Props) {
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex items-end p-6">
             <div>
-              <h1 className="text-3xl font-bold text-white">{occasion.name}</h1>
+              <h1 className="text-h1 text-white">{occasion.name}</h1>
               {occasion.name_ur && (
                 <p className="text-white/80 text-lg mt-1" dir="rtl">{occasion.name_ur}</p>
               )}
@@ -62,50 +61,44 @@ export default async function OccasionPage({ params }: Props) {
         </div>
       ) : (
         <div className="mb-8">
-          <h1 className="text-3xl font-bold">{occasion.name}</h1>
+          <h1 className="text-h1">{occasion.name}</h1>
           {occasion.name_ur && (
             <p className="text-muted-foreground text-lg mt-1" dir="rtl">{occasion.name_ur}</p>
           )}
         </div>
       )}
 
-      <div className="flex gap-8">
-        {/* Sidebar — occasions */}
-        <aside className="hidden md:block w-52 shrink-0">
-          <h3 className="font-semibold text-sm mb-3 text-muted-foreground uppercase tracking-wide">
-            Occasions
-          </h3>
-          <nav className="space-y-0.5">
-            {occasions.map((o) => (
-              <Link
-                key={o.id}
-                href={`/occasion/${o.slug}`}
-                className={`block rounded-lg px-3 py-2 text-sm transition-colors ${
-                  o.slug === slug
-                    ? "bg-primary-soft text-primary-soft-foreground font-medium"
-                    : "hover:bg-muted text-foreground"
-                }`}
-              >
-                {o.name}
-              </Link>
-            ))}
-          </nav>
-        </aside>
-
-        {/* Main */}
-        <main className="flex-1 min-w-0">
-          <div className="flex items-baseline justify-between mb-6">
-            <p className="text-sm text-muted-foreground">
-              {products.length} gift{products.length !== 1 ? "s" : ""} available
-            </p>
-          </div>
-
-          <ProductGrid
-            products={products}
-            emptyMessage={`No gifts available for ${occasion.name} yet — check back soon.`}
-          />
-        </main>
-      </div>
+      <Suspense>
+        <ProductListing
+          scope={scope}
+          initial={initial}
+          emptyTitle={`No gifts for ${occasion.name} yet`}
+          aside={
+            <nav aria-label="Occasions">
+              <h2 className="mb-2 font-sans text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Occasions
+              </h2>
+              <ul className="space-y-0.5">
+                {occasions.map((o) => (
+                  <li key={o.id}>
+                    <Link
+                      href={`/occasion/${o.slug}`}
+                      aria-current={o.slug === slug ? "page" : undefined}
+                      className={`block rounded-lg px-3 py-2 text-sm transition-colors ${
+                        o.slug === slug
+                          ? "bg-primary-soft font-medium text-primary-soft-foreground"
+                          : "text-foreground hover:bg-muted"
+                      }`}
+                    >
+                      {o.name}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </nav>
+          }
+        />
+      </Suspense>
     </div>
   );
 }
