@@ -7,6 +7,7 @@ import { Gift, LogOut, Menu, User } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useAuthStore } from "@/stores/auth.store";
 import { CurrencySelect } from "@/components/layout/CurrencySelect";
+import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { DeliveryPicker } from "@/components/layout/DeliveryPicker";
 import { HeaderSearch } from "@/components/layout/HeaderSearch";
 import { NAV_LINKS, OCCASION_LINKS } from "@/components/layout/nav-links";
@@ -84,8 +85,12 @@ export function MobileNav() {
             </div>
           </nav>
 
-          <div className="px-3 empty:hidden">
+          <div className="space-y-2 px-3">
             <CurrencySelect showLabel />
+            <div className="flex items-center justify-between text-sm sm:hidden">
+              <span className="text-muted-foreground">Theme</span>
+              <ThemeToggle />
+            </div>
           </div>
         </div>
         <p className="flex items-center gap-2 border-t px-4 py-3 text-xs text-muted-foreground">

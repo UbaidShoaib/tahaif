@@ -30,11 +30,11 @@ export function Header() {
     <>
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container mx-auto flex h-16 items-center justify-between gap-2 px-4">
-          <div className="flex min-w-0 items-center gap-1">
+          <div className="flex min-w-0 shrink items-center gap-1">
             <MobileNav />
 
             {/* Logo — the icon and Urdu name drop on very narrow phones so the cart stays on screen. */}
-            <Link href="/" className="flex shrink-0 items-center gap-2 whitespace-nowrap text-lg font-bold text-link xs:text-xl">
+            <Link href="/" className="flex min-w-0 items-center gap-2 whitespace-nowrap text-lg font-bold text-link xs:text-xl">
               <Gift aria-hidden className="hidden h-6 w-6 xs:block" />
               <span>
                 <span className="hidden xs:inline">تحائف </span>Tahaif
@@ -70,7 +70,10 @@ export function Header() {
             <div className="hidden sm:block">
               <CurrencySelect />
             </div>
-            <ThemeToggle />
+            {/* On phones the theme switch lives in the menu to keep the header on one line. */}
+            <div className="hidden sm:block">
+              <ThemeToggle />
+            </div>
 
             {/* Cart button with badge */}
             <button
