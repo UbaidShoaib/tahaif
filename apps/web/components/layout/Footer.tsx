@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Gift } from "lucide-react";
+import { Banknote, Gift, Lock, MapPinned } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 
 export function Footer() {
@@ -56,11 +56,19 @@ export function Footer() {
           <p className="text-sm text-muted-foreground">
             © {new Date().getFullYear()} Tahaif. All rights reserved.
           </p>
-          <div className="flex items-center gap-4 text-sm text-muted-foreground">
-            <span>🔒 SSL Secure</span>
-            <span>🚚 On-time delivery</span>
-            <span>💚 Money-back guarantee</span>
-          </div>
+          {/* Only claims we can back up today; no refund promise until the Refund
+              Policy is published (docs/questions.md Q17). */}
+          <ul className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-sm text-muted-foreground">
+            <li className="flex items-center gap-1.5">
+              <Lock aria-hidden className="h-4 w-4" /> Secure checkout
+            </li>
+            <li className="flex items-center gap-1.5">
+              <Banknote aria-hidden className="h-4 w-4" /> Cash on delivery
+            </li>
+            <li className="flex items-center gap-1.5">
+              <MapPinned aria-hidden className="h-4 w-4" /> Online order tracking
+            </li>
+          </ul>
         </div>
       </div>
     </footer>

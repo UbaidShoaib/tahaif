@@ -1,17 +1,30 @@
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Gift, Cake, Flower, ShoppingBag, Star, Truck, Shield } from "lucide-react";
+import {
+  Banknote,
+  Cake,
+  CircleCheck,
+  Candy,
+  Flower2,
+  Gift,
+  Leaf,
+  MapPinned,
+  MessageSquareHeart,
+  Package,
+  SprayCan,
+  type LucideIcon,
+} from "lucide-react";
 import { catalogApi } from "@/lib/catalog";
 import { ProductCard } from "@/components/catalog/ProductCard";
+import { HeroFinder } from "@/components/home/HeroFinder";
+import { SameDayRail } from "@/components/home/SameDayRail";
 
-const CATEGORIES = [
-  { name: "Cakes", slug: "cakes", emoji: "🎂", desc: "Birthday, wedding & custom cakes" },
-  { name: "Flowers", slug: "flowers", emoji: "🌹", desc: "Fresh bouquets & arrangements" },
-  { name: "Chocolates", slug: "chocolates", emoji: "🍫", desc: "Premium imported & local" },
-  { name: "Perfumes", slug: "perfumes", emoji: "🌸", desc: "J. Collection, Maria B & more" },
-  { name: "Mithai", slug: "mithai", emoji: "🍬", desc: "Traditional Pakistani sweets" },
-  { name: "Combo Gifts", slug: "combo-gifts", emoji: "🎁", desc: "Curated gift sets & hampers" },
+const CATEGORIES: { name: string; slug: string; icon: LucideIcon; desc: string }[] = [
+  { name: "Cakes", slug: "cakes", icon: Cake, desc: "Birthday, wedding & custom cakes" },
+  { name: "Flowers", slug: "flowers", icon: Flower2, desc: "Fresh bouquets & arrangements" },
+  { name: "Chocolates", slug: "chocolates", icon: Package, desc: "Boxes and hampers" },
+  { name: "Perfumes", slug: "perfumes", icon: SprayCan, desc: "Local and international fragrances" },
+  { name: "Mithai", slug: "mithai", icon: Candy, desc: "Traditional Pakistani sweets" },
+  { name: "Combo Gifts", slug: "combo-gifts", icon: Gift, desc: "Curated gift sets & hampers" },
 ];
 
 const OCCASIONS = [
@@ -23,10 +36,18 @@ const OCCASIONS = [
   { name: "Aqiqa", slug: "aqiqa", emoji: "🐑" },
 ];
 
-const FEATURES = [
-  { icon: Truck, title: "Same-day delivery", desc: "Order before cutoff, delivered today in select cities" },
-  { icon: Shield, title: "Quality guaranteed", desc: "Freshness promise on all cakes and flowers" },
-  { icon: Star, title: "Trusted vendors", desc: "Partnered with Pakistan's top bakeries and florists" },
+const STEPS = [
+  { title: "Choose a gift and city", desc: "Prices, delivery fee and the earliest day update for the city you're sending to." },
+  { title: "Add your card message", desc: "Write a personal note; it's printed on a card and delivered with the gift." },
+  { title: "We deliver, you track", desc: "Pay by cash on delivery or bank transfer, then follow the delivery online." },
+];
+
+// Only promises the service already makes (see docs/questions.md Q17 before adding refund claims).
+const TRUST: { icon: LucideIcon; title: string; desc: string }[] = [
+  { icon: Leaf, title: "Freshness promise", desc: "On every cake and bouquet" },
+  { icon: MessageSquareHeart, title: "Personal card message", desc: "Printed and delivered with your gift" },
+  { icon: Banknote, title: "Cash on delivery", desc: "Or pay by bank transfer" },
+  { icon: MapPinned, title: "Track every order", desc: "Follow it from bakery to doorstep" },
 ];
 
 export default async function HomePage() {
@@ -37,124 +58,156 @@ export default async function HomePage() {
   return (
     <div>
       {/* Hero */}
-      <section className="bg-gradient-to-br from-primary-700 to-primary-800 text-white py-20 px-4">
-        <div className="container mx-auto max-w-3xl text-center space-y-6">
-          <div className="inline-flex items-center gap-2 bg-white/20 rounded-full px-4 py-1.5 text-sm font-medium">
-            <Gift className="h-4 w-4" />
-            <span>Send gifts across Pakistan</span>
-          </div>
-          <h1 className="text-4xl md:text-5xl font-bold leading-tight">
-            Make every moment<br />unforgettable
-          </h1>
-          <p className="text-lg text-primary-100 max-w-xl mx-auto">
-            Cakes, flowers, perfumes and more — delivered to your loved ones in Karachi, Lahore, Islamabad and beyond.
+      <section className="relative overflow-hidden bg-gradient-to-br from-primary-700 to-primary-900 px-4 py-16 text-white md:py-24">
+        {/* Decorative zari ribbon */}
+        <svg
+          aria-hidden
+          className="pointer-events-none absolute -end-24 -top-24 h-96 w-96 text-gold opacity-20"
+          viewBox="0 0 200 200"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+        >
+          <circle cx="100" cy="100" r="90" />
+          <circle cx="100" cy="100" r="70" strokeDasharray="4 6" />
+          <path d="M100 10v180M10 100h180" />
+        </svg>
+        <div className="container relative mx-auto max-w-3xl space-y-6 text-center">
+          <p className="inline-flex items-center gap-2 rounded-full bg-white/15 px-4 py-1.5 text-sm font-medium">
+            <Gift aria-hidden className="h-4 w-4 text-gold" />
+            Gifts delivered across Pakistan
           </p>
-          <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <Button size="lg" variant="secondary" className="gap-2" asChild>
-              <Link href="/search">
-                <ShoppingBag className="h-5 w-5" aria-hidden />
-                Browse all gifts
-              </Link>
-            </Button>
-            <Button size="lg" variant="outline" className="gap-2 border-white bg-transparent text-white hover:bg-white/10 hover:text-white" asChild>
-              <Link href="/c/cakes">
-                <Cake className="h-5 w-5" aria-hidden />
-                Shop cakes
-              </Link>
-            </Button>
+          <h1 className="text-display text-white">Send love home, delivered fresh.</h1>
+          <p className="mx-auto max-w-xl text-lg text-primary-100">
+            Cakes, flowers, mithai and more for the people you miss — with your own card message, delivered in
+            Karachi, Lahore, Islamabad and beyond.
+          </p>
+          <div className="mx-auto max-w-xl">
+            <HeroFinder />
           </div>
+          <ul className="flex flex-wrap justify-center gap-x-5 gap-y-1 text-sm text-primary-100">
+            {["Cash on delivery", "No account needed", "Card message included"].map((t) => (
+              <li key={t} className="flex items-center gap-1.5">
+                <CircleCheck aria-hidden className="h-4 w-4 text-gold" />
+                {t}
+              </li>
+            ))}
+          </ul>
         </div>
       </section>
 
       {/* Occasions */}
-      <section className="py-12 px-4 bg-muted/30">
+      <section aria-labelledby="occasions-heading" className="bg-background-alt px-4 py-10">
         <div className="container mx-auto">
-          <h2 className="text-xl font-semibold mb-6 text-center">Shop by occasion</h2>
-          <div className="flex flex-wrap justify-center gap-3">
+          <h2 id="occasions-heading" className="mb-5 text-center text-h2">
+            Shop by occasion
+          </h2>
+          <ul className="-mx-4 flex gap-3 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:justify-center sm:overflow-visible sm:px-0">
             {OCCASIONS.map((o) => (
-              <Link
-                key={o.slug}
-                href={`/occasion/${o.slug}`}
-                className="flex items-center gap-2 bg-background border rounded-full px-4 py-2 text-sm font-medium hover:border-primary-700 hover:text-link transition-colors"
-              >
-                <span aria-hidden>{o.emoji}</span>
-                <span>{o.name}</span>
-              </Link>
+              <li key={o.slug} className="shrink-0">
+                <Link
+                  href={`/occasion/${o.slug}`}
+                  className="flex min-h-11 items-center gap-2 rounded-full border border-input bg-card px-4 text-sm font-medium transition-colors hover:border-primary-700 hover:text-link"
+                >
+                  <span aria-hidden>{o.emoji}</span>
+                  {o.name}
+                </Link>
+              </li>
             ))}
-          </div>
+          </ul>
         </div>
       </section>
+
+      <SameDayRail />
 
       {/* Categories */}
-      <section className="py-14 px-4">
+      <section aria-labelledby="categories-heading" className="px-4 py-12">
         <div className="container mx-auto">
-          <h2 className="text-2xl font-bold mb-8">Shop by category</h2>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-            {CATEGORIES.map((cat) => (
-              <Link key={cat.slug} href={`/c/${cat.slug}`}>
-                <Card className="hover:border-primary-500 hover:shadow-md transition-all cursor-pointer h-full">
-                  <CardContent className="p-4 text-center space-y-2">
-                    <div className="text-4xl" aria-hidden>{cat.emoji}</div>
-                    <div className="font-semibold text-sm">{cat.name}</div>
-                    <div className="text-xs text-muted-foreground">{cat.desc}</div>
-                  </CardContent>
-                </Card>
-              </Link>
+          <h2 id="categories-heading" className="mb-6 text-h2">
+            Shop by category
+          </h2>
+          <ul className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
+            {CATEGORIES.map(({ name, slug, icon: Icon, desc }) => (
+              <li key={slug}>
+                <Link
+                  href={`/c/${slug}`}
+                  className="group flex h-full flex-col items-center gap-2 rounded-xl border bg-card p-4 text-center transition-all hover:border-primary-300 hover:shadow-md"
+                >
+                  <span className="flex h-14 w-14 items-center justify-center rounded-full bg-primary-soft transition-colors group-hover:bg-gold-soft">
+                    <Icon aria-hidden className="h-7 w-7 text-primary-soft-foreground group-hover:text-gold-ink" />
+                  </span>
+                  <span className="font-semibold">{name}</span>
+                  <span className="text-xs text-muted-foreground">{desc}</span>
+                </Link>
+              </li>
             ))}
-          </div>
+          </ul>
         </div>
       </section>
 
-      {/* Featured products */}
+      {/* Featured */}
       {featuredProducts.length > 0 && (
-        <section className="py-14 px-4 bg-muted/20">
+        <section aria-labelledby="featured-heading" className="bg-background-alt px-4 py-12">
           <div className="container mx-auto">
-            <div className="flex items-baseline justify-between mb-8">
-              <h2 className="text-2xl font-bold">Featured gifts</h2>
-              <Link href="/search" className="text-sm text-link hover:underline font-medium">
-                View all →
+            <div className="mb-6 flex items-baseline justify-between">
+              <h2 id="featured-heading" className="text-h2">
+                Featured gifts
+              </h2>
+              <Link href="/search" className="text-sm font-medium text-link hover:underline">
+                View all <span aria-hidden>→</span>
               </Link>
             </div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+            <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
               {featuredProducts.map((p) => (
-                <ProductCard key={p.id} product={p} />
+                <li key={p.id}>
+                  <ProductCard product={p} />
+                </li>
               ))}
-            </div>
+            </ul>
           </div>
         </section>
       )}
 
-      {/* Features */}
-      <section className="py-14 px-4 bg-muted/30">
+      {/* How it works */}
+      <section aria-labelledby="how-heading" className="px-4 py-12">
         <div className="container mx-auto">
-          <div className="grid md:grid-cols-3 gap-8">
-            {FEATURES.map((f) => (
-              <div key={f.title} className="flex gap-4 items-start">
-                <div className="p-3 rounded-lg bg-primary-soft">
-                  <f.icon className="h-6 w-6 text-link" />
-                </div>
+          <h2 id="how-heading" className="mb-8 text-center text-h2">
+            How it works
+          </h2>
+          <ol className="grid gap-6 md:grid-cols-3">
+            {STEPS.map((step, i) => (
+              <li key={step.title} className="flex gap-4 rounded-xl border bg-card p-5">
+                <span
+                  aria-hidden
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary-700 font-display text-lg font-semibold text-white"
+                >
+                  {i + 1}
+                </span>
                 <div>
-                  <h3 className="font-semibold">{f.title}</h3>
-                  <p className="text-sm text-muted-foreground mt-1">{f.desc}</p>
+                  <h3 className="font-sans font-semibold">{step.title}</h3>
+                  <p className="mt-1 text-sm text-muted-foreground">{step.desc}</p>
                 </div>
-              </div>
+              </li>
             ))}
-          </div>
+          </ol>
         </div>
       </section>
 
-      {/* CTA */}
-      <section className="py-16 px-4 text-center">
-        <div className="container mx-auto max-w-xl space-y-4">
-          <Flower className="h-10 w-10 mx-auto text-link" />
-          <h2 className="text-2xl font-bold">Ready to send a gift?</h2>
-          <p className="text-muted-foreground">
-            Browse our catalog and find the perfect gift for any occasion.
-          </p>
-          <Button size="lg" asChild>
-            <Link href="/search">Browse all gifts</Link>
-          </Button>
-        </div>
+      {/* Trust */}
+      <section aria-label="Why Tahaif" className="border-t bg-background-alt px-4 py-10">
+        <ul className="container mx-auto grid grid-cols-2 gap-6 md:grid-cols-4">
+          {TRUST.map(({ icon: Icon, title, desc }) => (
+            <li key={title} className="flex items-start gap-3">
+              <span className="rounded-lg bg-success-soft p-2.5">
+                <Icon aria-hidden className="h-5 w-5 text-success-foreground" />
+              </span>
+              <span>
+                <span className="block text-sm font-semibold">{title}</span>
+                <span className="block text-xs text-muted-foreground">{desc}</span>
+              </span>
+            </li>
+          ))}
+        </ul>
       </section>
     </div>
   );
