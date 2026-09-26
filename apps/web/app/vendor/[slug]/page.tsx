@@ -1,4 +1,5 @@
 import Image from "next/image";
+import { isOptimizable } from "@/lib/image-hosts";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { catalogApi } from "@/lib/catalog";
@@ -47,7 +48,7 @@ export default async function VendorPage({ params, searchParams }: Props) {
             width={64}
             height={64}
             className="h-16 w-16 rounded-xl object-cover border"
-            unoptimized
+            unoptimized={!isOptimizable(vendor.logo_url)}
           />
         ) : (
           <div className="h-16 w-16 rounded-xl bg-primary-soft flex items-center justify-center text-2xl font-bold text-link shrink-0">

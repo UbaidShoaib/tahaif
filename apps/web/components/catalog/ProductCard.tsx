@@ -1,5 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
+import { isOptimizable } from "@/lib/image-hosts";
 import { Price } from "@/components/money/Price";
 import { DeliveryBadge } from "@/components/catalog/DeliveryBadge";
 import { primaryImage, type Product } from "@/lib/catalog";
@@ -37,7 +38,7 @@ export function ProductCard({ product, cityId }: Props) {
             fill
             sizes="(max-width: 640px) 50vw, (max-width: 1280px) 33vw, 25vw"
             className="object-cover transition-transform duration-300 motion-safe:group-hover:scale-105"
-            unoptimized
+            unoptimized={!isOptimizable(img)}
           />
         </div>
 

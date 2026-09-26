@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Image from "next/image";
+import { isOptimizable } from "@/lib/image-hosts";
 import Link from "next/link";
 import { useCartStore } from "@/stores/cart.store";
 import { Price } from "@/components/money/Price";
@@ -63,7 +64,7 @@ export function CartItemRow({ item }: { item: CartItemRead }) {
             fill
             sizes="64px"
             className="object-cover"
-            unoptimized
+            unoptimized={!isOptimizable(item.product_image)}
           />
         ) : (
           <div aria-hidden className="flex h-full w-full items-center justify-center text-2xl">🎁</div>

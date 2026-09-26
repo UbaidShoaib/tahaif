@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import Image from "next/image";
+import { isOptimizable } from "@/lib/image-hosts";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { ProductImage } from "@/lib/catalog";
 import { cn } from "@/lib/utils";
@@ -70,7 +71,7 @@ export function ProductGallery({ images, productName }: { images: ProductImage[]
                 sizes="(max-width: 768px) 100vw, 50vw"
                 className="object-cover"
                 priority={i === 0}
-                unoptimized
+                unoptimized={!isOptimizable(img.url)}
               />
             </div>
           ))}
@@ -115,7 +116,7 @@ export function ProductGallery({ images, productName }: { images: ProductImage[]
                 i === index ? "border-primary" : "border-transparent opacity-80 hover:opacity-100",
               )}
             >
-              <Image src={img.url} alt="" fill sizes="64px" className="object-cover" unoptimized />
+              <Image src={img.url} alt="" fill sizes="64px" className="object-cover" unoptimized={!isOptimizable(img.url)} />
             </button>
           ))}
         </div>

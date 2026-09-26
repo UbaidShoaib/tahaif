@@ -1,5 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
+import { isOptimizable } from "@/lib/image-hosts";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { catalogApi } from "@/lib/catalog";
@@ -48,7 +49,7 @@ export default async function OccasionPage({ params, searchParams }: Props) {
             sizes="100vw"
             className="object-cover"
             priority
-            unoptimized
+            unoptimized={!isOptimizable(occasion.banner_url)}
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex items-end p-6">
             <div>
