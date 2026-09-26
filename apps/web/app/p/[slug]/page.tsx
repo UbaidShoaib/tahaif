@@ -1,13 +1,14 @@
 import Link from "next/link";
-import Image from "next/image";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { catalogApi, primaryImage } from "@/lib/catalog";
 import { loyaltyApi } from "@/lib/loyalty";
 import { VariantPicker } from "@/components/catalog/VariantPicker";
 import { ReviewsSection } from "@/components/catalog/ReviewsSection";
-import { Clock, Truck } from "lucide-react";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
+import { Rating } from "@/components/ui/rating";
+import { ProductGallery } from "@/components/catalog/ProductGallery";
+import { TrustList } from "@/components/catalog/TrustList";
 
 type Props = { params: Promise<{ slug: string }> };
 
@@ -38,13 +39,10 @@ export default async function ProductPage({ params }: Props) {
     cats.flatMap((c) => [c, ...flat(c.children)]);
   const category = flat(categories).find((c) => c.id === product.category_id);
 
-  const availableCities = product.product_cities
-    .filter((pc) => pc.is_available)
-    .map((pc) => ({
-      ...pc,
-      city: cities.find((c) => c.id === pc.city_id),
-    }))
-    .filter((pc) => pc.city);
+  const avgRating =
+    reviews.length > 0
+      ? reviews.reduce((sum: number, r: { rating: number }) => sum + r.rating, 0) / reviews.length
+      : null;
 
   const img = primaryImage(product);
 
@@ -81,7 +79,7 @@ export default async function ProductPage({ params }: Props) {
       type="application/ld+json"
       dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
     />
-    <div className="container mx-auto px-4 py-8">
+    <div className="container mx-auto px-4 pb-28 pt-6 md:py-8">
       <Breadcrumb
         items={[
           { label: "Home", href: "/" },
@@ -90,64 +88,38 @@ export default async function ProductPage({ params }: Props) {
         ]}
       />
 
-      <div className="grid md:grid-cols-2 gap-10">
-        {/* Image */}
-        <div className="relative aspect-square rounded-2xl overflow-hidden bg-muted">
-          <Image
-            src={img}
-            alt={product.images[0]?.alt_text ?? product.name}
-            fill
-            sizes="(max-width: 768px) 100vw, 50vw"
-            className="object-cover"
-            priority
-            unoptimized
-          />
-        </div>
+      <div className="grid gap-8 md:grid-cols-2 lg:gap-12">
+        <ProductGallery images={product.images} productName={product.name} />
 
         {/* Details */}
         <div className="space-y-6">
-          {/* Vendor */}
-          {product.vendor && (
-            <Link
-              href={`/vendor/${product.vendor.slug}`}
-              className="text-sm text-link font-medium hover:underline"
-            >
-              {product.vendor.name}
-            </Link>
-          )}
-
-          <h1 className="text-3xl font-bold leading-tight">{product.name}</h1>
+          <div className="space-y-2">
+            {product.vendor && (
+              <Link
+                href={`/vendor/${product.vendor.slug}`}
+                className="text-sm font-medium text-link hover:underline"
+              >
+                {product.vendor.name}
+              </Link>
+            )}
+            <h1 className="text-h1">{product.name}</h1>
+            {avgRating !== null && (
+              <a href="#reviews" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
+                <Rating value={Number(avgRating.toFixed(1))} size="sm" />
+                <span>
+                  {avgRating.toFixed(1)} · {reviews.length} {reviews.length === 1 ? "review" : "reviews"}
+                </span>
+              </a>
+            )}
+          </div>
 
           {product.description && (
-            <p className="text-muted-foreground leading-relaxed">{product.description}</p>
+            <p className="leading-relaxed text-foreground-secondary">{product.description}</p>
           )}
 
-          {/* Variant picker + price + cart button */}
-          <VariantPicker product={product} />
+          <VariantPicker product={product} cities={cities} />
 
-          {/* Delivery availability */}
-          {availableCities.length > 0 && (
-            <div className="space-y-2 pt-2">
-              <h2 className="font-sans text-sm font-semibold tracking-normal flex items-center gap-1.5">
-                <Truck aria-hidden className="h-4 w-4 text-link" />
-                Delivery available in
-              </h2>
-              <div className="grid grid-cols-2 gap-2">
-                {availableCities.map((pc) => (
-                  <div
-                    key={pc.city_id}
-                    className="flex items-center justify-between rounded-lg border bg-muted/30 px-3 py-2 text-sm"
-                  >
-                    <span className="font-medium">{pc.city!.name}</span>
-                    <span className="flex items-center gap-1 text-muted-foreground text-xs">
-                      <Clock className="h-3 w-3" />
-                      {pc.lead_time_hours}h
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+          <TrustList />
         </div>
       </div>
 

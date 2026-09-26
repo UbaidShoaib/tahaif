@@ -59,9 +59,9 @@ export function ReviewsSection({ productId, initialReviews }: Props) {
   };
 
   return (
-    <div className="mt-12">
+    <section id="reviews" aria-labelledby="reviews-heading" className="mt-12 scroll-mt-20">
       <div className="flex items-center gap-4 mb-6">
-        <h2 className="text-h2">Customer Reviews</h2>
+        <h2 id="reviews-heading" className="text-h2">Customer Reviews</h2>
         {avgRating !== null && (
           <div className="flex items-center gap-2">
             <Rating value={Number(avgRating.toFixed(1))} />
@@ -142,6 +142,6 @@ export function ReviewsSection({ productId, initialReviews }: Props) {
           </Button>
         </form>
       )}
-    </div>
+    </section>
   );
 }

@@ -7,7 +7,9 @@ import { Rating, RatingInput } from "@/components/ui/rating";
 describe("Rating", () => {
   it("is announced as a single image with the score", () => {
     render(<Rating value={4.5} />);
-    expect(screen.getByRole("img", { name: "4.5 out of 5 stars" })).toBeInTheDocument();
+    const stars = screen.getByRole("img", { name: "4.5 out of 5 stars" });
+    const fills = Array.from(stars.querySelectorAll("[data-fill]")).map((el) => el.getAttribute("data-fill"));
+    expect(fills).toEqual(["full", "full", "full", "full", "half"]);
   });
 });
 
