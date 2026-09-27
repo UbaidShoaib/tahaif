@@ -40,9 +40,10 @@ class AddressRepository:
     async def update(self, address: Address, **kwargs: object) -> Address:
         if kwargs.get("is_default"):
             await self._clear_default(address.user_id)
+        # Callers decide what None means: the /me router drops None for fields
+        # where it means "unchanged" and passes it to clear occasion fields.
         for key, value in kwargs.items():
-            if value is not None:
-                setattr(address, key, value)
+            setattr(address, key, value)
         await self._db.flush()
         await self._db.refresh(address)
         return address

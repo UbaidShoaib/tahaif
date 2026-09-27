@@ -112,4 +112,47 @@ describe("AddressesPage", () => {
     await userEvent.click(screen.getAllByRole("button", { name: "Delete" })[1]);
     expect(accountApi.deleteAddress).toHaveBeenCalledWith("a1", "tok");
   });
+
+  it("saves who they are and their birthday", async () => {
+    vi.mocked(accountApi.listAddresses).mockResolvedValueOnce([]).mockResolvedValue([ammi]);
+    vi.mocked(accountApi.createAddress).mockResolvedValue(ammi);
+    render(<AddressesPage />);
+
+    await userEvent.click(await screen.findByRole("button", { name: "Add address" }));
+    await userEvent.click(screen.getByRole("button", { name: "Ammi" }));
+    await userEvent.type(screen.getByLabelText("Recipient name *"), "Shabana Khan");
+    await userEvent.type(screen.getByLabelText("Recipient phone *"), "+923001234567");
+    await userEvent.type(screen.getByLabelText("Address *"), "12 Main Boulevard");
+    await userEvent.selectOptions(screen.getByLabelText("City *"), "Lahore");
+    await userEvent.selectOptions(screen.getByLabelText("Birthday month"), "3");
+    await userEvent.selectOptions(screen.getByLabelText("Birthday day"), "12");
+    await userEvent.click(screen.getByRole("button", { name: "Save address" }));
+
+    await waitFor(() => expect(accountApi.createAddress).toHaveBeenCalled());
+    expect(vi.mocked(accountApi.createAddress).mock.calls[0]?.[0]).toMatchObject({
+      relationship: "Ammi", birthday: { month: 3, day: 12 }, anniversary: null,
+    });
+  });
+
+  it("shows who they are and flags a birthday coming up", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date(2026, 8, 28, 12)); // 28 Sep 2026, local time
+    try {
+      vi.mocked(accountApi.listAddresses).mockResolvedValue([
+        { ...ammi, relationship: "Ammi", birthday: { month: 10, day: 3 }, anniversary: { month: 12, day: 1 } },
+        { ...khala, relationship: "Khala", birthday: { month: 6, day: 1 } },
+      ]);
+      render(<AddressesPage />);
+
+      const [first, second] = await screen.findAllByRole("listitem");
+      expect(within(first).getByText("Ammi")).toBeInTheDocument();
+      expect(within(first).getByText("Birthday 3 Oct · Anniversary 1 Dec")).toBeInTheDocument();
+      expect(within(first).getByText(/Birthday in 5 days \(3 Oct\)/)).toBeInTheDocument();
+      // June is months away: listed, but not flagged as coming up.
+      expect(within(second).getByText("Birthday 1 Jun")).toBeInTheDocument();
+      expect(within(second).queryByText(/in \d+ days/)).not.toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });

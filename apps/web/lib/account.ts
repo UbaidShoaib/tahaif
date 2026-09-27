@@ -1,5 +1,6 @@
 import { apiFetch } from "@/lib/api";
 import type { UserRead } from "@/stores/auth.store";
+import type { MonthDay } from "@/lib/occasions";
 
 export const SUPPORTED_CURRENCIES = ["PKR", "USD", "GBP", "EUR", "CAD", "AUD", "AED", "SAR"] as const;
 export type CurrencyCode = (typeof SUPPORTED_CURRENCIES)[number];
@@ -19,6 +20,10 @@ export interface AddressRead {
   landmark: string | null;
   alt_phone: string | null;
   is_default: boolean;
+  /** Who they are to the buyer, e.g. "Ammi". */
+  relationship?: string | null;
+  birthday?: MonthDay | null;
+  anniversary?: MonthDay | null;
 }
 
 export interface AddressWrite {
@@ -30,6 +35,10 @@ export interface AddressWrite {
   landmark?: string | null;
   alt_phone?: string | null;
   is_default?: boolean;
+  relationship?: string | null;
+  /** null clears it. */
+  birthday?: MonthDay | null;
+  anniversary?: MonthDay | null;
 }
 
 export interface FxRates {

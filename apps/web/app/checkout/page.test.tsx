@@ -129,6 +129,17 @@ describe("CheckoutPage", () => {
     ));
   });
 
+  it("leads saved addresses with who they are", async () => {
+    vi.mocked(accountApi.listAddresses).mockResolvedValue([
+      {
+        id: "a1", recipient_name: "Shabana Khan", recipient_phone: "+923001234567", line1: "12 Main Boulevard",
+        line2: null, city_name: "Lahore", landmark: null, alt_phone: null, is_default: false, relationship: "Ammi",
+      },
+    ]);
+    render(<CheckoutPage />);
+    expect(await screen.findByRole("radio", { name: /Ammi · Shabana Khan/ })).toBeInTheDocument();
+  });
+
   it("fills the form from a saved address, including the city", async () => {
     vi.mocked(accountApi.listAddresses).mockResolvedValue([{
       id: "a1", recipient_name: "Ammi Jaan", recipient_phone: "+923001234567", line1: "12 Main Boulevard",

@@ -52,7 +52,7 @@ export function DeliveryDetailsSection({
           {addresses.map((a) => (
             <RadioCard key={a.id} value={a.id}>
               <span className="block font-medium">
-                {a.recipient_name}
+                {a.relationship ? `${a.relationship} · ${a.recipient_name}` : a.recipient_name}
                 {a.is_default && <span className="ms-2 text-xs font-normal text-muted-foreground">Default</span>}
               </span>
               <span className="block text-sm text-muted-foreground">

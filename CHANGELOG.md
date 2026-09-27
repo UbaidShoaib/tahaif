@@ -61,6 +61,17 @@ pre-production-cutover).
   message after delivery). They send words and/or one photo, voice note or video;
   the buyer gets an email/WhatsApp and sees it on the tracking page. The link shows
   only who the gift is from. API: `GET`/`POST /thanks/{token}`; migration `0011`.
+- Family address book (diaspora Release C): saved addresses become "Family &
+  friends". Each can say who they are to the buyer ("Ammi", with suggestion chips)
+  and hold a birthday and anniversary (month and day, no year; 29 Feb allowed). Cards
+  flag an occasion coming up in the next 30 days ("Birthday in 5 days"), and checkout's
+  saved-address cards lead with the relationship. API: `relationship`, `birthday` and
+  `anniversary` on `/me/addresses` (an explicit null clears an occasion); migration `0012`.
+
+### Fixed
+- The GDPR data export listed addresses with only id and street lines (and a
+  non-existent `label`); it now includes every saved field, including recipient
+  name, phone, city, relationship and occasions.
 
 ### Fixed
 - Vendors couldn't see the buyer's card message, so nothing told them what to

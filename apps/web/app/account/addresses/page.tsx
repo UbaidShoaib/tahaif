@@ -2,12 +2,22 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { MapPin, Plus } from "lucide-react";
+import { Cake, Heart, MapPin, Plus } from "lucide-react";
 import { useAuthStore } from "@/stores/auth.store";
 import { accountApi, type AddressRead, type AddressWrite } from "@/lib/account";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { OccasionInput } from "@/components/account/OccasionInput";
+import { localToday } from "@/components/checkout/checkout-schema";
+import {
+  RELATIONSHIPS,
+  UPCOMING_DAYS,
+  daysUntil,
+  formatDaysUntil,
+  formatMonthDay,
+  type MonthDay,
+} from "@/lib/occasions";
 
 type City = { id: string; name: string };
 
@@ -21,6 +31,9 @@ const EMPTY: AddressWrite = {
   city_name: "",
   landmark: "",
   is_default: false,
+  relationship: "",
+  birthday: null,
+  anniversary: null,
 };
 
 function toForm(a: AddressRead): AddressWrite {
@@ -32,7 +45,19 @@ function toForm(a: AddressRead): AddressWrite {
     city_name: a.city_name,
     landmark: a.landmark ?? "",
     is_default: a.is_default,
+    relationship: a.relationship ?? "",
+    birthday: a.birthday ?? null,
+    anniversary: a.anniversary ?? null,
   };
+}
+
+/** The soonest birthday/anniversary within UPCOMING_DAYS, for the card's reminder line. */
+function nextOccasion(a: AddressRead, today: string): { label: string; date: MonthDay; days: number } | null {
+  const options = [
+    a.birthday ? { label: "Birthday", date: a.birthday, days: daysUntil(a.birthday, today) } : null,
+    a.anniversary ? { label: "Anniversary", date: a.anniversary, days: daysUntil(a.anniversary, today) } : null,
+  ].filter((o): o is { label: string; date: MonthDay; days: number } => o !== null && o.days <= UPCOMING_DAYS);
+  return options.sort((x, y) => x.days - y.days)[0] ?? null;
 }
 
 export default function AddressesPage() {
@@ -82,7 +107,9 @@ export default function AddressesPage() {
     );
   }
 
-  const set = (key: keyof AddressWrite, value: string | boolean) => setForm((f) => ({ ...f, [key]: value }));
+  const set = (key: keyof AddressWrite, value: string | boolean | MonthDay | null) =>
+    setForm((f) => ({ ...f, [key]: value }));
+  const today = localToday();
   const canSave = form.recipient_name.trim() && form.recipient_phone.trim() && form.line1.trim() && form.city_name;
 
   const open = (a: AddressRead | null) => {
@@ -103,6 +130,7 @@ export default function AddressesPage() {
       line1: form.line1.trim(),
       line2: form.line2?.trim() ?? "",
       landmark: form.landmark?.trim() ?? "",
+      relationship: form.relationship?.trim() || null,
     };
     try {
       if (editing === "new") await accountApi.createAddress(body, accessToken);
@@ -144,6 +172,31 @@ export default function AddressesPage() {
   const formView = (
     <form onSubmit={(e) => { void save(e); }} className="rounded-xl border p-5 space-y-4" aria-label="Address form">
       <h2 className="font-semibold text-lg">{editing === "new" ? "Add a recipient" : "Edit address"}</h2>
+      <div className="space-y-1.5">
+        <Label htmlFor="addr-relationship">Who are they to you?</Label>
+        <Input
+          id="addr-relationship"
+          value={form.relationship ?? ""}
+          maxLength={40}
+          placeholder="e.g. Ammi"
+          onChange={(e) => set("relationship", e.target.value)}
+        />
+        <div role="group" aria-label="Relationship suggestions" className="flex flex-wrap gap-1.5">
+          {RELATIONSHIPS.map((r) => (
+            <button
+              key={r}
+              type="button"
+              aria-pressed={form.relationship === r}
+              onClick={() => set("relationship", r)}
+              className={`min-h-8 rounded-full border px-2.5 text-xs ${
+                form.relationship === r ? "border-primary-700 bg-primary-soft font-medium" : "hover:bg-muted"
+              }`}
+            >
+              {r}
+            </button>
+          ))}
+        </div>
+      </div>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="space-y-1.5">
           <Label htmlFor="addr-name">Recipient name *</Label>
@@ -180,6 +233,11 @@ export default function AddressesPage() {
         <Label htmlFor="addr-landmark">Nearby landmark</Label>
         <Input id="addr-landmark" value={form.landmark ?? ""} placeholder="e.g. Near Liberty Market" onChange={(e) => set("landmark", e.target.value)} />
       </div>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <OccasionInput id="addr-birthday" label="Birthday" value={form.birthday ?? null} onChange={(v) => set("birthday", v)} />
+        <OccasionInput id="addr-anniversary" label="Anniversary" value={form.anniversary ?? null} onChange={(v) => set("anniversary", v)} />
+      </div>
+      <p className="-mt-2 text-xs text-muted-foreground">Optional. No year needed; we&apos;ll show when it&apos;s coming up.</p>
       <label htmlFor="addr-default" className="flex items-center gap-2 text-sm">
         <input id="addr-default" type="checkbox" checked={!!form.is_default} onChange={(e) => set("is_default", e.target.checked)} className="h-4 w-4 accent-primary-700" />
         Use as my default address at checkout
@@ -195,8 +253,11 @@ export default function AddressesPage() {
     <div className="container mx-auto px-4 py-8 max-w-2xl space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold">Addresses</h1>
-          <p className="text-sm text-muted-foreground">Saved recipients appear at checkout so you can send again in one tap.</p>
+          <h1 className="text-2xl font-bold">Family &amp; friends</h1>
+          <p className="text-sm text-muted-foreground">
+            The people you send to. They appear at checkout, and we&apos;ll show you when a birthday or anniversary is
+            coming up.
+          </p>
         </div>
         {editing === null && (
           <Button type="button" onClick={() => open(null)} className="gap-2"><Plus className="h-4 w-4" /> Add address</Button>
@@ -214,12 +275,19 @@ export default function AddressesPage() {
         </div>
       ) : (
         <ul className="space-y-3">
-          {addresses.map((a) => (
+          {addresses.map((a) => {
+            const occasion = nextOccasion(a, today);
+            return (
             <li key={a.id}>
               {editing === a.id ? formView : (
                 <div className="rounded-xl border p-5">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div className="space-y-0.5 text-sm">
+                      {a.relationship && (
+                        <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-link">
+                          <Heart aria-hidden className="h-3.5 w-3.5" /> {a.relationship}
+                        </p>
+                      )}
                       <p className="font-medium text-base">
                         {a.recipient_name}
                         {a.is_default && (
@@ -229,6 +297,19 @@ export default function AddressesPage() {
                       <p>{a.line1}{a.line2 ? `, ${a.line2}` : ""}</p>
                       <p>{a.city_name}{a.landmark ? ` · ${a.landmark}` : ""}</p>
                       <p className="text-muted-foreground">{a.recipient_phone}</p>
+                      {(a.birthday || a.anniversary) && (
+                        <p className="text-muted-foreground">
+                          {a.birthday && <>Birthday {formatMonthDay(a.birthday)}</>}
+                          {a.birthday && a.anniversary && " · "}
+                          {a.anniversary && <>Anniversary {formatMonthDay(a.anniversary)}</>}
+                        </p>
+                      )}
+                      {occasion && (
+                        <p className="mt-1 inline-flex items-center gap-1.5 rounded-md bg-gold-soft px-2 py-1 font-medium text-gold-ink">
+                          <Cake aria-hidden className="h-4 w-4" />
+                          {occasion.label} {formatDaysUntil(occasion.days)} ({formatMonthDay(occasion.date)})
+                        </p>
+                      )}
                     </div>
                     <div className="flex flex-wrap gap-3 text-sm">
                       {!a.is_default && (
@@ -248,7 +329,8 @@ export default function AddressesPage() {
                 </div>
               )}
             </li>
-          ))}
+            );
+          })}
         </ul>
       )}
     </div>

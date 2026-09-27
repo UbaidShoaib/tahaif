@@ -8,7 +8,13 @@ from app.core.config import get_settings
 from app.core.deps import DB, CurrentUser
 from app.repositories.address_repository import AddressRepository
 from app.repositories.user_repository import UserRepository
-from app.schemas.address import AddressCreate, AddressRead, AddressUpdate
+from app.schemas.address import (
+    AddressCreate,
+    AddressRead,
+    AddressUpdate,
+    address_columns,
+    address_read,
+)
 from app.schemas.user import UserRead, UserUpdate
 
 
@@ -46,7 +52,7 @@ async def update_me(
 async def list_addresses(current_user: CurrentUser, db: DB) -> list[AddressRead]:
     repo = AddressRepository(db)
     addresses = await repo.list_for_user(current_user.id)
-    return [AddressRead.model_validate(a) for a in addresses]
+    return [address_read(a) for a in addresses]
 
 
 @router.post(
@@ -58,8 +64,8 @@ async def create_address(
     db: DB,
 ) -> AddressRead:
     repo = AddressRepository(db)
-    address = await repo.create(current_user.id, **body.model_dump())
-    return AddressRead.model_validate(address)
+    address = await repo.create(current_user.id, **address_columns(body.model_dump()))
+    return address_read(address)
 
 
 @router.patch("/addresses/{address_id}", response_model=AddressRead)
@@ -75,10 +81,14 @@ async def update_address(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Address not found"
         )
-    updates = body.model_dump(exclude_none=True)
+    # Occasion fields can be cleared with an explicit null; the older fields keep
+    # "null means unchanged".
+    sent = body.model_dump(exclude_unset=True)
+    clearable = {"relationship", "birthday", "anniversary"}
+    updates = address_columns({k: v for k, v in sent.items() if k in clearable or v is not None})
     if updates:
         address = await repo.update(address, **updates)
-    return AddressRead.model_validate(address)
+    return address_read(address)
 
 
 @router.delete("/addresses/{address_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -117,12 +127,7 @@ async def export_my_data(current_user: CurrentUser, db: DB) -> JSONResponse:
             "created_at": current_user.created_at.isoformat(),
         },
         "addresses": [
-            {
-                "id": str(a.id),
-                "label": getattr(a, "label", None),
-                "line1": getattr(a, "line1", None),
-                "line2": getattr(a, "line2", None),
-            }
+            address_read(a).model_dump(mode="json")
             for a in addresses
         ],
         "exported_at": datetime.now(UTC).isoformat(),
