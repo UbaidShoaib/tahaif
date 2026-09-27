@@ -7,7 +7,7 @@ import { clearSessionMarker } from "@/lib/session";
 import { MapPin, Package, Star, Download, Trash2 } from "lucide-react";
 import { useAuthStore } from "@/stores/auth.store";
 import { useCurrencyStore } from "@/stores/currency.store";
-import { accountApi, SUPPORTED_CURRENCIES, type CurrencyCode } from "@/lib/account";
+import { COUNTRIES, accountApi, SUPPORTED_CURRENCIES, type CurrencyCode } from "@/lib/account";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -23,6 +23,8 @@ export default function AccountPage() {
 
   const [fullName, setFullName] = useState("");
   const [currency, setCurrency] = useState<CurrencyCode>("PKR");
+  const [country, setCountry] = useState("");
+  const [reminders, setReminders] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -35,6 +37,8 @@ export default function AccountPage() {
   useEffect(() => {
     if (!user) return;
     setFullName(user.full_name ?? "");
+    setCountry(user.country ?? "");
+    setReminders(user.occasion_reminders ?? true);
     setCurrency((SUPPORTED_CURRENCIES as readonly string[]).includes(user.currency_pref)
       ? (user.currency_pref as CurrencyCode)
       : "PKR");
@@ -64,7 +68,12 @@ export default function AccountPage() {
     setError(null);
     try {
       const updated = await accountApi.updateMe(
-        { full_name: fullName.trim() || null, currency_pref: currency },
+        {
+          full_name: fullName.trim() || null,
+          currency_pref: currency,
+          ...(country ? { country } : {}),
+          occasion_reminders: reminders,
+        },
         accessToken,
       );
       setSession(updated, accessToken);
@@ -154,6 +163,38 @@ export default function AccountPage() {
             Prices are shown in this currency. Cash on delivery and bank transfers are always paid in rupees.
           </p>
         </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="country">Where do you live?</Label>
+          <select
+            id="country"
+            value={country}
+            onChange={(e) => { setCountry(e.target.value); setSaved(false); }}
+            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <option value="">Choose a country…</option>
+            {COUNTRIES.map((c) => <option key={c.code} value={c.code}>{c.name}</option>)}
+          </select>
+          <p className="text-xs text-muted-foreground">
+            So we remind you of Mother&apos;s Day on your country&apos;s date.
+          </p>
+        </div>
+        <label htmlFor="occasion_reminders" className="flex items-start gap-3 rounded-lg border p-3 text-sm">
+          <input
+            id="occasion_reminders"
+            type="checkbox"
+            checked={reminders}
+            onChange={(e) => { setReminders(e.target.checked); setSaved(false); }}
+            className="mt-0.5 h-4 w-4 accent-primary-700"
+          />
+          <span>
+            <span className="block font-medium">Occasion reminders</span>
+            <span className="block text-muted-foreground">
+              A week before birthdays and anniversaries in your{" "}
+              <Link href="/account/addresses" className="text-link hover:underline">family &amp; friends</Link>, and
+              before Eid and Mother&apos;s Day, by email and WhatsApp.
+            </span>
+          </span>
+        </label>
         <div className="flex items-center gap-3">
           <Button type="submit" disabled={saving}>{saving ? "Saving…" : "Save changes"}</Button>
           {saved && <span role="status" className="text-sm text-link">Saved</span>}

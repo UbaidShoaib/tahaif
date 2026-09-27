@@ -129,6 +129,22 @@ describe("CheckoutPage", () => {
     ));
   });
 
+  it("starts from the person a reminder link chose, over the default", async () => {
+    const base = {
+      recipient_phone: "+923001234567", line1: "12 Main Boulevard", line2: null, city_name: "Lahore",
+      landmark: null, alt_phone: null,
+    };
+    vi.mocked(accountApi.listAddresses).mockResolvedValue([
+      { ...base, id: "a1", recipient_name: "Default Person", is_default: true },
+      { ...base, id: "a2", recipient_name: "Shabana Khan", is_default: false, relationship: "Ammi" },
+    ]);
+    useDeliveryStore.setState({ sendToAddressId: "a2" });
+    render(<CheckoutPage />);
+
+    await waitFor(() => expect(screen.getByLabelText(/^Recipient name/)).toHaveValue("Shabana Khan"));
+    expect(useDeliveryStore.getState().sendToAddressId).toBeNull();
+  });
+
   it("leads saved addresses with who they are", async () => {
     vi.mocked(accountApi.listAddresses).mockResolvedValue([
       {

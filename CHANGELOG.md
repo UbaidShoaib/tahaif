@@ -68,6 +68,15 @@ pre-production-cutover).
   saved-address cards lead with the relationship. API: `relationship`, `birthday` and
   `anniversary` on `/me/addresses` (an explicit null clears an occasion); migration `0012`.
 
+- Occasion reminders (diaspora Release C): a daily job emails/WhatsApps buyers 7 and
+  2 days before family birthdays and anniversaries, and 7 days before Eid ul-Fitr,
+  Eid ul-Adha and Mother's Day (on their country's date: Mothering Sunday in the UK,
+  second Sunday of May in the US/Canada/Australia/Pakistan, 21 March in the Gulf).
+  Personal reminders link to `/send/{person}`, which sets the delivery city, opens
+  the occasion's gifts and preselects that person at checkout. Buyers set their
+  country and can turn reminders off on the account page. Each reminder is sent
+  once. Migration `0013`.
+
 ### Fixed
 - The GDPR data export listed addresses with only id and street lines (and a
   non-existent `label`); it now includes every saved field, including recipient

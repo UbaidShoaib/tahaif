@@ -16,6 +16,7 @@ from app.integrations import resend_client
 from app.integrations.twilio_client import send_sms, send_whatsapp
 from app.workers.notification_tasks import (
     FULFILLMENT_UPDATE_TEMPLATE,
+    OCCASION_REMINDER_TEMPLATE,
     RECIPIENT_DELIVERED_TEMPLATE,
     RECIPIENT_ON_THE_WAY_TEMPLATE,
     RECIPIENT_SURPRISE_TEMPLATE,
@@ -116,6 +117,13 @@ async def _send_email(
     total = payload.get("total_pkr", 0)
     if template == "order_confirmation":
         await resend_client.send_order_confirmation_email(to, str(token), int(total))
+    elif template == OCCASION_REMINDER_TEMPLATE:
+        await resend_client.send_reminder_email(
+            to,
+            str(payload.get("headline")),
+            str(payload.get("body")),
+            reminder_link(payload, get_settings().frontend_url),
+        )
     elif template == THANKS_RECEIVED_TEMPLATE:
         headline, body = thanks_received_text(payload)
         await resend_client.send_fulfillment_update_email(to, str(token), headline, body)
@@ -142,10 +150,24 @@ def _render_sms(template: str, payload: dict[str, Any]) -> str:
         )
     if template in (RECIPIENT_ON_THE_WAY_TEMPLATE, RECIPIENT_SURPRISE_TEMPLATE, RECIPIENT_DELIVERED_TEMPLATE):
         return recipient_text(template, payload, settings.brand_name, settings.frontend_url)
+    if template == OCCASION_REMINDER_TEMPLATE:
+        return (
+            f"{settings.brand_name}: {payload.get('headline')}\n{payload.get('body')}\n"
+            f"Choose a gift: {reminder_link(payload, settings.frontend_url)}\n"
+            f"(Turn reminders off in your account: {settings.frontend_url}/account)"
+        )
     if template == THANKS_RECEIVED_TEMPLATE:
         headline, body = thanks_received_text(payload)
         return f"{settings.brand_name}: {headline}\n{body}\nSee it: {settings.frontend_url}/track/{token}"
     return f"{settings.brand_name} notification: {template}"
+
+
+def reminder_link(payload: dict[str, Any], frontend_url: str) -> str:
+    """One tap to send: to that person (preselected at checkout) or the occasion's gifts."""
+    slug = payload.get("occasion_slug") or ""
+    if payload.get("address_id"):
+        return f"{frontend_url}/send/{payload['address_id']}?occasion={slug}"
+    return f"{frontend_url}/occasion/{slug}"
 
 
 def thanks_received_text(payload: dict[str, Any]) -> tuple[str, str]:

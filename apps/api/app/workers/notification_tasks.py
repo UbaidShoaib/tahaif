@@ -218,6 +218,47 @@ async def enqueue_thanks_received(
     return len(rows)
 
 
+OCCASION_REMINDER_TEMPLATE = "occasion_reminder"
+
+
+async def enqueue_occasion_reminder(
+    db: AsyncSession,
+    user_id: uuid.UUID,
+    email: str,
+    phone: str | None,
+    headline: str,
+    body: str,
+    occasion_slug: str,
+    address_id: uuid.UUID | None = None,
+) -> int:
+    """Queue a birthday/anniversary/Eid/Mother's Day reminder: email, plus WhatsApp when known."""
+    payload = json.dumps({
+        "user_id": str(user_id),
+        "headline": headline,
+        "body": body,
+        "occasion_slug": occasion_slug,
+        "address_id": str(address_id) if address_id else None,
+    })
+    now = datetime.now(UTC)
+    rows: list[dict[str, object]] = [
+        {
+            "id": uuid.uuid4(),
+            "channel": channel,
+            "to_address": address,
+            "template": OCCASION_REMINDER_TEMPLATE,
+            "payload": payload,
+            "status": "pending",
+            "attempts": 0,
+            "created_at": now,
+        }
+        for channel, address in (("email", email), ("whatsapp", phone))
+        if address
+    ]
+    if rows:
+        await _insert(db, rows)
+    return len(rows)
+
+
 async def _insert(db: AsyncSession, rows: list[dict[str, object]]) -> None:
     await db.execute(sa.text("""
         INSERT INTO notifications_outbox (id, channel, to_address, template, payload, status, attempts, created_at)

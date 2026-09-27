@@ -11,6 +11,7 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
+    true,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -41,6 +42,11 @@ class User(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     is_verified: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     avatar_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # ISO 3166-1 alpha-2 of where the buyer lives: Mother's Day falls on
+    # different dates by country. Null = unknown (country-specific reminders skipped).
+    country: Mapped[str | None] = mapped_column(String(2), nullable=True)
+    # Opt-out for birthday/anniversary/Eid/Mother's Day reminders.
+    occasion_reminders: Mapped[bool] = mapped_column(Boolean, default=True, server_default=true(), nullable=False)
 
     refresh_tokens: Mapped[list["RefreshToken"]] = relationship(
         back_populates="user", cascade="all, delete-orphan"

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import AccountPage from "@/app/account/page";
 import { useAuthStore, type UserRead } from "@/stores/auth.store";
@@ -46,7 +46,10 @@ describe("AccountPage", () => {
 
   it("offers only currencies that can be priced", () => {
     render(<AccountPage />);
-    expect(screen.getAllByRole("option").map((o) => o.textContent)).toEqual(["PKR", "GBP"]);
+    expect(within(screen.getByLabelText("Currency")).getAllByRole("option").map((o) => o.textContent)).toEqual([
+      "PKR",
+      "GBP",
+    ]);
   });
 
   it("saves name and currency, then updates the session and display currency", async () => {
@@ -58,10 +61,26 @@ describe("AccountPage", () => {
     await userEvent.selectOptions(screen.getByLabelText("Currency"), "GBP");
     await userEvent.click(screen.getByRole("button", { name: "Save changes" }));
 
-    expect(accountApi.updateMe).toHaveBeenCalledWith({ full_name: "Ayesha Khan", currency_pref: "GBP" }, "tok");
+    expect(accountApi.updateMe).toHaveBeenCalledWith(
+      { full_name: "Ayesha Khan", currency_pref: "GBP", occasion_reminders: true },
+      "tok",
+    );
     expect(await screen.findByRole("status")).toHaveTextContent("Saved");
     expect(useAuthStore.getState().user?.currency_pref).toBe("GBP");
     expect(useCurrencyStore.getState().currency).toBe("GBP");
+  });
+
+  it("saves where the buyer lives and their reminder choice", async () => {
+    vi.mocked(accountApi.updateMe).mockResolvedValue({ ...user, country: "GB", occasion_reminders: false });
+    render(<AccountPage />);
+
+    await userEvent.selectOptions(screen.getByLabelText("Where do you live?"), "GB");
+    const toggle = screen.getByRole("checkbox", { name: /Occasion reminders/ });
+    expect(toggle).toBeChecked();
+    await userEvent.click(toggle);
+    await userEvent.click(screen.getByRole("button", { name: "Save changes" }));
+
+    expect(vi.mocked(accountApi.updateMe).mock.calls[0]?.[0]).toMatchObject({ country: "GB", occasion_reminders: false });
   });
 
   it("only deletes the account after the confirmation word is typed", async () => {

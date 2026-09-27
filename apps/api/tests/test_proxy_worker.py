@@ -51,7 +51,7 @@ def test_rate_limiter_keys_on_real_client_ip() -> None:
 
 def test_worker_schedules_outbox_and_fx() -> None:
     names = {job.name for job in worker.WorkerSettings.cron_jobs}
-    assert names == {"cron:drain_outbox", "cron:refresh_fx"}
+    assert names == {"cron:drain_outbox", "cron:refresh_fx", "cron:send_reminders"}
 
 
 @pytest.mark.asyncio

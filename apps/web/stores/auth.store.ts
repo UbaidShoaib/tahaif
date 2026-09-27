@@ -12,6 +12,10 @@ export interface UserRead {
   avatar_url: string | null;
   is_verified: boolean;
   created_at: string;
+  /** ISO country code of where the buyer lives (Mother's Day dates differ). */
+  country?: string | null;
+  /** Birthday, anniversary, Eid and Mother's Day reminders. */
+  occasion_reminders?: boolean;
 }
 
 interface AuthState {

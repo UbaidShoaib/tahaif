@@ -13,6 +13,7 @@ from arq.connections import RedisSettings
 
 from app.core.config import get_settings
 from app.core.db import AsyncSessionLocal
+from app.services.reminder_service import send_due_reminders, today_utc
 from app.workers.fx_rate_worker import refresh_fx_rates
 from app.workers.outbox_worker import drain_pending
 
@@ -25,6 +26,11 @@ async def drain_outbox(ctx: dict[Any, Any], *_args: Any, **_kwargs: Any) -> int:
     if sent:
         await logger.ainfo("outbox_drained", processed=sent)
     return sent
+
+
+async def send_reminders(ctx: dict[Any, Any], *_args: Any, **_kwargs: Any) -> int:  # noqa: ARG001 — arq passes ctx
+    async with AsyncSessionLocal() as db:
+        return await send_due_reminders(db, today_utc())
 
 
 async def refresh_fx(ctx: dict[Any, Any], *_args: Any, **_kwargs: Any) -> int:  # noqa: ARG001 — arq passes ctx
@@ -40,5 +46,8 @@ class WorkerSettings:
         cron(drain_outbox, second={0, 15, 30, 45}, run_at_startup=True, timeout=120),
         # Daily FX refresh at 01:00 UTC, plus once on start so a fresh deploy has rates.
         cron(refresh_fx, hour={1}, minute={0}, run_at_startup=True, timeout=120),
+        # Occasion reminders at 07:00 UTC: morning in the UK, midday in the Gulf and
+        # Pakistan, early for North America. Each reminder is sent once (logged).
+        cron(send_reminders, hour={7}, minute={0}, timeout=600),
     ]
     job_timeout = 300

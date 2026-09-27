@@ -10,8 +10,14 @@ interface DeliveryState {
   cities: City[];
   /** The buyer's chosen "Deliver to" city, remembered across visits. Null = not chosen. */
   cityId: string | null;
+  /**
+   * A saved person to preselect at checkout, set by a reminder's "send again"
+   * link (/send/{addressId}). In memory only: it's a one-off shortcut.
+   */
+  sendToAddressId: string | null;
   loadCities: () => Promise<void>;
   setCity: (cityId: string | null) => void;
+  setSendTo: (addressId: string | null) => void;
 }
 
 function readStored(): string | null {
@@ -36,6 +42,7 @@ let loading: Promise<void> | null = null;
 export const useDeliveryStore = create<DeliveryState>((set, get) => ({
   cities: [],
   cityId: typeof window === "undefined" ? null : readStored(),
+  sendToAddressId: null,
 
   loadCities: () => {
     if (get().cities.length > 0) return Promise.resolve();
@@ -62,6 +69,8 @@ export const useDeliveryStore = create<DeliveryState>((set, get) => ({
     writeStored(cityId);
     set({ cityId });
   },
+
+  setSendTo: (sendToAddressId) => set({ sendToAddressId }),
 }));
 
 /** Name of the chosen city, if any. */

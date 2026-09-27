@@ -191,13 +191,16 @@ export default function CheckoutPage() {
     }
   };
 
-  // Start from the buyer's default saved address (once), unless they've already typed one.
+  // Start from the person a reminder link chose, else the default saved address
+  // (once), unless they've already typed one.
   const prefilled = useRef(false);
   useEffect(() => {
     if (prefilled.current || addresses.length === 0 || cities.length === 0) return;
     prefilled.current = true;
-    const def = addresses.find((a) => a.is_default);
-    if (def && !getValues("recipient_name") && !getValues("address_line1")) selectAddress(def.id);
+    const { sendToAddressId, setSendTo } = useDeliveryStore.getState();
+    const start = addresses.find((a) => a.id === sendToAddressId) ?? addresses.find((a) => a.is_default);
+    if (sendToAddressId) setSendTo(null);
+    if (start && !getValues("recipient_name") && !getValues("address_line1")) selectAddress(start.id);
     // selectAddress is recreated every render; this effect must only run once per load.
   }, [addresses, cities]); // eslint-disable-line react-hooks/exhaustive-deps
 

@@ -67,6 +67,26 @@ async def send_fulfillment_update_email(
     )
 
 
+async def send_reminder_email(
+    to_email: str, headline: str, body: str, link: str
+) -> None:  # pragma: no cover
+    resend.api_key = settings.resend_api_key
+    resend.Emails.send(
+        {
+            "from": settings.email_from,
+            "to": to_email,
+            "subject": headline,
+            "html": f"""
+                <h2>{html.escape(headline)}</h2>
+                <p>{html.escape(body)}</p>
+                <p><a href="{html.escape(link)}">Choose a gift</a></p>
+                <p style="color:#777;font-size:12px">You get these because you saved this date or asked
+                for occasion reminders. <a href="{settings.frontend_url}/account">Turn reminders off</a>.</p>
+            """,
+        }
+    )
+
+
 async def send_newsletter_confirmation_email(
     to_email: str, confirm_url: str
 ) -> None:  # pragma: no cover

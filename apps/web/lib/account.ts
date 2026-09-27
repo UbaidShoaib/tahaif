@@ -8,7 +8,30 @@ export type CurrencyCode = (typeof SUPPORTED_CURRENCIES)[number];
 export interface UserUpdate {
   full_name?: string | null;
   currency_pref?: CurrencyCode;
+  country?: string;
+  occasion_reminders?: boolean;
 }
+
+/** Where diaspora buyers live; drives Mother's Day reminder dates. */
+export const COUNTRIES: { code: string; name: string }[] = [
+  { code: "GB", name: "United Kingdom" },
+  { code: "US", name: "United States" },
+  { code: "CA", name: "Canada" },
+  { code: "AE", name: "United Arab Emirates" },
+  { code: "SA", name: "Saudi Arabia" },
+  { code: "QA", name: "Qatar" },
+  { code: "KW", name: "Kuwait" },
+  { code: "BH", name: "Bahrain" },
+  { code: "OM", name: "Oman" },
+  { code: "AU", name: "Australia" },
+  { code: "NZ", name: "New Zealand" },
+  { code: "IE", name: "Ireland" },
+  { code: "DE", name: "Germany" },
+  { code: "IT", name: "Italy" },
+  { code: "NL", name: "Netherlands" },
+  { code: "MY", name: "Malaysia" },
+  { code: "PK", name: "Pakistan" },
+];
 
 export interface AddressRead {
   id: string;

@@ -30,6 +30,7 @@ from app.models.order import (
     OrderItem,
     Payment,
 )
+from app.models.reminder import OccasionReminderSent
 from app.models.user import OAuthAccount, PasswordResetToken, RefreshToken, User
 
 __all__ = [
@@ -50,6 +51,7 @@ __all__ = [
     "NewsletterSubscriber",
     "OAuthAccount",
     "Occasion",
+    "OccasionReminderSent",
     "Order",
     "OrderItem",
     "PasswordResetToken",
