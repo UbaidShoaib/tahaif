@@ -3,6 +3,7 @@ import secrets
 import structlog
 from fastapi import APIRouter, Cookie, Depends, HTTPException, Request, Response, status
 from fastapi.responses import RedirectResponse
+from redis.exceptions import RedisError
 
 from app.core.client_ip import client_ip
 from app.core.config import get_settings
@@ -37,10 +38,19 @@ def _client_ip(request: Request) -> str:
     return client_ip(request)
 
 
+# The brute-force IP ban is best-effort: if Redis is down, login keeps working
+# (fail open) and request rate limits still apply through the limiter's
+# in-memory fallback. Failing closed would lock every buyer out during an outage.
+
+
 async def _check_ip_not_banned(request: Request) -> None:
-    redis = get_redis()
     ip = _client_ip(request)
-    if await redis.sismember("ip_blocklist", ip):  # type: ignore[misc]
+    try:
+        banned = await get_redis().sismember("ip_blocklist", ip)  # type: ignore[misc]
+    except (RedisError, OSError) as exc:
+        await logger.awarning("ip_ban_check_skipped", ip=ip, error=str(exc))
+        return
+    if banned:
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             detail="Too many failed login attempts. Try again in 24 hours.",
@@ -48,21 +58,26 @@ async def _check_ip_not_banned(request: Request) -> None:
 
 
 async def _record_failed_login(request: Request) -> None:
-    redis = get_redis()
     ip = _client_ip(request)
     key = f"login_fail:{ip}"
-    count = await redis.incr(key)
-    await redis.expire(key, _FAIL_WINDOW_SECS)
-    if count >= _FAIL_THRESHOLD:
-        await redis.sadd("ip_blocklist", ip)  # type: ignore[misc]
-        await redis.expire("ip_blocklist", _BAN_TTL_SECS)
-        await logger.awarning("ip_blocked", ip=ip, failures=count)
+    try:
+        redis = get_redis()
+        count = await redis.incr(key)
+        await redis.expire(key, _FAIL_WINDOW_SECS)
+        if count >= _FAIL_THRESHOLD:
+            await redis.sadd("ip_blocklist", ip)  # type: ignore[misc]
+            await redis.expire("ip_blocklist", _BAN_TTL_SECS)
+            await logger.awarning("ip_blocked", ip=ip, failures=count)
+    except (RedisError, OSError) as exc:
+        await logger.awarning("failed_login_not_recorded", ip=ip, error=str(exc))
 
 
 async def _clear_failed_logins(request: Request) -> None:
-    redis = get_redis()
     ip = _client_ip(request)
-    await redis.delete(f"login_fail:{ip}")
+    try:
+        await get_redis().delete(f"login_fail:{ip}")
+    except (RedisError, OSError) as exc:
+        await logger.awarning("failed_logins_not_cleared", ip=ip, error=str(exc))
 
 
 _COOKIE_NAME = "refresh_token"

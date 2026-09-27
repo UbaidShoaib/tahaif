@@ -5,6 +5,7 @@ from pathlib import PurePosixPath
 
 import boto3
 import structlog
+from botocore.config import Config
 from botocore.exceptions import BotoCoreError, ClientError
 from fastapi import HTTPException, status
 
@@ -22,6 +23,10 @@ def _get_client() -> "boto3.client":
         "service_name": "s3",
         "aws_access_key_id": settings.s3_access_key_id,
         "aws_secret_access_key": settings.s3_secret_access_key,
+        "region_name": settings.s3_region,
+        # SigV4: presigned links use X-Amz-* parameters. boto3 otherwise falls
+        # back to legacy SigV2 for presigning, which newer AWS regions reject.
+        "config": Config(signature_version="s3v4"),
     }
     if settings.s3_endpoint_url:
         kwargs["endpoint_url"] = settings.s3_endpoint_url
@@ -70,3 +75,25 @@ async def upload_proof(order_id: str, filename: str, data: bytes, content_type: 
         ) from exc
     await logger.ainfo("s3_proof_uploaded", order_id=order_id, key=key)
     return url
+
+
+_PROOF_PREFIX = "proofs/"
+SIGNED_URL_TTL_SECS = 15 * 60
+
+
+def object_key_from_url(url: str | None) -> str | None:
+    """Recover the object key from a stored proof URL (keys always start with proofs/)."""
+    if not url or _PROOF_PREFIX not in url:
+        return None
+    return url[url.index(_PROOF_PREFIX):].split("?", 1)[0]
+
+
+def presign_get(key: str, expires_in: int = SIGNED_URL_TTL_SECS) -> str:
+    """Short-lived GET link for a private object. Signing is local; no network call."""
+    return str(
+        _get_client().generate_presigned_url(
+            "get_object",
+            Params={"Bucket": get_settings().s3_bucket_name, "Key": key},
+            ExpiresIn=expires_in,
+        )
+    )

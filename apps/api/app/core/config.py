@@ -62,6 +62,7 @@ class Settings(BaseSettings):
     s3_secret_access_key: str = ""
     s3_bucket_name: str = "tahaif-media"
     s3_public_url: str = ""
+    s3_region: str = "us-east-1"  # MinIO's default; set to the bucket's region on AWS
 
     # Payments
     stripe_secret_key: str = ""

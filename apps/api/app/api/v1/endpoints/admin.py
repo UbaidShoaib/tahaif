@@ -17,7 +17,7 @@ from app.models.user import User, UserRole
 from app.repositories.loyalty_repository import CouponRepository
 from app.repositories.order_repository import OrderRepository
 from app.repositories.user_repository import UserRepository
-from app.services import catalog_service
+from app.services import catalog_service, proof_service
 
 AdminUser = Annotated[User, require_roles(UserRole.admin, UserRole.staff)]
 
@@ -79,7 +79,8 @@ async def list_orders(
             "placed_at": o.placed_at.isoformat(),
             "payment_method": o.payments[0].method if o.payments else None,
             "payment_status": o.payments[0].status if o.payments else None,
-            "proof_url": o.payments[0].proof_url if o.payments else None,
+            # Short-lived signed link; the receipt bucket is private.
+            "proof_url": proof_service.signed_proof_url(o.payments[0].proof_url) if o.payments else None,
         }
         for o in orders
     ]

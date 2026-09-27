@@ -12,7 +12,7 @@
 | Web | Vercel | auto | `tahaif-web.vercel.app` (Preview; production cutover pending) |
 | DB | Railway Postgres | same project | private network (`postgres.railway.internal`) |
 | Redis | Railway Key Value | same project | private network (`redis.railway.internal`) |
-| MinIO / S3 | **not yet provisioned** | — | proof-of-payment upload is non-functional until set up |
+| MinIO / S3 | **not yet provisioned** | — | proof-of-payment upload is non-functional until set up. Keep the bucket private: admins open receipts through 15-minute SigV4 links; set `S3_REGION` to the bucket's region |
 | Meilisearch | **not yet provisioned** | — | search works through the database fallback until set up |
 
 `infra/fly.toml` and `infra/render.yaml` are kept in the repo, fully configured
@@ -149,10 +149,10 @@ railway variable list --service tahaif-api --kv | grep S3
 
 ### Redis connection refused
 
-**Symptom:** login returns 500 (its brute-force IP ban check reads Redis) and the
-readiness probe fails. Request rate limiting keeps working: the limiter swallows
-Redis errors and falls back to per-process counters, so limits are temporarily
-per worker rather than shared.
+**Symptom:** readiness probe fails and the API logs `ip_ban_check_skipped` /
+`failed_login_not_recorded` warnings. Login keeps working: the brute-force IP ban
+fails open while Redis is down, and request rate limits fall back to per-process
+counters, so limits are temporarily per worker rather than shared.
 
 **Check:**
 ```bash
