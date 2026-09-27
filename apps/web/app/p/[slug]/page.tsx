@@ -10,6 +10,7 @@ import { Rating } from "@/components/ui/rating";
 import { ProductGallery } from "@/components/catalog/ProductGallery";
 import { TrustList } from "@/components/catalog/TrustList";
 import { onTimePercent } from "@/lib/stats";
+import { VendorStory } from "@/components/catalog/VendorStory";
 
 type Props = { params: Promise<{ slug: string }> };
 
@@ -30,11 +31,13 @@ export default async function ProductPage({ params }: Props) {
   const product = await catalogApi.getProduct(slug).catch(() => null);
   if (!product) notFound();
 
-  const [categories, cities, reviews, vendorOnTime] = await Promise.all([
+  const [categories, cities, reviews, vendorOnTime, vendor] = await Promise.all([
     catalogApi.getCategories(),
     catalogApi.getCities(),
     loyaltyApi.listReviews(product.id).catch(() => []),
     onTimePercent(product.vendor_id),
+    // Optional: the page still renders if the vendor lookup fails.
+    product.vendor ? catalogApi.getVendor(product.vendor.slug).catch(() => null) : Promise.resolve(null),
   ]);
 
   const flat = (cats: typeof categories): typeof categories =>
@@ -122,6 +125,8 @@ export default async function ProductPage({ params }: Props) {
           <VariantPicker product={product} cities={cities} />
 
           <TrustList onTimePercent={vendorOnTime} />
+
+          {vendor && <VendorStory vendor={vendor} city={cities.find((c) => c.id === vendor.city_id)} />}
         </div>
       </div>
 

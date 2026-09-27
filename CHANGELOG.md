@@ -30,6 +30,9 @@ pre-production-cutover).
   chosen day (judged by the city's calendar day). The product page leads its trust
   list with the shop's rate and the home trust strip shows the overall rate. It's a
   measured fact, not a guarantee (Q17), and stays hidden below 20 deliveries.
+- Vendor story on the product page: "Made by …", the shop's city and its own
+  description, linking to its other gifts, so buyers abroad know which local maker
+  prepares the gift. Hidden when the vendor has no description.
 
 ### Fixed
 - Delivery dates showed the previous day for buyers west of UTC (e.g. Toronto,
