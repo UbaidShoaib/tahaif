@@ -165,4 +165,7 @@ def fulfillment_update_text(payload: dict[str, Any]) -> tuple[str, str]:
     headline, body = _FULFILLMENT_COPY.get(
         str(payload.get("status")), ("Your order has an update", "Open the tracking page for details.")
     )
-    return headline.format(name=name), body.format(name=name)
+    body = body.format(name=name)
+    if payload.get("status") == "delivered" and payload.get("has_photo"):
+        body += " See the delivery photo on the tracking page."
+    return headline.format(name=name), body

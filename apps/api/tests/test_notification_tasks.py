@@ -149,3 +149,10 @@ def test_whatsapp_text_links_to_tracking() -> None:
 def test_copy_falls_back_when_recipient_name_missing() -> None:
     headline, _ = fulfillment_update_text({"status": "dispatched", "recipient_name": ""})
     assert "your loved one" in headline
+
+
+def test_delivered_copy_points_to_photo_when_there_is_one() -> None:
+    _, with_photo = fulfillment_update_text({"status": "delivered", "recipient_name": "Ammi", "has_photo": True})
+    _, without = fulfillment_update_text({"status": "delivered", "recipient_name": "Ammi"})
+    assert "delivery photo" in with_photo
+    assert "delivery photo" not in without

@@ -127,8 +127,23 @@ export default async function TrackPage({
                     hour: "2-digit",
                     minute: "2-digit",
                   })}
+                  {f.received_by && <> · Received by {f.received_by}</>}
                 </span>
               </div>
+            )}
+            {f.delivery_photo_url && (
+              <figure className="pt-2">
+                {/* Signed, short-lived S3 link: not a configured next/image host. */}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={f.delivery_photo_url}
+                  alt={`Your gift delivered to ${f.recipient_name}`}
+                  className="max-h-80 w-full rounded-lg border object-cover sm:w-auto"
+                />
+                <figcaption className="mt-1 text-xs text-muted-foreground">
+                  Photo taken at delivery
+                </figcaption>
+              </figure>
             )}
           </div>
         </div>

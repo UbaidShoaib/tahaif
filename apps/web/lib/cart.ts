@@ -113,6 +113,9 @@ export interface FulfillmentRead {
   courier_tracking: string | null;
   dispatched_at: string | null;
   delivered_at: string | null;
+  /** Short-lived signed link to the proof-of-delivery photo. */
+  delivery_photo_url?: string | null;
+  received_by?: string | null;
 }
 
 export interface OrderItemRead {

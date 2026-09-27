@@ -77,6 +77,35 @@ async def upload_proof(order_id: str, filename: str, data: bytes, content_type: 
     return url
 
 
+_PHOTO_MIME_TYPES = {"image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp"}
+
+
+async def upload_delivery_photo(order_id: str, fulfillment_id: str, data: bytes, content_type: str) -> str:
+    """Upload a proof-of-delivery photo; returns the object key (the bucket is private)."""
+    ext = _PHOTO_MIME_TYPES.get(content_type)
+    if ext is None:
+        raise HTTPException(
+            status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+            detail="Upload a JPEG, PNG or WebP photo",
+        )
+    if len(data) > _MAX_FILE_SIZE:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail="File exceeds 10 MB limit",
+        )
+    key = f"deliveries/{order_id}/{fulfillment_id}{ext}"
+    try:
+        await asyncio.to_thread(_upload_sync, key, data, content_type)
+    except (BotoCoreError, ClientError) as exc:
+        await logger.aexception("s3_delivery_photo_upload_failed", order_id=order_id, key=key, error=str(exc))
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Photo storage is unavailable right now. Please try again shortly.",
+        ) from exc
+    await logger.ainfo("s3_delivery_photo_uploaded", order_id=order_id, key=key)
+    return key
+
+
 _PROOF_PREFIX = "proofs/"
 SIGNED_URL_TTL_SECS = 15 * 60
 

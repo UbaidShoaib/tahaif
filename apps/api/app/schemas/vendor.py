@@ -30,5 +30,7 @@ class VendorFulfillmentRead(BaseModel):
     courier_tracking: str | None
     dispatched_at: datetime | None
     delivered_at: datetime | None
+    delivery_photo_url: str | None = None
+    received_by: str | None = None
     item_count: int
     subtotal_pkr: int

@@ -78,6 +78,7 @@ async def enqueue_fulfillment_update(
     recipient_name: str,
     buyer_email: str | None,
     buyer_phone: str | None,
+    has_photo: bool = False,
 ) -> int:
     """Tell the buyer a fulfillment moved to a new status: email, plus WhatsApp
     when a phone is known (overseas buyers read WhatsApp, not local SMS).
@@ -93,6 +94,7 @@ async def enqueue_fulfillment_update(
         "public_token": str(public_token),
         "status": status,
         "recipient_name": recipient_name,
+        "has_photo": has_photo,
     })
     now = datetime.now(UTC)
     targets = [("email", buyer_email), ("whatsapp", buyer_phone)]

@@ -14,6 +14,12 @@ pre-production-cutover).
   phone is known) with a live tracking link. The internal `ready` step and same-status
   tracking edits send nothing. Enqueueing is best-effort in a SAVEPOINT, so an outbox error
   never blocks the vendor's update.
+- Proof of delivery (diaspora Release A): vendors can "Deliver with photo" from the
+  vendor portal, attaching a doorstep photo and who received the gift
+  (`POST /vendor/fulfillments/{id}/delivery-photo`, migration `0008`). It marks the
+  fulfillment delivered, so the buyer's "delivered" message points to the photo, and
+  the tracking page shows it through a 1-hour signed link (the bucket stays private).
+  JPEG/PNG/WebP up to 10 MB; on a delivered fulfillment it replaces the photo.
 
 ### Changed
 - Rebrand to the Anaar berry (`#9f1f50`) + Zari gold palette (ADR 0003), replacing

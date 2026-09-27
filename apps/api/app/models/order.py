@@ -215,6 +215,9 @@ class Fulfillment(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     courier_tracking: Mapped[str | None] = mapped_column(String(255), nullable=True)
     dispatched_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     delivered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Proof of delivery: object key in the private bucket (never a public URL).
+    delivery_photo_key: Mapped[str | None] = mapped_column(Text, nullable=True)
+    received_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
     order: Mapped["Order"] = relationship(back_populates="fulfillments")
     vendor: Mapped["Vendor"] = relationship()

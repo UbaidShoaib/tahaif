@@ -42,6 +42,9 @@ export interface VendorFulfillmentRead {
   courier_tracking: string | null;
   dispatched_at: string | null;
   delivered_at: string | null;
+  /** Short-lived signed link to the proof-of-delivery photo. */
+  delivery_photo_url: string | null;
+  received_by: string | null;
   item_count: number;
   subtotal_pkr: number;
 }
@@ -77,6 +80,18 @@ export const vendorApi = {
       body,
       token,
     }),
+
+  /** Attach a delivery photo and mark the fulfillment delivered (replaces the photo if already delivered). */
+  confirmDeliveryWithPhoto: (id: string, photo: File, receivedBy: string, token: string) => {
+    const form = new FormData();
+    form.append("file", photo);
+    if (receivedBy.trim()) form.append("received_by", receivedBy.trim());
+    return apiFetch<VendorFulfillmentRead>(`/vendor/fulfillments/${id}/delivery-photo`, {
+      method: "POST",
+      body: form,
+      token,
+    });
+  },
 
   listProducts: (token: string, page = 1) =>
     apiFetch<VendorProductRead[]>(`/vendor/products?page=${page}`, { token }),

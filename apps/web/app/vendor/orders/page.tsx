@@ -9,6 +9,7 @@ import {
   type VendorFulfillmentRead,
 } from "@/lib/vendor";
 import { OrderStatusBadge, statusLabel } from "@/components/orders/OrderStatusBadge";
+import { DeliveryPhotoForm } from "@/components/vendor/DeliveryPhotoForm";
 
 const FULFILLMENT_STATUSES: FulfillmentStatus[] = [
   "pending",
@@ -38,6 +39,9 @@ const NEXT_STATUS: Partial<Record<FulfillmentStatus, FulfillmentStatus>> = {
   dispatched: "out_for_delivery",
   out_for_delivery: "delivered",
 };
+
+// Once the gift has left the shop, the rider can confirm delivery with a photo.
+const PHOTO_STATUSES = new Set<FulfillmentStatus>(["dispatched", "out_for_delivery", "delivered"]);
 
 function formatPKR(paisa: number) {
   return `PKR ${(paisa / 100).toLocaleString("en-PK", { minimumFractionDigits: 0 })}`;
@@ -233,7 +237,33 @@ export default function VendorOrdersPage() {
                       {f.courier_tracking}
                     </p>
                   )}
+                  {f.received_by && (
+                    <p className="sm:col-span-2">
+                      <span className="text-muted-foreground">Received by: </span>
+                      {f.received_by}
+                    </p>
+                  )}
                 </div>
+                {f.delivery_photo_url && (
+                  // Signed, short-lived S3 link: not a configured next/image host.
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={f.delivery_photo_url}
+                    alt={`Delivery photo for ${f.recipient_name}`}
+                    className="mt-3 h-32 w-auto rounded-lg border object-cover"
+                  />
+                )}
+                {PHOTO_STATUSES.has(f.status) && (
+                  <div className="mt-3">
+                    <DeliveryPhotoForm
+                      fulfillment={f}
+                      token={accessToken}
+                      onDone={(updated) =>
+                        setFulfillments((prev) => prev.map((x) => (x.id === updated.id ? updated : x)))
+                      }
+                    />
+                  </div>
+                )}
               </li>
             );
           })}

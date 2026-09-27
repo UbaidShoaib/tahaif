@@ -47,8 +47,10 @@ export async function apiFetch<T>(
 ): Promise<T> {
   const { method = "GET", body, headers = {}, token, idempotencyKey } = options;
 
+  // Multipart uploads: the browser sets Content-Type with the boundary itself.
+  const isForm = typeof FormData !== "undefined" && body instanceof FormData;
   const reqHeaders: Record<string, string> = {
-    "Content-Type": "application/json",
+    ...(isForm ? {} : { "Content-Type": "application/json" }),
     ...headers,
   };
 
@@ -59,7 +61,7 @@ export async function apiFetch<T>(
     method,
     headers: reqHeaders,
     credentials: "include",
-    body: body !== undefined ? JSON.stringify(body) : undefined,
+    body: isForm ? body : body !== undefined ? JSON.stringify(body) : undefined,
   });
 
   if (!res.ok) {

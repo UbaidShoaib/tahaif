@@ -34,6 +34,8 @@ function leg(overrides: Partial<VendorFulfillmentRead> = {}): VendorFulfillmentR
     courier_tracking: null,
     dispatched_at: null,
     delivered_at: null,
+    delivery_photo_url: null,
+    received_by: null,
     item_count: 1,
     subtotal_pkr: 280000,
     ...overrides,

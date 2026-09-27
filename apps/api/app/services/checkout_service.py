@@ -30,7 +30,13 @@ from app.schemas.order import (
     OrderRead,
     QuoteLineItem,
 )
-from app.services import cart_service, delivery_service, fx_service, loyalty_service
+from app.services import (
+    cart_service,
+    delivery_service,
+    fx_service,
+    loyalty_service,
+    proof_service,
+)
 from app.services.cart_service import CartOwner, _unit_price
 
 logger = structlog.get_logger()
@@ -431,6 +437,8 @@ def _order_to_read(order: Order) -> OrderRead:
             courier_tracking=f.courier_tracking,
             dispatched_at=f.dispatched_at,
             delivered_at=f.delivered_at,
+            delivery_photo_url=proof_service.signed_delivery_photo_url(f.delivery_photo_key),
+            received_by=f.received_by,
         )
         for f in order.fulfillments
     ]

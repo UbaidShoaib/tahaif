@@ -1,6 +1,7 @@
 import uuid
+from typing import Annotated
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Form, Query, UploadFile
 
 from app.core.deps import DB, CurrentUser
 from app.models.order import FulfillmentStatus
@@ -38,6 +39,20 @@ async def update_fulfillment(
     db: DB,
 ) -> VendorFulfillmentRead:
     return await vendor_service.update_fulfillment(db, user, fulfillment_id, body)
+
+
+@router.post("/fulfillments/{fulfillment_id}/delivery-photo", response_model=VendorFulfillmentRead)
+async def confirm_delivery_with_photo(
+    fulfillment_id: uuid.UUID,
+    file: UploadFile,
+    user: CurrentUser,
+    db: DB,
+    received_by: Annotated[str | None, Form(max_length=255, examples=["Ammi (Mrs. Khan)"])] = None,
+) -> VendorFulfillmentRead:
+    """Attach a proof-of-delivery photo (JPEG/PNG/WebP, max 10 MB) and mark the
+    fulfillment delivered. Allowed once it has been dispatched; on a delivered
+    fulfillment it replaces the photo. The buyer sees it on the tracking page."""
+    return await vendor_service.confirm_delivery_with_photo(db, user, fulfillment_id, file, received_by)
 
 
 @router.get("/products", response_model=list[ProductRead])

@@ -3,9 +3,10 @@ import uuid
 from datetime import UTC, datetime
 
 import structlog
-from fastapi import HTTPException, status
+from fastapi import HTTPException, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.integrations import s3_client
 from app.models.catalog import Product, Vendor
 from app.models.order import (
     Fulfillment,
@@ -21,6 +22,7 @@ from app.repositories.order_repository import OrderRepository
 from app.repositories.user_repository import UserRepository
 from app.schemas.catalog import VendorUpdate
 from app.schemas.vendor import FulfillmentStatusUpdate, VendorFulfillmentRead
+from app.services import proof_service
 from app.workers.notification_tasks import enqueue_fulfillment_update
 
 logger = structlog.get_logger()
@@ -117,30 +119,89 @@ async def update_fulfillment(
     parent = fulfillment.order
     if parent.status in _FROZEN_ORDER:
         raise _conflict(f"Order is {parent.status.value}; fulfillment cannot be updated")
-    if not _is_allowed_transition(fulfillment.status, data.status):
-        raise _conflict(f"Cannot move fulfillment from {fulfillment.status.value} to {data.status.value}")
-    if data.status not in (FulfillmentStatus.pending, FulfillmentStatus.failed) and not _is_cleared_for_fulfillment(parent):
+    extra: dict[str, object] = {}
+    if data.courier_tracking is not None:
+        extra["courier_tracking"] = data.courier_tracking
+    fulfillment = await _move_fulfillment(db, repo, fulfillment, parent, data.status, extra)
+    return _fulfillment_to_read(fulfillment)
+
+
+# Delivery photos make sense once the gift has left the shop.
+_PHOTO_ALLOWED_FROM = {
+    FulfillmentStatus.dispatched,
+    FulfillmentStatus.out_for_delivery,
+    FulfillmentStatus.delivered,
+}
+
+
+async def confirm_delivery_with_photo(
+    db: AsyncSession,
+    user: User,
+    fulfillment_id: uuid.UUID,
+    file: UploadFile,
+    received_by: str | None,
+) -> VendorFulfillmentRead:
+    """Attach a proof-of-delivery photo and mark the fulfillment delivered.
+
+    One step for the rider: if the gift isn't marked delivered yet, this does
+    it, so the buyer's "delivered" message already points to the photo. On an
+    already-delivered fulfillment it adds or replaces the photo.
+    """
+    vendor = await _get_vendor_or_403(db, user)
+    repo = OrderRepository(db)
+    fulfillment = await repo.get_fulfillment(fulfillment_id, vendor.id)
+    if not fulfillment:
+        raise _NOT_FOUND("Fulfillment")
+    parent = fulfillment.order
+    if parent.status in _FROZEN_ORDER:
+        raise _conflict(f"Order is {parent.status.value}; fulfillment cannot be updated")
+    if fulfillment.status not in _PHOTO_ALLOWED_FROM:
+        raise _conflict("A delivery photo can be added once the order has been dispatched")
+
+    key = await s3_client.upload_delivery_photo(
+        str(parent.id), str(fulfillment.id), await file.read(), file.content_type or ""
+    )
+    extra: dict[str, object] = {"delivery_photo_key": key}
+    if received_by is not None:
+        extra["received_by"] = received_by.strip() or None
+    if fulfillment.status == FulfillmentStatus.delivered:
+        # Delivered is final: just swap the photo, no status move or re-notification.
+        fulfillment = await repo.update_fulfillment(fulfillment, **extra)
+    else:
+        fulfillment = await _move_fulfillment(db, repo, fulfillment, parent, FulfillmentStatus.delivered, extra)
+    return _fulfillment_to_read(fulfillment)
+
+
+async def _move_fulfillment(
+    db: AsyncSession,
+    repo: OrderRepository,
+    fulfillment: Fulfillment,
+    parent: Order,
+    new_status: FulfillmentStatus,
+    extra: dict[str, object],
+) -> Fulfillment:
+    """Validate and apply a status move, stamp timestamps, notify the buyer on a
+    real change and roll the status up to the order."""
+    if not _is_allowed_transition(fulfillment.status, new_status):
+        raise _conflict(f"Cannot move fulfillment from {fulfillment.status.value} to {new_status.value}")
+    if new_status not in (FulfillmentStatus.pending, FulfillmentStatus.failed) and not _is_cleared_for_fulfillment(parent):
         raise _conflict("Payment has not been verified for this order yet")
 
-    kwargs: dict[str, object] = {"status": data.status}
-    if data.courier_tracking is not None:
-        kwargs["courier_tracking"] = data.courier_tracking
-    if data.status == FulfillmentStatus.dispatched and not fulfillment.dispatched_at:
+    kwargs: dict[str, object] = {"status": new_status, **extra}
+    if new_status == FulfillmentStatus.dispatched and not fulfillment.dispatched_at:
         kwargs["dispatched_at"] = datetime.now(UTC)
-    if data.status == FulfillmentStatus.delivered and not fulfillment.delivered_at:
+    if new_status == FulfillmentStatus.delivered and not fulfillment.delivered_at:
         kwargs["delivered_at"] = datetime.now(UTC)
 
-    status_changed = data.status != fulfillment.status
+    status_changed = new_status != fulfillment.status
     fulfillment = await repo.update_fulfillment(fulfillment, **kwargs)
     if status_changed:
         await _notify_buyer(db, parent, fulfillment)
 
-    # Propagate to order status
     order = await repo.get_by_id(fulfillment.order_id)
     if order:
         await _sync_order_status(db, order)
-
-    return _fulfillment_to_read(fulfillment)
+    return fulfillment
 
 
 async def list_my_products(
@@ -171,6 +232,7 @@ async def _notify_buyer(db: AsyncSession, order: Order, fulfillment: Fulfillment
                 public_token=order.public_token,
                 status=fulfillment.status.value,
                 recipient_name=fulfillment.recipient_name,
+                has_photo=fulfillment.delivery_photo_key is not None,
                 buyer_email=buyer.email if buyer else order.contact_email,
                 buyer_phone=buyer.phone if buyer else order.contact_phone,
             )
@@ -199,6 +261,8 @@ def _fulfillment_to_read(f: Fulfillment) -> VendorFulfillmentRead:
         courier_tracking=f.courier_tracking,
         dispatched_at=f.dispatched_at,
         delivered_at=f.delivered_at,
+        delivery_photo_url=proof_service.signed_delivery_photo_url(f.delivery_photo_key),
+        received_by=f.received_by,
         item_count=item_count,
         subtotal_pkr=subtotal,
     )

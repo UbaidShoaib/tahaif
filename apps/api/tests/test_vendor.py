@@ -691,3 +691,155 @@ async def test_ready_status_is_not_sent_to_buyer(
 
     assert (await _patch(client, token, fulfillment_id, status="ready")).status_code == 200
     assert await _queued_updates(outbox, order_id) == []
+
+
+# ── Proof-of-delivery photo ──────────────────────────────────────────────────
+
+_PNG = b"\x89PNG\r\n\x1a\n" + b"\x00" * 32
+
+
+@pytest.fixture
+def fake_photo_store(monkeypatch: pytest.MonkeyPatch) -> list[str]:
+    """Stand in for S3: record uploaded keys instead of calling the bucket."""
+    from app.integrations import s3_client
+
+    uploaded: list[str] = []
+
+    async def _upload(order_id: str, fulfillment_id: str, data: bytes, content_type: str) -> str:  # noqa: ARG001
+        if content_type not in ("image/jpeg", "image/png", "image/webp"):
+            return await real_upload(order_id, fulfillment_id, data, content_type)
+        key = f"deliveries/{order_id}/{fulfillment_id}.png"
+        uploaded.append(key)
+        return key
+
+    real_upload = s3_client.upload_delivery_photo
+    monkeypatch.setattr(s3_client, "upload_delivery_photo", _upload)
+    return uploaded
+
+
+async def _post_photo(
+    client: AsyncClient,
+    token: str,
+    fulfillment_id: object,
+    content_type: str = "image/png",
+    received_by: str | None = None,
+) -> Response:
+    data = {"received_by": received_by} if received_by is not None else {}
+    return await client.post(
+        f"/api/v1/vendor/fulfillments/{fulfillment_id}/delivery-photo",
+        files={"file": ("door.png", _PNG, content_type)},
+        data=data,
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+
+@pytest.mark.asyncio
+async def test_delivery_photo_marks_delivered_and_shows_on_tracking(
+    client: AsyncClient,
+    outbox: AsyncSession,
+    vendor_user: User,
+    order_and_fulfillment: tuple,
+    fake_photo_store: list[str],
+) -> None:
+    order, fulfillment = order_and_fulfillment
+    order_id, fulfillment_id, public_token = order.id, fulfillment.id, order.public_token
+    token = await _login(client, vendor_user.email)
+    await _patch(client, token, fulfillment_id, status="out_for_delivery")
+
+    resp = await _post_photo(client, token, fulfillment_id, received_by="  Ammi Jaan ")
+
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["status"] == "delivered"
+    assert body["delivered_at"] is not None
+    assert body["received_by"] == "Ammi Jaan"
+    assert fake_photo_store == [f"deliveries/{order_id}/{fulfillment_id}.png"]
+    assert "X-Amz-Signature" in body["delivery_photo_url"]
+
+    tracked = (await client.get(f"/api/v1/orders/{public_token}")).json()["fulfillments"][0]
+    assert tracked["received_by"] == "Ammi Jaan"
+    assert f"deliveries/{order_id}/{fulfillment_id}.png" in tracked["delivery_photo_url"]
+
+    result = await outbox.execute(
+        sa.text(
+            "SELECT payload->>'has_photo' FROM notifications_outbox "
+            "WHERE payload->>'order_id' = :oid AND payload->>'status' = 'delivered'"
+        ),
+        {"oid": str(order_id)},
+    )
+    assert set(result.scalars().all()) == {"true"}
+
+
+@pytest.mark.asyncio
+async def test_delivery_photo_can_replace_on_delivered_fulfillment(
+    client: AsyncClient,
+    vendor_user: User,
+    order_and_fulfillment: tuple,
+    fake_photo_store: list[str],
+) -> None:
+    _order, fulfillment = order_and_fulfillment
+    fulfillment_id = fulfillment.id
+    token = await _login(client, vendor_user.email)
+    await _patch(client, token, fulfillment_id, status="delivered")
+
+    resp = await _post_photo(client, token, fulfillment_id)
+
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["status"] == "delivered"
+    assert len(fake_photo_store) == 1
+
+
+@pytest.mark.asyncio
+async def test_delivery_photo_rejected_before_dispatch(
+    client: AsyncClient,
+    vendor_user: User,
+    order_and_fulfillment: tuple,
+    fake_photo_store: list[str],
+) -> None:
+    _order, fulfillment = order_and_fulfillment
+    fulfillment_id = fulfillment.id
+    token = await _login(client, vendor_user.email)
+
+    resp = await _post_photo(client, token, fulfillment_id)
+
+    assert resp.status_code == 409
+    assert fake_photo_store == []
+
+
+@pytest.mark.asyncio
+async def test_delivery_photo_must_be_an_image(
+    client: AsyncClient,
+    vendor_user: User,
+    order_and_fulfillment: tuple,
+    fake_photo_store: list[str],
+) -> None:
+    _order, fulfillment = order_and_fulfillment
+    fulfillment_id = fulfillment.id
+    token = await _login(client, vendor_user.email)
+    await _patch(client, token, fulfillment_id, status="dispatched")
+
+    resp = await _post_photo(client, token, fulfillment_id, content_type="application/pdf")
+
+    assert resp.status_code == 415
+    assert fake_photo_store == []
+
+
+@pytest.mark.asyncio
+async def test_delivery_photo_only_for_own_fulfillments(
+    client: AsyncClient,
+    db: AsyncSession,
+    order_and_fulfillment: tuple,
+    fake_photo_store: list[str],
+) -> None:
+    _order, fulfillment = order_and_fulfillment
+    fulfillment_id = fulfillment.id
+    other_owner = await _make_user(db, UserRole.vendor)
+    other_email = other_owner.email
+    await _make_vendor(db, await _make_city(db), other_owner)
+    await db.commit()
+    token = await _login(client, other_email)
+
+    resp = await _post_photo(client, token, fulfillment_id)
+
+    assert resp.status_code == 404
+    assert fake_photo_store == []

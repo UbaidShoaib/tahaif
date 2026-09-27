@@ -53,6 +53,19 @@ describe("apiFetch", () => {
     expect(init.body).toBe(JSON.stringify({ foo: "bar" }));
   });
 
+  it("sends FormData as-is so the browser sets the multipart boundary", async () => {
+    fetchSpy.mockResolvedValue(mockResponse({}));
+    const form = new FormData();
+    form.append("received_by", "Ammi");
+
+    await apiFetch("/vendor/fulfillments/f-1/delivery-photo", { method: "POST", body: form, token: "t" });
+
+    const [, init] = fetchSpy.mock.calls[0] as [string, RequestInitLike];
+    expect(init.body).toBe(form);
+    expect(init.headers["Content-Type"]).toBeUndefined();
+    expect(init.headers["Authorization"]).toBe("Bearer t");
+  });
+
   it("returns undefined for a 204 No Content response", async () => {
     fetchSpy.mockResolvedValue({
       ok: true,

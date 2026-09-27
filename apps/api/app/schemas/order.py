@@ -60,6 +60,10 @@ class FulfillmentRead(BaseModel):
     courier_tracking: str | None
     dispatched_at: datetime | None
     delivered_at: datetime | None
+    delivery_photo_url: str | None = Field(
+        default=None, description="Short-lived signed link to the proof-of-delivery photo"
+    )
+    received_by: str | None = Field(default=None, description="Who accepted the gift at the door")
 
 
 class OrderItemRead(BaseModel):
