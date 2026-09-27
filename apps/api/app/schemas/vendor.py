@@ -48,6 +48,9 @@ class VendorFulfillmentRead(BaseModel):
     item_count: int
     subtotal_pkr: int
     items: list[VendorLineItem] = Field(default_factory=list)
+    thanks_token: uuid.UUID | None = Field(
+        default=None, description="Print a QR code to /thanks/{thanks_token} on the card"
+    )
     surprise: bool = Field(
         default=False, description="Surprise gift: don't call the recipient ahead, and include no receipt or price"
     )

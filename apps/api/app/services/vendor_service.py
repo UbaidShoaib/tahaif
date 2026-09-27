@@ -261,6 +261,7 @@ async def _notify(db: AsyncSession, order: Order, fulfillment: Fulfillment) -> N
                 recipient_phone=fulfillment.recipient_phone,
                 gift_from=order.gift_from,
                 has_note=any(i.note_key for i in fulfillment.order_items),
+                thanks_token=fulfillment.thanks_token,
             )
     except Exception:
         await logger.aexception("fulfillment_notification_enqueue_failed", order_id=str(order.id))
@@ -292,6 +293,7 @@ def _fulfillment_to_read(f: Fulfillment) -> VendorFulfillmentRead:
         item_count=item_count,
         subtotal_pkr=subtotal,
         surprise=f.order.surprise if f.order else False,
+        thanks_token=f.thanks_token,
         items=[
             VendorLineItem(
                 product_name=i.product.name,

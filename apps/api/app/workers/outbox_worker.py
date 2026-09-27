@@ -16,8 +16,10 @@ from app.integrations import resend_client
 from app.integrations.twilio_client import send_sms, send_whatsapp
 from app.workers.notification_tasks import (
     FULFILLMENT_UPDATE_TEMPLATE,
+    RECIPIENT_DELIVERED_TEMPLATE,
     RECIPIENT_ON_THE_WAY_TEMPLATE,
     RECIPIENT_SURPRISE_TEMPLATE,
+    THANKS_RECEIVED_TEMPLATE,
 )
 
 if TYPE_CHECKING:
@@ -114,6 +116,9 @@ async def _send_email(
     total = payload.get("total_pkr", 0)
     if template == "order_confirmation":
         await resend_client.send_order_confirmation_email(to, str(token), int(total))
+    elif template == THANKS_RECEIVED_TEMPLATE:
+        headline, body = thanks_received_text(payload)
+        await resend_client.send_fulfillment_update_email(to, str(token), headline, body)
     elif template == FULFILLMENT_UPDATE_TEMPLATE:
         headline, body = fulfillment_update_text(payload)
         await resend_client.send_fulfillment_update_email(to, str(token), headline, body)
@@ -135,19 +140,35 @@ def _render_sms(template: str, payload: dict[str, Any]) -> str:
             f"{settings.brand_name}: {headline}\n{body}\n"
             f"Track it live: {settings.frontend_url}/track/{token}"
         )
-    if template in (RECIPIENT_ON_THE_WAY_TEMPLATE, RECIPIENT_SURPRISE_TEMPLATE):
-        return recipient_text(template, payload, settings.brand_name)
+    if template in (RECIPIENT_ON_THE_WAY_TEMPLATE, RECIPIENT_SURPRISE_TEMPLATE, RECIPIENT_DELIVERED_TEMPLATE):
+        return recipient_text(template, payload, settings.brand_name, settings.frontend_url)
+    if template == THANKS_RECEIVED_TEMPLATE:
+        headline, body = thanks_received_text(payload)
+        return f"{settings.brand_name}: {headline}\n{body}\nSee it: {settings.frontend_url}/track/{token}"
     return f"{settings.brand_name} notification: {template}"
 
 
-def recipient_text(template: str, payload: dict[str, Any], brand_name: str) -> str:
-    """WhatsApp text for the person receiving the gift. Warm, no prices or links."""
+def thanks_received_text(payload: dict[str, Any]) -> tuple[str, str]:
+    name = str(payload.get("recipient_name") or "").strip() or "Your loved one"
+    return f"{name} sent you a thank-you 💌", "They loved your gift. Open the tracking page to see their message."
+
+
+def recipient_text(template: str, payload: dict[str, Any], brand_name: str, frontend_url: str = "") -> str:
+    """WhatsApp text for the person receiving the gift. Warm; no prices, order or
+    tracking links. The only link is their own thank-you page."""
     name = str(payload.get("recipient_name") or "").strip()
     greeting = f"Assalam-o-Alaikum {name}! " if name else "Assalam-o-Alaikum! "
     sender = str(payload.get("gift_from") or "").strip() or "someone who loves you"
     note = " Scan the QR code on the card to hear a message from them." if payload.get("has_note") else ""
+    thanks_token = payload.get("thanks_token")
+    thanks = f" Send {sender} a thank-you: {frontend_url}/thanks/{thanks_token}" if thanks_token else ""
     if template == RECIPIENT_SURPRISE_TEMPLATE:
-        return f"{greeting}Surprise! The gift you just received is from {sender}, sent with love through {brand_name}.{note}"
+        return (
+            f"{greeting}Surprise! The gift you just received is from {sender}, "
+            f"sent with love through {brand_name}.{note}{thanks}"
+        )
+    if template == RECIPIENT_DELIVERED_TEMPLATE:
+        return f"{greeting}We hope you love your gift from {sender}!{note}{thanks}"
     return (
         f"{greeting}A gift from {sender} is on its way to you today with {brand_name}. "
         "Please keep your phone nearby in case the rider needs directions."

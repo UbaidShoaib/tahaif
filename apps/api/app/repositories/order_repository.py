@@ -117,6 +117,12 @@ class OrderRepository:
         )
         return result.scalar_one_or_none()
 
+    async def get_fulfillment_by_thanks_token(self, token: uuid.UUID) -> Fulfillment | None:
+        result = await self._db.execute(
+            self._fulfillment_with_relations().where(Fulfillment.thanks_token == token)
+        )
+        return result.scalar_one_or_none()
+
     # ── Vendor fulfillment helpers ─────────────────────────────────────────────
 
     def _fulfillment_with_relations(self) -> Select[tuple[Fulfillment]]:

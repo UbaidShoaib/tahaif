@@ -150,6 +150,35 @@ async def upload_card_note(order_id: str, item_id: str, data: bytes, content_typ
     return key
 
 
+THANKS_MIME_TYPES = {**NOTE_MIME_TYPES, **_PHOTO_MIME_TYPES}
+
+
+async def upload_thanks_media(order_id: str, fulfillment_id: str, data: bytes, content_type: str) -> str:
+    """Upload the recipient's thank-you photo/voice/video; returns the object key (private bucket)."""
+    ext = THANKS_MIME_TYPES.get(content_type)
+    if ext is None:
+        raise HTTPException(
+            status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+            detail="Send a photo, voice note or video",
+        )
+    if len(data) > MAX_NOTE_BYTES:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail="The file must be 25 MB or smaller",
+        )
+    key = f"thanks/{order_id}/{fulfillment_id}{ext}"
+    try:
+        await asyncio.to_thread(_upload_sync, key, data, content_type)
+    except (BotoCoreError, ClientError) as exc:
+        await logger.aexception("s3_thanks_upload_failed", order_id=order_id, key=key, error=str(exc))
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Storage is unavailable right now. Please try again shortly.",
+        ) from exc
+    await logger.ainfo("s3_thanks_uploaded", order_id=order_id, key=key)
+    return key
+
+
 _PROOF_PREFIX = "proofs/"
 SIGNED_URL_TTL_SECS = 15 * 60
 

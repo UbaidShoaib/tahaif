@@ -35,6 +35,7 @@ function leg(overrides: Partial<VendorFulfillmentRead> = {}): VendorFulfillmentR
     item_count: 1,
     subtotal_pkr: 280000,
     surprise: false,
+    thanks_token: "th-1",
     items: [],
     ...overrides,
   };

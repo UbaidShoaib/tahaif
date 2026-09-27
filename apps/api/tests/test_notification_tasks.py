@@ -171,7 +171,7 @@ from app.workers.outbox_worker import recipient_text  # noqa: E402
     ("status", "surprise", "expected"),
     [
         ("out_for_delivery", False, "recipient_on_the_way"),
-        ("delivered", False, None),
+        ("delivered", False, "recipient_delivered"),
         ("preparing", False, None),
         ("out_for_delivery", True, None),
         ("dispatched", True, None),
@@ -223,3 +223,16 @@ async def test_recipient_update_queues_one_whatsapp_row(outbox: AsyncSession) ->
     )
     assert queued == 1
     assert [tuple(r) for r in result.all()] == [("whatsapp", "+923001234567", "recipient_on_the_way")]
+
+
+def test_after_delivery_the_recipient_is_invited_to_say_thank_you() -> None:
+    text = recipient_text(
+        "recipient_delivered",
+        {"recipient_name": "Ammi", "gift_from": "Ali", "thanks_token": "t-1"},
+        "Tahaif",
+        "https://tahaif.com",
+    )
+    assert text == (
+        "Assalam-o-Alaikum Ammi! We hope you love your gift from Ali! "
+        "Send Ali a thank-you: https://tahaif.com/thanks/t-1"
+    )

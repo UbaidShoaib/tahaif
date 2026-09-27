@@ -229,6 +229,13 @@ class Fulfillment(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     # Proof of delivery: object key in the private bucket (never a public URL).
     delivery_photo_key: Mapped[str | None] = mapped_column(Text, nullable=True)
     received_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    # Recipient's thank-you (/thanks/{thanks_token}): text and/or one photo,
+    # voice note or video in the private bucket. One reply; resending replaces it.
+    thanks_token: Mapped[uuid.UUID] = mapped_column(default=uuid.uuid4, nullable=False, unique=True, index=True)
+    thanks_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    thanks_media_key: Mapped[str | None] = mapped_column(Text, nullable=True)
+    thanks_media_type: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    thanks_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     order: Mapped["Order"] = relationship(back_populates="fulfillments")
     vendor: Mapped["Vendor"] = relationship()

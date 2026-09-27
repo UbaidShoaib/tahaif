@@ -37,6 +37,7 @@ from app.services import (
     loyalty_service,
     note_service,
     proof_service,
+    thanks_service,
 )
 from app.services.cart_service import CartOwner, _unit_price
 
@@ -446,6 +447,7 @@ def _order_to_read(order: Order) -> OrderRead:
             delivered_at=f.delivered_at,
             delivery_photo_url=proof_service.signed_delivery_photo_url(f.delivery_photo_key),
             received_by=f.received_by,
+            thanks=thanks_service.thanks_read(f),
         )
         for f in order.fulfillments
     ]

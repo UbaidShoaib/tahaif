@@ -58,6 +58,8 @@ export interface VendorFulfillmentRead {
   item_count: number;
   subtotal_pkr: number;
   items: VendorLineItem[];
+  /** Print a "say thank you" QR code to /thanks/{thanks_token} on the card. */
+  thanks_token: string;
   /** Surprise gift: don't call the recipient ahead, and include no receipt or price. */
   surprise: boolean;
 }

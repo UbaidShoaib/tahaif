@@ -118,6 +118,16 @@ export interface FulfillmentRead {
   /** Short-lived signed link to the proof-of-delivery photo. */
   delivery_photo_url?: string | null;
   received_by?: string | null;
+  /** The recipient's thank-you, once they send one. */
+  thanks?: ThanksRead | null;
+}
+
+export interface ThanksRead {
+  message: string | null;
+  /** Short-lived signed link to the photo/voice/video. */
+  media_url: string | null;
+  media_type: string | null;
+  sent_at: string;
 }
 
 export interface OrderItemRead {

@@ -55,6 +55,12 @@ pre-production-cutover).
   and a reveal after delivery (mentioning the card's QR note if there is one). The
   vendor portal flags surprise gifts: don't call ahead, no receipt or price. Messages
   to the recipient carry no prices or links. Migration `0010`.
+- Thank-you loop (diaspora Release B): the recipient can thank the sender from
+  `/thanks/{token}`, reached by a "Scan to say thank you" QR on the printed card or
+  a link in their WhatsApp message (normal orders now also get a "hope you love it"
+  message after delivery). They send words and/or one photo, voice note or video;
+  the buyer gets an email/WhatsApp and sees it on the tracking page. The link shows
+  only who the gift is from. API: `GET`/`POST /thanks/{token}`; migration `0011`.
 
 ### Fixed
 - Vendors couldn't see the buyer's card message, so nothing told them what to

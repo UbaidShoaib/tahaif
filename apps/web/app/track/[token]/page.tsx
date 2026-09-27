@@ -22,6 +22,7 @@ import { formatCalendarDate } from "@/lib/datetime";
 import { DualTime } from "@/components/time/DualTime";
 import { SupportWhatsApp } from "@/components/support/SupportWhatsApp";
 import { CardNoteControl } from "@/components/greeting/CardNoteControl";
+import { ThanksReceived } from "@/components/thanks/ThanksReceived";
 
 export const dynamic = "force-dynamic";
 
@@ -127,6 +128,11 @@ export default async function TrackPage({
                   Delivered: <DualTime iso={f.delivered_at} cityTz={f.city_timezone} />
                   {f.received_by && <> · Received by {f.received_by}</>}
                 </span>
+              </div>
+            )}
+            {f.thanks && (
+              <div className="pt-2">
+                <ThanksReceived thanks={f.thanks} from={f.recipient_name} />
               </div>
             )}
             {f.delivery_photo_url && (

@@ -57,6 +57,24 @@ class CheckoutQuote(BaseModel):
     total_charged: int = Field(default=0, description="Total in the charge currency's minor unit")
 
 
+class ThanksRead(BaseModel):
+    """The recipient's thank-you, as the buyer sees it."""
+
+    message: str | None
+    media_url: str | None = Field(default=None, description="Short-lived signed link to the photo/voice/video")
+    media_type: str | None = Field(default=None, examples=["image/jpeg"])
+    sent_at: datetime
+
+
+class ThanksPage(BaseModel):
+    """What the recipient sees on /thanks/{token}: enough to know who to thank, nothing more."""
+
+    recipient_name: str
+    gift_from: str | None
+    items: list[str] = Field(description="Product names in this delivery")
+    already_sent: bool
+
+
 class FulfillmentRead(BaseModel):
     id: uuid.UUID
     vendor_name: str
@@ -77,6 +95,7 @@ class FulfillmentRead(BaseModel):
         default=None, description="Short-lived signed link to the proof-of-delivery photo"
     )
     received_by: str | None = Field(default=None, description="Who accepted the gift at the door")
+    thanks: ThanksRead | None = Field(default=None, description="The recipient's thank-you, once they send one")
 
 
 class OrderItemRead(BaseModel):

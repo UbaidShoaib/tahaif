@@ -2,14 +2,20 @@ import hashlib
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Header, Query, Request, UploadFile, status
+from fastapi import APIRouter, Form, Header, Query, Request, UploadFile, status
 
 from app.core.deps import DB, CurrentUser
 from app.core.guest import OptionalUser
 from app.core.rate_limit import limiter
 from app.models.order import PaymentMethod
-from app.schemas.order import CardNoteRead, CheckoutPlace, CheckoutQuote, OrderRead
-from app.services import checkout_service, note_service
+from app.schemas.order import (
+    CardNoteRead,
+    CheckoutPlace,
+    CheckoutQuote,
+    OrderRead,
+    ThanksPage,
+)
+from app.services import checkout_service, note_service, thanks_service
 
 router = APIRouter(tags=["orders"])
 
@@ -124,3 +130,26 @@ async def remove_card_note(public_token: uuid.UUID, item_id: uuid.UUID, db: DB) 
 async def play_card_note(note_token: uuid.UUID, db: DB) -> CardNoteRead:
     """Public: what the recipient opens from the QR code on the printed card."""
     return await note_service.get_note(db, note_token)
+
+
+# ── Recipient thank-you (diaspora Release B) ─────────────────────────────────
+
+
+@router.get("/thanks/{thanks_token}", response_model=ThanksPage)
+async def thanks_page(thanks_token: uuid.UUID, db: DB) -> ThanksPage:
+    """Public: who the gift is from, for the recipient's thank-you page. No prices or order details."""
+    return await thanks_service.get_page(db, thanks_token)
+
+
+@router.post("/thanks/{thanks_token}", status_code=status.HTTP_204_NO_CONTENT)
+@limiter.limit("10/hour")
+async def send_thanks(
+    request: Request,  # noqa: ARG001 — required by slowapi
+    thanks_token: uuid.UUID,
+    db: DB,
+    message: Annotated[str | None, Form(max_length=1000, examples=["Thank you beta, the cake was perfect!"])] = None,
+    file: UploadFile | None = None,
+) -> None:
+    """Public: the recipient's thank-you, text and/or one photo, voice note or video
+    (max 25 MB). Sending again replaces it; the buyer is told about the first one."""
+    await thanks_service.send_thanks(db, thanks_token, message, file)

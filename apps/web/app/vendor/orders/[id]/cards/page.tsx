@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { QRCodeSVG } from "qrcode.react";
 import { CardPreview } from "@/components/greeting/CardPreview";
 import { notePath } from "@/lib/notes";
+import { thanksPath } from "@/lib/thanks";
 import { useAuthStore } from "@/stores/auth.store";
 import { vendorApi, type VendorFulfillmentRead } from "@/lib/vendor";
 
@@ -94,6 +95,16 @@ export default function PrintCardsPage() {
                   </p>
                 </div>
               )}
+              <div className="flex items-center justify-center gap-3 pt-1">
+                <QRCodeSVG
+                  value={`${origin}${thanksPath(fulfillment.thanks_token)}`}
+                  size={64}
+                  level="M"
+                  role="img"
+                  aria-label="QR code to send the sender a thank-you"
+                />
+                <p className="max-w-[10rem] text-start text-xs text-muted-foreground">Scan to say thank you</p>
+              </div>
             </li>
           ))}
         </ul>

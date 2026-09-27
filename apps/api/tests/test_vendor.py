@@ -922,7 +922,10 @@ async def test_recipient_gets_a_heads_up_when_the_rider_sets_out(
     await _patch(client, token, fulfillment_id, status="out_for_delivery")
     await _patch(client, token, fulfillment_id, status="delivered")
 
-    assert await _recipient_messages(outbox, order_id) == [("recipient_on_the_way", "+923001234567")]
+    assert await _recipient_messages(outbox, order_id) == [
+        ("recipient_on_the_way", "+923001234567"),
+        ("recipient_delivered", "+923001234567"),
+    ]
 
 
 @pytest.mark.asyncio

@@ -128,13 +128,18 @@ async def enqueue_fulfillment_update(
 # and a reveal once it's delivered.
 RECIPIENT_ON_THE_WAY_TEMPLATE = "recipient_on_the_way"
 RECIPIENT_SURPRISE_TEMPLATE = "recipient_surprise_reveal"
+# After delivery on a normal order: "hope you love it, say thank you".
+RECIPIENT_DELIVERED_TEMPLATE = "recipient_delivered"
+THANKS_RECEIVED_TEMPLATE = "thanks_received"
 
 
 def recipient_template(status: str, surprise: bool) -> str | None:
     """Which message (if any) the recipient gets when a fulfillment reaches `status`."""
-    if surprise:
-        return RECIPIENT_SURPRISE_TEMPLATE if status == "delivered" else None
-    return RECIPIENT_ON_THE_WAY_TEMPLATE if status == "out_for_delivery" else None
+    if status == "delivered":
+        return RECIPIENT_SURPRISE_TEMPLATE if surprise else RECIPIENT_DELIVERED_TEMPLATE
+    if status == "out_for_delivery" and not surprise:
+        return RECIPIENT_ON_THE_WAY_TEMPLATE
+    return None
 
 
 async def enqueue_recipient_update(
@@ -147,6 +152,7 @@ async def enqueue_recipient_update(
     recipient_phone: str | None,
     gift_from: str | None,
     has_note: bool = False,
+    thanks_token: uuid.UUID | None = None,
 ) -> int:
     """Queue a WhatsApp message to the recipient, if this status calls for one.
 
@@ -162,6 +168,7 @@ async def enqueue_recipient_update(
         "recipient_name": recipient_name,
         "gift_from": gift_from,
         "has_note": has_note,
+        "thanks_token": str(thanks_token) if thanks_token else None,
     })
     await _insert(db, [{
         "id": uuid.uuid4(),
@@ -175,6 +182,40 @@ async def enqueue_recipient_update(
     }])
     await logger.ainfo("recipient_notification_enqueued", order_id=str(order_id), template=template)
     return 1
+
+
+async def enqueue_thanks_received(
+    db: AsyncSession,
+    order_id: uuid.UUID,
+    public_token: uuid.UUID,
+    recipient_name: str,
+    buyer_email: str | None,
+    buyer_phone: str | None,
+) -> int:
+    """Tell the buyer the recipient sent a thank-you (email, plus WhatsApp when known)."""
+    payload = json.dumps({
+        "order_id": str(order_id),
+        "public_token": str(public_token),
+        "recipient_name": recipient_name,
+    })
+    now = datetime.now(UTC)
+    rows: list[dict[str, object]] = [
+        {
+            "id": uuid.uuid4(),
+            "channel": channel,
+            "to_address": address,
+            "template": THANKS_RECEIVED_TEMPLATE,
+            "payload": payload,
+            "status": "pending",
+            "attempts": 0,
+            "created_at": now,
+        }
+        for channel, address in (("email", buyer_email), ("whatsapp", buyer_phone))
+        if address
+    ]
+    if rows:
+        await _insert(db, rows)
+    return len(rows)
 
 
 async def _insert(db: AsyncSession, rows: list[dict[str, object]]) -> None:

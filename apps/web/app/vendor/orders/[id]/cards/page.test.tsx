@@ -13,7 +13,7 @@ vi.mock("@/lib/vendor", async (importOriginal) => {
 });
 
 const leg = (items: VendorFulfillmentRead["items"]) =>
-  ({ id: "f-1", recipient_name: "Ammi Jaan", city_name: "Lahore", items }) as VendorFulfillmentRead;
+  ({ id: "f-1", recipient_name: "Ammi Jaan", city_name: "Lahore", thanks_token: "th-1", items }) as VendorFulfillmentRead;
 
 function renderPage() {
   return render(<PrintCardsPage />);
@@ -40,6 +40,7 @@ describe("PrintCardsPage", () => {
     expect(screen.getByRole("button", { name: "Print" })).toBeInTheDocument();
     expect(vendorApi.getFulfillment).toHaveBeenCalledWith("f-1", "tok");
     expect(screen.getByRole("img", { name: /QR code for the sender's voice or video note/ })).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "QR code to send the sender a thank-you" })).toBeInTheDocument();
   });
 
   it("says so when there are no card messages", async () => {
