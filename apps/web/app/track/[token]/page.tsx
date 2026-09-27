@@ -20,6 +20,7 @@ import { ShareTracking } from "@/components/orders/ShareTracking";
 import { orderNumber } from "@/lib/orders";
 import { formatCalendarDate } from "@/lib/datetime";
 import { DualTime } from "@/components/time/DualTime";
+import { SupportWhatsApp } from "@/components/support/SupportWhatsApp";
 
 export const dynamic = "force-dynamic";
 
@@ -58,6 +59,12 @@ export default async function TrackPage({
         </p>
         <div className="mt-3">
           <ShareTracking publicToken={String(order.public_token)} />
+        </div>
+        <div className="mt-4">
+          <SupportWhatsApp
+            label="Questions about this order? WhatsApp us"
+            message={`Hi, I have a question about order ${orderNumber(String(order.public_token))}.`}
+          />
         </div>
       </div>
 

@@ -33,6 +33,11 @@ pre-production-cutover).
 - Vendor story on the product page: "Made by …", the shop's city and its own
   description, linking to its other gifts, so buyers abroad know which local maker
   prepares the gift. Hidden when the vendor has no description.
+- WhatsApp support: a "Chat with us on WhatsApp" button in the footer, on the
+  contact page and on tracking (pre-filled with the order number), with opening
+  hours in PKT and, for buyers abroad, in their own time. Configured with
+  `NEXT_PUBLIC_SUPPORT_WHATSAPP` and `NEXT_PUBLIC_SUPPORT_HOURS`; hidden when no
+  number is set.
 
 ### Fixed
 - Delivery dates showed the previous day for buyers west of UTC (e.g. Toronto,

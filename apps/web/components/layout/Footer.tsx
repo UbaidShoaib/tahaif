@@ -3,6 +3,7 @@ import { getTranslations } from "next-intl/server";
 import { Banknote, Lock, MapPinned } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { NAV_LINKS } from "@/components/layout/nav-links";
+import { SupportWhatsApp } from "@/components/support/SupportWhatsApp";
 import { BrandLogo } from "@/components/brand/BrandLogo";
 import { brand } from "@/lib/brand";
 
@@ -43,6 +44,9 @@ export async function Footer() {
               <BrandLogo markClassName="h-5 w-5" />
             </Link>
             <p className="mt-2 text-sm text-muted-foreground">{t("footer.tagline")}</p>
+            <div className="mt-4">
+              <SupportWhatsApp />
+            </div>
           </div>
 
           {columns.map((col) => (
