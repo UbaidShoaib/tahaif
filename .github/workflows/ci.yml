@@ -41,6 +41,36 @@ jobs:
       - run: pnpm lint
       - run: pnpm typecheck
 
+  audit:
+    name: Dependency audit (pip-audit + pnpm audit)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v3
+        with:
+          version: "latest"
+      - name: pip-audit (backend)
+        working-directory: apps/api
+        run: |
+          uv export --no-hashes -q > /tmp/api-reqs.txt
+          # PYSEC-2026-1325 (ecdsa, transitive via python-jose): a pure-Python
+          # timing side-channel the ecdsa maintainers have declined to fix.
+          # No JWT in this codebase is signed/verified with ES256 (we use
+          # HS256 exclusively — see app/core/security.py), so ecdsa's signing
+          # path is never exercised; there is also no upstream fix version to
+          # upgrade to. Re-evaluate if ES256 is ever adopted.
+          uvx pip-audit -r /tmp/api-reqs.txt --ignore-vuln PYSEC-2026-1325
+      - uses: pnpm/action-setup@v4
+        with:
+          version: latest
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: pnpm audit (frontend)
+        working-directory: apps/web
+        run: pnpm audit --audit-level=high
+
   test-api:
     name: Test API (pytest)
     runs-on: ubuntu-latest
@@ -98,7 +128,7 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm test
+      - run: pnpm test:coverage
 
   e2e:
     name: E2E (playwright — 5 critical flows)
