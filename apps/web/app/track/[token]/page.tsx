@@ -18,6 +18,8 @@ import { OrderStatusBadge } from "@/components/orders/OrderStatusBadge";
 import { OrderTimeline } from "@/components/orders/OrderTimeline";
 import { ShareTracking } from "@/components/orders/ShareTracking";
 import { orderNumber } from "@/lib/orders";
+import { formatCalendarDate } from "@/lib/datetime";
+import { DualTime } from "@/components/time/DualTime";
 
 export const dynamic = "force-dynamic";
 
@@ -83,7 +85,7 @@ export default async function TrackPage({
               <Calendar className="h-3.5 w-3.5" />
               <span>
                 Delivery date:{" "}
-                {new Date(f.delivery_date).toLocaleDateString("en-PK", {
+                {formatCalendarDate(f.delivery_date, {
                   weekday: "long",
                   day: "numeric",
                   month: "long",
@@ -106,13 +108,7 @@ export default async function TrackPage({
               <div className="flex items-center gap-2">
                 <Clock className="h-3.5 w-3.5" />
                 <span>
-                  Dispatched:{" "}
-                  {new Date(f.dispatched_at).toLocaleString("en-PK", {
-                    day: "numeric",
-                    month: "short",
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
+                  Dispatched: <DualTime iso={f.dispatched_at} cityTz={f.city_timezone} />
                 </span>
               </div>
             )}
@@ -120,13 +116,7 @@ export default async function TrackPage({
               <div className="flex items-center gap-2 text-success">
                 <CheckCircle className="h-3.5 w-3.5" />
                 <span>
-                  Delivered:{" "}
-                  {new Date(f.delivered_at).toLocaleString("en-PK", {
-                    day: "numeric",
-                    month: "short",
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
+                  Delivered: <DualTime iso={f.delivered_at} cityTz={f.city_timezone} />
                   {f.received_by && <> · Received by {f.received_by}</>}
                 </span>
               </div>

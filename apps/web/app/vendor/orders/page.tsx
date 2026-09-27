@@ -10,6 +10,7 @@ import {
 } from "@/lib/vendor";
 import { OrderStatusBadge, statusLabel } from "@/components/orders/OrderStatusBadge";
 import { DeliveryPhotoForm } from "@/components/vendor/DeliveryPhotoForm";
+import { formatCalendarDate } from "@/lib/datetime";
 
 const FULFILLMENT_STATUSES: FulfillmentStatus[] = [
   "pending",
@@ -47,12 +48,8 @@ function formatPKR(paisa: number) {
   return `PKR ${(paisa / 100).toLocaleString("en-PK", { minimumFractionDigits: 0 })}`;
 }
 
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString("en-GB", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
+function formatDate(isoDate: string) {
+  return formatCalendarDate(isoDate, { day: "numeric", month: "short", year: "numeric" });
 }
 
 export default function VendorOrdersPage() {

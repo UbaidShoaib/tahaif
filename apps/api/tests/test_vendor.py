@@ -758,6 +758,8 @@ async def test_delivery_photo_marks_delivered_and_shows_on_tracking(
 
     tracked = (await client.get(f"/api/v1/orders/{public_token}")).json()["fulfillments"][0]
     assert tracked["received_by"] == "Ammi Jaan"
+    # Times on the tracking page are shown in the city's zone first.
+    assert tracked["city_timezone"] == "Asia/Karachi"
     assert f"deliveries/{order_id}/{fulfillment_id}.png" in tracked["delivery_photo_url"]
 
     result = await outbox.execute(

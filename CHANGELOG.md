@@ -20,6 +20,17 @@ pre-production-cutover).
   fulfillment delivered, so the buyer's "delivered" message points to the photo, and
   the tracking page shows it through a 1-hour signed link (the bucket stays private).
   JPEG/PNG/WebP up to 10 MB; on a delivered fulfillment it replaces the photo.
+- Dual-timezone times (diaspora Release A): the same-day cutoff on product pages
+  now shows the clock time in the city and, for buyers abroad, their own time
+  ("Order by 2:00 pm Lahore time (10:00 am your time)"). Tracking shows dispatch
+  and delivery times as "28 Sep, 2:30 pm PKT (10:30 am your time)". API:
+  fulfillments carry `city_timezone`.
+
+### Fixed
+- Delivery dates showed the previous day for buyers west of UTC (e.g. Toronto,
+  New York): date-only values were parsed as UTC midnight and formatted in the
+  viewer's zone. Tracking times were rendered in the server's zone (UTC) instead
+  of Pakistan time.
 
 ### Changed
 - Rebrand to the Anaar berry (`#9f1f50`) + Zari gold palette (ADR 0003), replacing

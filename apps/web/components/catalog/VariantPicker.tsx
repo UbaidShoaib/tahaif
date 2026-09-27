@@ -6,6 +6,7 @@ import { Price } from "@/components/money/Price";
 import type { City, Product, ProductCity } from "@/lib/catalog";
 import { GREETING_MAX } from "@/lib/cart";
 import { earliestDelivery, formatCountdown, formatDeliveryDay } from "@/lib/delivery";
+import { cityTimeToInstant, formatClock, viewerSuffix, viewerTimeZone } from "@/lib/datetime";
 import { formatMoney } from "@/lib/money";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
@@ -74,6 +75,16 @@ export function VariantPicker({ product, cities = [] }: Props) {
   const totalPrice = basePrice + (selected?.price_delta_pkr ?? 0);
   const inStock = selected ? selected.stock_qty > 0 : true;
   const eta = chosen && now ? earliestDelivery(chosen.pc, chosen.city.timezone || DEFAULT_TZ, now) : null;
+  // The cutoff as a clock time, in the city and (for buyers abroad) their own zone.
+  // `now` is only set after mount, so reading the browser's zone here is hydration-safe.
+  const cutoff =
+    chosen && eta?.sameDay && chosen.pc.same_day_cutoff
+      ? (() => {
+          const tz = chosen.city.timezone || DEFAULT_TZ;
+          const at = cityTimeToInstant(eta.date, chosen.pc.same_day_cutoff, tz);
+          return { city: formatClock(at, tz), viewer: viewerSuffix(at, tz, viewerTimeZone()) };
+        })()
+      : null;
 
   // Guests can add to the cart without an account (ADR 0004).
   const handleAddToCart = async () => {
@@ -207,9 +218,17 @@ export function VariantPicker({ product, cities = [] }: Props) {
                   </span>
                 </p>
                 {eta?.sameDay && eta.minutesToCutoff !== null && (
-                  <p className="flex items-center gap-1.5 rounded-md bg-gold-soft px-2.5 py-1.5 font-medium text-gold-ink">
-                    <Clock aria-hidden className="h-4 w-4" />
-                    Order within {formatCountdown(eta.minutesToCutoff)} for same-day delivery
+                  <p className="flex items-start gap-1.5 rounded-md bg-gold-soft px-2.5 py-1.5 font-medium text-gold-ink">
+                    <Clock aria-hidden className="mt-0.5 h-4 w-4 shrink-0" />
+                    <span>
+                      Order within {formatCountdown(eta.minutesToCutoff)} for same-day delivery
+                      {cutoff && (
+                        <span className="block text-xs font-normal">
+                          Order by {cutoff.city} {chosen.city.name} time
+                          {cutoff.viewer && <> ({cutoff.viewer})</>}
+                        </span>
+                      )}
+                    </span>
                   </p>
                 )}
               </>

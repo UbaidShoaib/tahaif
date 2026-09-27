@@ -434,6 +434,7 @@ def _order_to_read(order: Order) -> OrderRead:
             recipient_phone=f.recipient_phone,
             address_line1=f.address_line1,
             city_name=f.city.name,
+            city_timezone=f.city.timezone,
             courier_tracking=f.courier_tracking,
             dispatched_at=f.dispatched_at,
             delivered_at=f.delivered_at,

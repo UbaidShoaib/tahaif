@@ -6,11 +6,17 @@ import { useAuthStore } from "@/stores/auth.store";
 import { useCartStore } from "@/stores/cart.store";
 import { useDeliveryStore } from "@/stores/delivery.store";
 import type { City, Product } from "@/lib/catalog";
+import { viewerTimeZone } from "@/lib/datetime";
+import type * as DateTimeModule from "@/lib/datetime";
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }));
 vi.mock("@/stores/auth.store", () => ({ useAuthStore: vi.fn() }));
 vi.mock("@/stores/cart.store", () => ({ useCartStore: vi.fn() }));
 vi.mock("@/components/providers", () => ({ captureEvent: vi.fn() }));
+vi.mock("@/lib/datetime", async (importOriginal) => ({
+  ...(await importOriginal<typeof DateTimeModule>()),
+  viewerTimeZone: vi.fn(),
+}));
 
 const LHR: City = { id: "lhr", name: "Lahore", slug: "lahore", timezone: "Asia/Karachi", is_active: true };
 const KHI: City = { id: "khi", name: "Karachi", slug: "karachi", timezone: "Asia/Karachi", is_active: true };
@@ -34,6 +40,7 @@ describe("VariantPicker delivery info", () => {
     useDeliveryStore.setState({ cityId: null });
     vi.mocked(useAuthStore).mockReturnValue({ user: { id: "u1" } });
     vi.mocked(useCartStore).mockReturnValue({ addItem: vi.fn(), openDrawer: vi.fn() });
+    vi.mocked(viewerTimeZone).mockReturnValue("Asia/Karachi");
   });
   afterEach(() => vi.useRealTimers());
 
@@ -50,8 +57,17 @@ describe("VariantPicker delivery info", () => {
     expect(screen.getAllByText(/4,500/).length).toBeGreaterThan(0);
     expect(screen.getByText(/Delivery fee Rs 250/)).toBeInTheDocument();
     expect(screen.getByText("Today")).toBeInTheDocument();
-    expect(screen.getByText("Order within 4h 0m for same-day delivery")).toBeInTheDocument();
+    expect(screen.getByText(/Order within 4h 0m for same-day delivery/)).toBeInTheDocument();
+    expect(screen.getByText("Order by 2:00 pm Lahore time")).toBeInTheDocument();
     expect(useDeliveryStore.getState().cityId).toBe("lhr");
+  });
+
+  it("adds the cutoff in the buyer's own time when they're abroad", async () => {
+    vi.mocked(viewerTimeZone).mockReturnValue("Europe/London"); // BST, UTC+1 in September
+    render(<VariantPicker product={product} cities={[LHR, KHI]} />);
+    await userEvent.selectOptions(screen.getByRole("combobox", { name: "Deliver to" }), "lhr");
+
+    expect(screen.getByText("Order by 2:00 pm Lahore time (10:00 am your time)")).toBeInTheDocument();
   });
 
   it("uses the lead time and no countdown where there is no same-day cutoff", () => {

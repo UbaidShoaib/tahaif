@@ -110,6 +110,8 @@ export interface FulfillmentRead {
   recipient_phone: string;
   address_line1: string;
   city_name: string;
+  /** IANA zone of the delivery city, e.g. "Asia/Karachi". */
+  city_timezone?: string | null;
   courier_tracking: string | null;
   dispatched_at: string | null;
   delivered_at: string | null;

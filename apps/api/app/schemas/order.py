@@ -57,6 +57,9 @@ class FulfillmentRead(BaseModel):
     recipient_phone: str
     address_line1: str
     city_name: str
+    city_timezone: str = Field(
+        default="Asia/Karachi", description="IANA zone of the delivery city; times are shown in it first"
+    )
     courier_tracking: str | None
     dispatched_at: datetime | None
     delivered_at: datetime | None

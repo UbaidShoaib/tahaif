@@ -13,6 +13,7 @@ import { ShareTracking } from "@/components/orders/ShareTracking";
 import { CopyButton } from "@/components/ui/copy-button";
 import { orderNumber } from "@/lib/orders";
 import { brand } from "@/lib/brand";
+import { PAKISTAN_TZ, formatCalendarDate } from "@/lib/datetime";
 
 export const dynamic = "force-dynamic";
 
@@ -43,6 +44,8 @@ export default async function SuccessPage({
     day: "numeric",
     month: "long",
     year: "numeric",
+    // Server-rendered: pin the zone instead of using the server's (UTC).
+    timeZone: PAKISTAN_TZ,
   });
 
   return (
@@ -169,7 +172,7 @@ export default async function SuccessPage({
               <div className="flex items-center gap-1.5">
                 <Calendar className="h-3.5 w-3.5 shrink-0" />
                 <span>
-                  {new Date(f.delivery_date).toLocaleDateString("en-PK", {
+                  {formatCalendarDate(f.delivery_date, {
                     weekday: "long",
                     day: "numeric",
                     month: "long",
