@@ -35,6 +35,7 @@ from app.services import (
     delivery_service,
     fx_service,
     loyalty_service,
+    note_service,
     proof_service,
 )
 from app.services.cart_service import CartOwner, _unit_price
@@ -420,6 +421,9 @@ def _order_to_read(order: Order) -> OrderRead:
             unit_price_pkr=i.unit_price_pkr,
             line_total_pkr=i.line_total_pkr,
             greeting_message=i.greeting_message,
+            has_note=i.note_key is not None,
+            note_content_type=i.note_content_type,
+            can_edit_note=note_service.can_edit_note(order, i),
         )
         for i in order.items
     ]

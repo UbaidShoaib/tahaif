@@ -21,6 +21,7 @@ import { orderNumber } from "@/lib/orders";
 import { formatCalendarDate } from "@/lib/datetime";
 import { DualTime } from "@/components/time/DualTime";
 import { SupportWhatsApp } from "@/components/support/SupportWhatsApp";
+import { CardNoteControl } from "@/components/greeting/CardNoteControl";
 
 export const dynamic = "force-dynamic";
 
@@ -145,6 +146,28 @@ export default async function TrackPage({
           </div>
         </div>
       ))}
+
+      {/* Greeting cards: message plus an optional voice/video note played from a QR code */}
+      {order.items.some((i) => i.greeting_message || i.can_edit_note || i.has_note) && (
+        <section aria-labelledby="cards-heading" className="mb-6 space-y-4 rounded-xl border p-5">
+          <h2 id="cards-heading" className="font-semibold">
+            Greeting cards
+          </h2>
+          {order.items
+            .filter((i) => i.greeting_message || i.can_edit_note || i.has_note)
+            .map((item) => (
+              <div key={item.id} className="space-y-2">
+                <p className="text-sm font-medium">{item.product_name}</p>
+                {item.greeting_message && (
+                  <p dir="auto" className="text-sm italic text-muted-foreground">
+                    “{item.greeting_message}”
+                  </p>
+                )}
+                <CardNoteControl publicToken={String(order.public_token)} item={item} />
+              </div>
+            ))}
+        </section>
+      )}
 
       {/* Order summary */}
       <div className="rounded-xl border p-5 space-y-3">

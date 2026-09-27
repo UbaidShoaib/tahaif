@@ -19,6 +19,9 @@ class VendorLineItem(BaseModel):
     greeting_message: str | None = Field(
         default=None, description="Buyer's card message, printed and sent with this item"
     )
+    note_token: uuid.UUID | None = Field(
+        default=None, description="Print a QR code to /note/{note_token} on the card when set"
+    )
 
 
 class VendorFulfillmentRead(BaseModel):

@@ -30,6 +30,8 @@ export interface VendorLineItem {
   qty: number;
   /** Buyer's card message, printed and sent with this item. */
   greeting_message: string | null;
+  /** Print a QR code to /note/{note_token} on the card when set. */
+  note_token: string | null;
 }
 
 export interface VendorFulfillmentRead {

@@ -106,6 +106,50 @@ async def upload_delivery_photo(order_id: str, fulfillment_id: str, data: bytes,
     return key
 
 
+# Card notes: what phones record by default (m4a/aac, webm/ogg, mp3, 3gp) and video.
+NOTE_MIME_TYPES = {
+    "audio/mpeg": ".mp3",
+    "audio/mp4": ".m4a",
+    "audio/x-m4a": ".m4a",
+    "audio/aac": ".aac",
+    "audio/webm": ".webm",
+    "audio/ogg": ".ogg",
+    "audio/wav": ".wav",
+    "audio/3gpp": ".3gp",
+    "video/mp4": ".mp4",
+    "video/webm": ".webm",
+    "video/quicktime": ".mov",
+    "video/3gpp": ".3gp",
+}
+MAX_NOTE_BYTES = 25 * 1024 * 1024
+
+
+async def upload_card_note(order_id: str, item_id: str, data: bytes, content_type: str) -> str:
+    """Upload a greeting-card voice/video note; returns the object key (private bucket)."""
+    ext = NOTE_MIME_TYPES.get(content_type)
+    if ext is None:
+        raise HTTPException(
+            status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+            detail="Upload an audio or video recording (MP3, M4A, MP4, MOV, WebM or OGG)",
+        )
+    if len(data) > MAX_NOTE_BYTES:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail="The recording must be 25 MB or smaller (about 2 minutes of video)",
+        )
+    key = f"notes/{order_id}/{item_id}{ext}"
+    try:
+        await asyncio.to_thread(_upload_sync, key, data, content_type)
+    except (BotoCoreError, ClientError) as exc:
+        await logger.aexception("s3_note_upload_failed", order_id=order_id, key=key, error=str(exc))
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Recording storage is unavailable right now. Please try again shortly.",
+        ) from exc
+    await logger.ainfo("s3_note_uploaded", order_id=order_id, key=key)
+    return key
+
+
 _PROOF_PREFIX = "proofs/"
 SIGNED_URL_TTL_SECS = 15 * 60
 

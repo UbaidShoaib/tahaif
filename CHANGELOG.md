@@ -41,6 +41,13 @@ pre-production-cutover).
 - Rich greeting card (diaspora Release B): message ideas in English, Urdu and
   Roman Urdu, and a live preview of the printed card (Urdu laid out right-to-left)
   on the product page and in the cart.
+- Voice/video note on the greeting card (diaspora Release B): from the tracking page
+  the buyer attaches a recording (audio or video, up to 25 MB) to any gift's card until
+  it's dispatched. The vendor's print view adds a QR code; scanning it opens
+  `/note/{token}`, which plays the note with the card message. The note token is
+  separate from the order's, so the recipient can't see the order. API:
+  `POST`/`DELETE /orders/by-token/{token}/items/{item_id}/note`, `GET /notes/{token}`;
+  migration `0009`.
 
 ### Fixed
 - Vendors couldn't see the buyer's card message, so nothing told them what to

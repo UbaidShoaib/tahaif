@@ -234,7 +234,7 @@ export default function VendorOrdersPage() {
                       {f.courier_tracking}
                     </p>
                   )}
-                  {f.items.some((i) => i.greeting_message) && (
+                  {f.items.some((i) => i.greeting_message || i.note_token) && (
                     <div className="sm:col-span-2 mt-1 space-y-1">
                       <span className="text-muted-foreground">Card messages: </span>
                       {f.items
@@ -245,6 +245,9 @@ export default function VendorOrdersPage() {
                             <span dir="auto" className="italic">“{i.greeting_message}”</span>
                           </p>
                         ))}
+                      {f.items.some((i) => i.note_token) && (
+                        <p className="text-xs text-muted-foreground">Includes a voice/video note: print the card with its QR code.</p>
+                      )}
                       <Link href={`/vendor/orders/${f.id}/cards`} className="inline-block text-sm text-link hover:underline">
                         Print cards
                       </Link>

@@ -866,7 +866,7 @@ async def test_vendor_sees_each_items_card_message(
     one = await client.get(f"/api/v1/vendor/fulfillments/{fulfillment_id}", headers={"Authorization": f"Bearer {token}"})
 
     expected = [
-        {"product_name": product_name, "variant_name": None, "qty": 1, "greeting_message": "Happy birthday Ammi! Love, Ali"}
+        {"product_name": product_name, "variant_name": None, "qty": 1, "greeting_message": "Happy birthday Ammi! Love, Ali", "note_token": None}
     ]
     assert listed[0]["items"] == expected
     assert one.status_code == 200

@@ -77,6 +77,20 @@ class OrderItemRead(BaseModel):
     unit_price_pkr: int
     line_total_pkr: int
     greeting_message: str | None
+    has_note: bool = Field(default=False, description="A voice/video note is attached to this item's card")
+    note_content_type: str | None = Field(default=None, examples=["audio/mp4"])
+    can_edit_note: bool = Field(
+        default=False, description="The note can still be added or replaced (the card isn't printed yet)"
+    )
+
+
+class CardNoteRead(BaseModel):
+    """What the recipient sees after scanning the card's QR code."""
+
+    media_url: str = Field(description="Short-lived signed link to the recording")
+    content_type: str = Field(examples=["video/mp4"])
+    greeting_message: str | None
+    product_name: str
 
 
 class OrderRead(BaseModel):

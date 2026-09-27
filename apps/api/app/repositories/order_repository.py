@@ -109,6 +109,14 @@ class OrderRepository:
         )
         return result.scalar_one()
 
+    async def get_item_by_note_token(self, token: uuid.UUID) -> OrderItem | None:
+        result = await self._db.execute(
+            select(OrderItem)
+            .options(selectinload(OrderItem.product), selectinload(OrderItem.order))
+            .where(OrderItem.note_token == token)
+        )
+        return result.scalar_one_or_none()
+
     # ── Vendor fulfillment helpers ─────────────────────────────────────────────
 
     def _fulfillment_with_relations(self) -> Select[tuple[Fulfillment]]:

@@ -28,8 +28,8 @@ describe("PrintCardsPage", () => {
   it("shows one printable card per item with a message", async () => {
     vi.mocked(vendorApi.getFulfillment).mockResolvedValue(
       leg([
-        { product_name: "Fudge Cake", variant_name: "2 lb", qty: 1, greeting_message: "Salgirah mubarak Ammi!" },
-        { product_name: "Roses", variant_name: null, qty: 1, greeting_message: null },
+        { product_name: "Fudge Cake", variant_name: "2 lb", qty: 1, greeting_message: "Salgirah mubarak Ammi!", note_token: "n-1" },
+        { product_name: "Roses", variant_name: null, qty: 1, greeting_message: null, note_token: null },
       ]),
     );
     renderPage();
@@ -39,13 +39,14 @@ describe("PrintCardsPage", () => {
     expect(screen.getByText("Fudge Cake (2 lb)")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Print" })).toBeInTheDocument();
     expect(vendorApi.getFulfillment).toHaveBeenCalledWith("f-1", "tok");
+    expect(screen.getByRole("img", { name: /QR code for the sender's voice or video note/ })).toBeInTheDocument();
   });
 
   it("says so when there are no card messages", async () => {
     vi.mocked(vendorApi.getFulfillment).mockResolvedValue(leg([]));
     renderPage();
 
-    expect(await screen.findByText("This order has no card messages.")).toBeInTheDocument();
+    expect(await screen.findByText("This order has no card messages or notes.")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Print" })).not.toBeInTheDocument();
   });
 });

@@ -1,0 +1,183 @@
+"""Voice/video notes on greeting cards: buyer attaches, vendor prints a QR, recipient plays."""
+
+import uuid
+
+import pytest
+import pytest_asyncio
+from httpx import AsyncClient, Response
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.integrations import s3_client
+from app.models.order import FulfillmentStatus
+from app.models.user import UserRole
+from tests.test_vendor import (
+    _login,
+    _make_city,
+    _make_order_with_fulfillment,
+    _make_product,
+    _make_user,
+    _make_vendor,
+)
+
+
+@pytest.fixture
+def fake_note_store(monkeypatch: pytest.MonkeyPatch) -> list[str]:
+    """Stand in for S3 for accepted types; unsupported types still hit the real validation."""
+    uploaded: list[str] = []
+    real = s3_client.upload_card_note
+
+    async def _upload(order_id: str, item_id: str, data: bytes, content_type: str) -> str:
+        if content_type not in s3_client.NOTE_MIME_TYPES:
+            return await real(order_id, item_id, data, content_type)
+        key = f"notes/{order_id}/{item_id}{s3_client.NOTE_MIME_TYPES[content_type]}"
+        uploaded.append(key)
+        return key
+
+    monkeypatch.setattr(s3_client, "upload_card_note", _upload)
+    return uploaded
+
+
+@pytest_asyncio.fixture
+async def gift(db: AsyncSession) -> dict[str, object]:
+    city = await _make_city(db)
+    vendor_owner = await _make_user(db, UserRole.vendor)
+    vendor = await _make_vendor(db, city, vendor_owner)
+    product = await _make_product(db, vendor, city)
+    buyer = await _make_user(db)
+    order, fulfillment = await _make_order_with_fulfillment(db, vendor, product, city, buyer)
+    await db.refresh(order, ["items"])
+    info = {
+        "token": order.public_token,
+        "item_id": order.items[0].id,
+        "fulfillment": fulfillment,
+        "vendor_email": vendor_owner.email,
+        "fulfillment_id": fulfillment.id,
+    }
+    await db.commit()
+    return info
+
+
+async def _attach(client: AsyncClient, gift: dict[str, object], content_type: str = "audio/mp4") -> Response:
+    return await client.post(
+        f"/api/v1/orders/by-token/{gift['token']}/items/{gift['item_id']}/note",
+        files={"file": ("note.m4a", b"\x00" * 64, content_type)},
+    )
+
+
+async def _item(client: AsyncClient, gift: dict[str, object]) -> dict[str, object]:
+    order = (await client.get(f"/api/v1/orders/{gift['token']}")).json()
+    return next(i for i in order["items"] if i["id"] == str(gift["item_id"]))
+
+
+@pytest.mark.asyncio
+async def test_buyer_attaches_note_and_recipient_can_play_it(
+    client: AsyncClient, gift: dict[str, object], fake_note_store: list[str]
+) -> None:
+    before = await _item(client, gift)
+    assert before["has_note"] is False
+    assert before["can_edit_note"] is True
+
+    assert (await _attach(client, gift)).status_code == 204
+
+    item = await _item(client, gift)
+    assert item["has_note"] is True
+    assert item["note_content_type"] == "audio/mp4"
+
+    vendor_token = await _login(client, str(gift["vendor_email"]))
+    leg = (
+        await client.get(
+            f"/api/v1/vendor/fulfillments/{gift['fulfillment_id']}", headers={"Authorization": f"Bearer {vendor_token}"}
+        )
+    ).json()
+    note_token = leg["items"][0]["note_token"]
+    assert note_token
+
+    played = await client.get(f"/api/v1/notes/{note_token}")
+    assert played.status_code == 200
+    body = played.json()
+    # Only what the recipient needs: no order id, prices or tracking token.
+    assert set(body) == {"media_url", "content_type", "greeting_message", "product_name"}
+    assert body["content_type"] == "audio/mp4"
+    assert body["greeting_message"] == "Happy birthday Ammi! Love, Ali"
+    assert "X-Amz-Signature" in body["media_url"]
+    assert fake_note_store == [f"notes/{leg['order_id']}/{gift['item_id']}.m4a"]
+
+
+@pytest.mark.asyncio
+async def test_replacing_a_note_keeps_the_printed_qr_valid(
+    client: AsyncClient, gift: dict[str, object], fake_note_store: list[str]
+) -> None:
+    vendor_token = await _login(client, str(gift["vendor_email"]))
+    headers = {"Authorization": f"Bearer {vendor_token}"}
+    url = f"/api/v1/vendor/fulfillments/{gift['fulfillment_id']}"
+
+    await _attach(client, gift, "audio/mp4")
+    first = (await client.get(url, headers=headers)).json()["items"][0]["note_token"]
+    await _attach(client, gift, "video/mp4")
+    second = (await client.get(url, headers=headers)).json()["items"][0]["note_token"]
+
+    assert first == second
+    assert (await client.get(f"/api/v1/notes/{second}")).json()["content_type"] == "video/mp4"
+
+
+@pytest.mark.asyncio
+async def test_codec_parameters_are_ignored(
+    client: AsyncClient, gift: dict[str, object], fake_note_store: list[str]
+) -> None:
+    # Browsers' MediaRecorder reports e.g. "audio/webm;codecs=opus".
+    assert (await _attach(client, gift, "audio/webm;codecs=opus")).status_code == 204
+    assert (await _item(client, gift))["note_content_type"] == "audio/webm"
+
+
+@pytest.mark.asyncio
+async def test_only_audio_or_video_is_accepted(
+    client: AsyncClient, gift: dict[str, object], fake_note_store: list[str]
+) -> None:
+    assert (await _attach(client, gift, "application/pdf")).status_code == 415
+    assert fake_note_store == []
+
+
+@pytest.mark.asyncio
+async def test_note_is_locked_once_the_gift_is_dispatched(
+    client: AsyncClient, db: AsyncSession, gift: dict[str, object], fake_note_store: list[str]
+) -> None:
+    fulfillment = gift["fulfillment"]
+    fulfillment.status = FulfillmentStatus.dispatched  # type: ignore[attr-defined]
+    await db.commit()
+
+    assert (await _item(client, gift))["can_edit_note"] is False
+    resp = await _attach(client, gift)
+    assert resp.status_code == 409
+    assert fake_note_store == []
+
+
+@pytest.mark.asyncio
+async def test_removing_a_note_disables_the_qr_link(
+    client: AsyncClient, gift: dict[str, object], fake_note_store: list[str]
+) -> None:
+    await _attach(client, gift)
+    vendor_token = await _login(client, str(gift["vendor_email"]))
+    leg = (
+        await client.get(
+            f"/api/v1/vendor/fulfillments/{gift['fulfillment_id']}", headers={"Authorization": f"Bearer {vendor_token}"}
+        )
+    ).json()
+    note_token = leg["items"][0]["note_token"]
+
+    resp = await client.delete(f"/api/v1/orders/by-token/{gift['token']}/items/{gift['item_id']}/note")
+
+    assert resp.status_code == 204
+    assert (await _item(client, gift))["has_note"] is False
+    assert (await client.get(f"/api/v1/notes/{note_token}")).status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_unknown_order_item_or_note_is_404(
+    client: AsyncClient, gift: dict[str, object], fake_note_store: list[str]
+) -> None:
+    other_item = {**gift, "item_id": uuid.uuid4()}
+    other_order = {**gift, "token": uuid.uuid4()}
+
+    assert (await _attach(client, other_item)).status_code == 404
+    assert (await _attach(client, other_order)).status_code == 404
+    assert (await client.get(f"/api/v1/notes/{uuid.uuid4()}")).status_code == 404

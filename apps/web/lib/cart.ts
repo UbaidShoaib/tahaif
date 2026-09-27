@@ -128,6 +128,11 @@ export interface OrderItemRead {
   unit_price_pkr: number;
   line_total_pkr: number;
   greeting_message: string | null;
+  /** A voice/video note is attached to this item's card. */
+  has_note?: boolean;
+  note_content_type?: string | null;
+  /** The note can still be added or replaced (the card isn't printed yet). */
+  can_edit_note?: boolean;
 }
 
 export interface OrderRead {

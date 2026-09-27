@@ -283,6 +283,7 @@ def _fulfillment_to_read(f: Fulfillment) -> VendorFulfillmentRead:
                 variant_name=i.variant.name if i.variant else None,
                 qty=i.qty,
                 greeting_message=i.greeting_message,
+                note_token=i.note_token if i.note_key else None,
             )
             for i in f.order_items
         ],

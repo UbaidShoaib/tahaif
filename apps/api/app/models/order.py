@@ -178,6 +178,11 @@ class OrderItem(UUIDPrimaryKeyMixin, Base):
     customization: Mapped[dict[str, object] | None] = mapped_column(JSONB, nullable=True)
     greeting_message: Mapped[str | None] = mapped_column(Text, nullable=True)
     gift_image_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Optional voice/video note for the card: private object key, its MIME type,
+    # and the token in the card's QR link (/note/{note_token}).
+    note_key: Mapped[str | None] = mapped_column(Text, nullable=True)
+    note_content_type: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    note_token: Mapped[uuid.UUID | None] = mapped_column(nullable=True, unique=True, index=True)
 
     order: Mapped["Order"] = relationship(back_populates="items")
     fulfillment: Mapped["Fulfillment | None"] = relationship(

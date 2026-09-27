@@ -5,7 +5,9 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { Printer } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { QRCodeSVG } from "qrcode.react";
 import { CardPreview } from "@/components/greeting/CardPreview";
+import { notePath } from "@/lib/notes";
 import { useAuthStore } from "@/stores/auth.store";
 import { vendorApi, type VendorFulfillmentRead } from "@/lib/vendor";
 
@@ -41,7 +43,9 @@ export default function PrintCardsPage() {
     return <p className="container mx-auto px-4 py-16 text-center text-muted-foreground">Loading cards…</p>;
   }
 
-  const cards = fulfillment.items.filter((i) => i.greeting_message);
+  const cards = fulfillment.items.filter((i) => i.greeting_message || i.note_token);
+  // The QR must point at this storefront, whichever deployment prints it.
+  const origin = typeof window === "undefined" ? "" : window.location.origin;
 
   return (
     <div className="container mx-auto max-w-3xl px-4 py-8">
@@ -66,7 +70,7 @@ export default function PrintCardsPage() {
       </div>
 
       {cards.length === 0 ? (
-        <p className="text-center text-muted-foreground">This order has no card messages.</p>
+        <p className="text-center text-muted-foreground">This order has no card messages or notes.</p>
       ) : (
         <ul className="grid gap-6 sm:grid-cols-2 print:grid-cols-2">
           {cards.map((item, n) => (
@@ -76,6 +80,20 @@ export default function PrintCardsPage() {
                 {item.variant_name ? ` (${item.variant_name})` : ""}
               </p>
               <CardPreview message={item.greeting_message ?? ""} />
+              {item.note_token && (
+                <div className="flex items-center justify-center gap-3 pt-1">
+                  <QRCodeSVG
+                    value={`${origin}${notePath(item.note_token)}`}
+                    size={84}
+                    level="M"
+                    role="img"
+                    aria-label="QR code for the sender's voice or video note"
+                  />
+                  <p className="max-w-[10rem] text-start text-xs text-muted-foreground">
+                    Scan to hear a message from the sender
+                  </p>
+                </div>
+              )}
             </li>
           ))}
         </ul>
