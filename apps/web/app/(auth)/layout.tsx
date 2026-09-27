@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Gift } from "lucide-react";
+import { BrandLogo } from "@/components/brand/BrandLogo";
 
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -7,8 +7,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
       <div className="w-full max-w-md space-y-6">
         <div className="flex justify-center">
           <Link href="/" className="flex items-center gap-2 font-bold text-2xl text-link">
-            <Gift className="h-7 w-7" />
-            <span>Tahaif</span>
+            <BrandLogo markClassName="h-7 w-7" />
           </Link>
         </div>
         {children}

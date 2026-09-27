@@ -4,11 +4,19 @@ from datetime import UTC, datetime
 from fastapi import APIRouter, HTTPException, status
 from fastapi.responses import JSONResponse
 
+from app.core.config import get_settings
 from app.core.deps import DB, CurrentUser
 from app.repositories.address_repository import AddressRepository
 from app.repositories.user_repository import UserRepository
 from app.schemas.address import AddressCreate, AddressRead, AddressUpdate
 from app.schemas.user import UserRead, UserUpdate
+
+
+def _slug(name: str) -> str:
+    return (
+        "".join(c if c.isalnum() else "-" for c in name.lower()).strip("-") or "account"
+    )
+
 
 router = APIRouter(prefix="/me", tags=["me"])
 
@@ -33,6 +41,7 @@ async def update_me(
 
 # ── Addresses ─────────────────────────────────────────────────────────────────
 
+
 @router.get("/addresses", response_model=list[AddressRead])
 async def list_addresses(current_user: CurrentUser, db: DB) -> list[AddressRead]:
     repo = AddressRepository(db)
@@ -40,7 +49,9 @@ async def list_addresses(current_user: CurrentUser, db: DB) -> list[AddressRead]
     return [AddressRead.model_validate(a) for a in addresses]
 
 
-@router.post("/addresses", response_model=AddressRead, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/addresses", response_model=AddressRead, status_code=status.HTTP_201_CREATED
+)
 async def create_address(
     body: AddressCreate,
     current_user: CurrentUser,
@@ -61,7 +72,9 @@ async def update_address(
     repo = AddressRepository(db)
     address = await repo.get(address_id, current_user.id)
     if not address:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Address not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Address not found"
+        )
     updates = body.model_dump(exclude_none=True)
     if updates:
         address = await repo.update(address, **updates)
@@ -77,11 +90,14 @@ async def delete_address(
     repo = AddressRepository(db)
     address = await repo.get(address_id, current_user.id)
     if not address:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Address not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Address not found"
+        )
     await repo.soft_delete(address)
 
 
 # ── GDPR ──────────────────────────────────────────────────────────────────────
+
 
 @router.get("/export")
 async def export_my_data(current_user: CurrentUser, db: DB) -> JSONResponse:
@@ -114,7 +130,9 @@ async def export_my_data(current_user: CurrentUser, db: DB) -> JSONResponse:
 
     return JSONResponse(
         content=export,
-        headers={"Content-Disposition": 'attachment; filename="tahaif-my-data.json"'},
+        headers={
+            "Content-Disposition": f'attachment; filename="{_slug(get_settings().brand_name)}-my-data.json"'
+        },
     )
 
 
@@ -123,7 +141,7 @@ async def delete_account(current_user: CurrentUser, db: DB) -> None:
     """Anonymise the account, delete saved addresses and refresh tokens (GDPR erasure)."""
     repo = UserRepository(db)
 
-    anonymised_email = f"deleted_{current_user.id}@anon.tahaif.invalid"
+    anonymised_email = f"deleted_{current_user.id}@anon.invalid"
     await repo.update(
         current_user,
         email=anonymised_email,

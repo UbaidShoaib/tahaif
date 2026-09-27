@@ -11,6 +11,7 @@ import { accountApi, SUPPORTED_CURRENCIES, type CurrencyCode } from "@/lib/accou
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { brandSlug } from "@/lib/brand";
 
 const CONFIRM_WORD = "DELETE";
 
@@ -85,7 +86,7 @@ export default function AccountPage() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `tahaif-data-${new Date().toISOString().slice(0, 10)}.json`;
+      a.download = `${brandSlug()}-data-${new Date().toISOString().slice(0, 10)}.json`;
       a.click();
       URL.revokeObjectURL(url);
     } catch {

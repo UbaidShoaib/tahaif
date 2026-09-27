@@ -4,6 +4,7 @@ import { Banknote, Landmark } from "lucide-react";
 import { RadioCard, RadioGroup } from "@/components/ui/radio-group";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import type { PaymentMethod } from "@/lib/cart";
+import { brand } from "@/lib/brand";
 
 const METHODS: { value: PaymentMethod; label: string; desc: string; icon: typeof Banknote }[] = [
   { value: "cod", label: "Cash on Delivery", desc: "Pay the rider in rupees when the gift arrives", icon: Banknote },
@@ -46,7 +47,7 @@ export function PaymentMethodSection({
           <Landmark aria-hidden className="h-4 w-4" />
           <AlertTitle>Bank transfer details</AlertTitle>
           <AlertDescription>
-            <p>Account: {process.env.NEXT_PUBLIC_BANK_ACCOUNT_NAME ?? "Tahaif Gifts — MCB Bank"}</p>
+            <p>Account: {brand.bankAccountName}</p>
             <p className="font-mono">IBAN: {process.env.NEXT_PUBLIC_BANK_IBAN ?? "—"}</p>
             <p className="mt-1">
               After placing your order, transfer the total and upload your receipt on the confirmation page.

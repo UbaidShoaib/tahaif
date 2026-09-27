@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { MessageCircle } from "lucide-react";
 import { CopyButton } from "@/components/ui/copy-button";
+import { brand } from "@/lib/brand";
 
 /**
  * Share the public tracking link — e.g. with the family member expecting the gift.
@@ -13,7 +14,7 @@ export function ShareTracking({ publicToken }: { publicToken: string }) {
   useEffect(() => setUrl(`${window.location.origin}/track/${publicToken}`), [publicToken]);
   if (!url) return null;
 
-  const text = `Track the gift I sent with Tahaif: ${url}`;
+  const text = `Track the gift I sent with ${brand.name}: ${url}`;
   return (
     <div className="flex flex-wrap items-center gap-2">
       <a

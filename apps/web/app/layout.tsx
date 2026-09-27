@@ -7,6 +7,7 @@ import { Providers } from "@/components/providers";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import "@/styles/globals.css";
+import { brand } from "@/lib/brand";
 
 // Exposed as CSS variables so Tailwind's font-sans / font-display can use them.
 const inter = Inter({ subsets: ["latin", "latin-ext"], variable: "--font-inter", display: "swap" });
@@ -25,14 +26,14 @@ const naskh = Noto_Naskh_Arabic({
 });
 
 export const metadata: Metadata = {
-  title: { default: "Tahaif — Send Gifts Across Pakistan", template: "%s | Tahaif" },
+  title: { default: `${brand.name} — ${brand.tagline}`, template: `%s | ${brand.name}` },
   description:
     "Send cakes, flowers, perfumes and more to your loved ones across Pakistan. Fast delivery, quality guaranteed.",
-  keywords: ["gifts pakistan", "send gifts", "cakes", "flowers", "tahaif", "تحائف"],
+  keywords: ["gifts pakistan", "send gifts", "cakes", "flowers", brand.name, ...(brand.localName ? [brand.localName] : [])],
   openGraph: {
     type: "website",
     locale: "en_PK",
-    siteName: "Tahaif",
+    siteName: brand.name,
   },
 };
 

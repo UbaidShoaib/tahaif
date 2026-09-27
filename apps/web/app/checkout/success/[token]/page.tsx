@@ -12,6 +12,7 @@ import { OrderStatusBadge } from "@/components/orders/OrderStatusBadge";
 import { ShareTracking } from "@/components/orders/ShareTracking";
 import { CopyButton } from "@/components/ui/copy-button";
 import { orderNumber } from "@/lib/orders";
+import { brand } from "@/lib/brand";
 
 export const dynamic = "force-dynamic";
 
@@ -35,7 +36,7 @@ export default async function SuccessPage({
   }
 
   const isBank = order.payment_method === "bank_transfer";
-  const bankAccount = process.env.NEXT_PUBLIC_BANK_ACCOUNT_NAME ?? "Tahaif Gifts — MCB Bank";
+  const bankAccount = brand.bankAccountName;
   const bankIban = process.env.NEXT_PUBLIC_BANK_IBAN ?? null;
 
   const placedDate = new Date(order.placed_at).toLocaleDateString("en-PK", {

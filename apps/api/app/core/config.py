@@ -23,7 +23,9 @@ class Settings(BaseSettings):
 
     # App
     environment: Literal["development", "staging", "production"] = "development"
-    app_name: str = "Tahaif API"
+    # Brand (white-label): every customer-facing name comes from here, never a literal.
+    brand_name: str = "GiftShop"
+    app_name: str = "GiftShop API"
     app_version: str = "0.1.0"
     debug: bool = False
 
@@ -64,7 +66,7 @@ class Settings(BaseSettings):
 
     # Email
     resend_api_key: str = ""
-    email_from: str = "noreply@tahaif.com"
+    email_from: str = "noreply@example.com"
 
     # Messaging (Twilio)
     twilio_account_sid: str = ""

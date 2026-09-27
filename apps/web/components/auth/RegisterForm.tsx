@@ -14,6 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import Link from "next/link";
 import { useHydrated } from "@/hooks/use-hydrated";
+import { brand } from "@/lib/brand";
 
 const schema = z.object({
   full_name: z.string().min(2, "Name must be at least 2 characters"),
@@ -66,7 +67,7 @@ export function RegisterForm() {
     <div className="space-y-4">
       <div className="space-y-1 text-center">
         <h1 className="text-2xl font-bold">Create your account</h1>
-        <p className="text-sm text-muted-foreground">Join Tahaif and send gifts across Pakistan</p>
+        <p className="text-sm text-muted-foreground">Join {brand.name} and send gifts across Pakistan</p>
       </div>
 
       {error && (

@@ -13,8 +13,9 @@ import { CurrencySelect } from "@/components/layout/CurrencySelect";
 import { DeliveryPicker } from "@/components/layout/DeliveryPicker";
 import { HeaderSearch } from "@/components/layout/HeaderSearch";
 import { MobileNav } from "@/components/layout/MobileNav";
+import { BrandLogo } from "@/components/brand/BrandLogo";
 import { NAV_LINKS } from "@/components/layout/nav-links";
-import { ShoppingBag, Gift, User, LogOut, Search } from "lucide-react";
+import { ShoppingBag, User, LogOut, Search } from "lucide-react";
 
 export function Header() {
   const { user, logout } = useAuthStore();
@@ -39,10 +40,7 @@ export function Header() {
 
             {/* Logo — the icon and Urdu name drop on very narrow phones so the cart stays on screen. */}
             <Link href="/" className="flex min-w-0 items-center gap-2 whitespace-nowrap text-lg font-bold text-link xs:text-xl">
-              <Gift aria-hidden className="hidden h-6 w-6 xs:block" />
-              <span>
-                <span className="hidden xs:inline">تحائف </span>Tahaif
-              </span>
+              <BrandLogo markClassName="hidden h-6 w-6 xs:block" showLocalName />
             </Link>
           </div>
 

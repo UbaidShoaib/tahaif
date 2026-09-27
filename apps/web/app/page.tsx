@@ -17,6 +17,7 @@ import { catalogApi } from "@/lib/catalog";
 import { ProductCard } from "@/components/catalog/ProductCard";
 import { HeroFinder } from "@/components/home/HeroFinder";
 import { SameDayRail } from "@/components/home/SameDayRail";
+import { brand } from "@/lib/brand";
 
 const CATEGORIES: { name: string; slug: string; icon: LucideIcon; desc: string }[] = [
   { name: "Cakes", slug: "cakes", icon: Cake, desc: "Birthday, wedding & custom cakes" },
@@ -194,7 +195,7 @@ export default async function HomePage() {
       </section>
 
       {/* Trust */}
-      <section aria-label="Why Tahaif" className="border-t bg-background-alt px-4 py-10">
+      <section aria-label={`Why ${brand.name}`} className="border-t bg-background-alt px-4 py-10">
         <ul className="container mx-auto grid grid-cols-2 gap-6 md:grid-cols-4">
           {TRUST.map(({ icon: Icon, title, desc }) => (
             <li key={title} className="flex items-start gap-3">

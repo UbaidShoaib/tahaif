@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
-import { Banknote, Gift, Lock, MapPinned } from "lucide-react";
+import { Banknote, Lock, MapPinned } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { NAV_LINKS } from "@/components/layout/nav-links";
+import { BrandLogo } from "@/components/brand/BrandLogo";
+import { brand } from "@/lib/brand";
 
 const linkClass = "inline-flex min-h-9 items-center hover:text-foreground transition-colors";
 
@@ -38,8 +40,7 @@ export async function Footer() {
         <div className="grid grid-cols-2 gap-8 md:grid-cols-4">
           <div className="col-span-2 md:col-span-1">
             <Link href="/" className="flex items-center gap-2 text-lg font-bold text-link">
-              <Gift aria-hidden className="h-5 w-5" />
-              <span>Tahaif</span>
+              <BrandLogo markClassName="h-5 w-5" />
             </Link>
             <p className="mt-2 text-sm text-muted-foreground">{t("footer.tagline")}</p>
           </div>
@@ -63,7 +64,7 @@ export async function Footer() {
         <Separator className="my-6" />
 
         <div className="flex flex-col items-center justify-between gap-4 md:flex-row">
-          <p className="text-sm text-muted-foreground">{t("footer.rights", { year: new Date().getFullYear() })}</p>
+          <p className="text-sm text-muted-foreground">{t("footer.rights", { year: new Date().getFullYear(), brand: brand.name })}</p>
           {/* Only claims we can back up today; no refund promise until the Refund
               Policy is published (docs/questions.md Q17). */}
           <ul className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-sm text-muted-foreground">

@@ -1,6 +1,7 @@
 import type { MetadataRoute } from "next";
+import { brand } from "@/lib/brand";
 
-const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://tahaif.com";
+const BASE_URL = brand.siteUrl;
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api/v1";
 
 async function fetchJson<T>(path: string): Promise<T | null> {

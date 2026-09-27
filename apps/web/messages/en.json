@@ -67,7 +67,7 @@
     "terms": "Terms of Service",
     "privacy": "Privacy Policy",
     "refund": "Refund Policy",
-    "rights": "© {year} Tahaif. All rights reserved.",
+    "rights": "© {year} {brand}. All rights reserved.",
     "secureCheckout": "Secure checkout",
     "cod": "Cash on delivery",
     "tracking": "Online order tracking"

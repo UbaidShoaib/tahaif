@@ -14,6 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import Link from "next/link";
 import { useHydrated } from "@/hooks/use-hydrated";
+import { brand } from "@/lib/brand";
 
 const schema = z.object({
   email: z.string().email("Enter a valid email"),
@@ -53,7 +54,7 @@ export function LoginForm() {
     <div className="space-y-4">
       <div className="space-y-1 text-center">
         <h1 className="text-2xl font-bold">Welcome back</h1>
-        <p className="text-sm text-muted-foreground">Sign in to your Tahaif account</p>
+        <p className="text-sm text-muted-foreground">Sign in to your {brand.name} account</p>
       </div>
 
       {error && (
