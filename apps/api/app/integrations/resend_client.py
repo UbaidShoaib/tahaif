@@ -1,3 +1,5 @@
+import html  # pragma: no cover
+
 import resend  # pragma: no cover
 
 from app.core.config import get_settings  # pragma: no cover
@@ -40,6 +42,26 @@ async def send_order_confirmation_email(
                 <p>Order reference: <code>{public_token[:8].upper()}</code></p>
                 <p><a href="{tracking_url}">Track your order</a></p>
                 <p>Thank you for shopping with {settings.brand_name}!</p>
+            """,
+        }
+    )
+
+
+async def send_fulfillment_update_email(
+    to_email: str, public_token: str, headline: str, body: str
+) -> None:  # pragma: no cover
+    resend.api_key = settings.resend_api_key
+    tracking_url = f"{settings.frontend_url}/track/{public_token}"
+    resend.Emails.send(
+        {
+            "from": settings.email_from,
+            "to": to_email,
+            "subject": headline,
+            "html": f"""
+                <h2>{html.escape(headline)}</h2>
+                <p>{html.escape(body)}</p>
+                <p>Order reference: <code>{public_token[:8].upper()}</code></p>
+                <p><a href="{tracking_url}">Track your gift</a></p>
             """,
         }
     )

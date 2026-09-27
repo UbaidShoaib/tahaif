@@ -2,6 +2,7 @@
 import uuid
 from datetime import UTC, datetime
 
+import structlog
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -17,8 +18,12 @@ from app.models.order import (
 from app.models.user import User
 from app.repositories.catalog_repository import ProductRepository, VendorRepository
 from app.repositories.order_repository import OrderRepository
+from app.repositories.user_repository import UserRepository
 from app.schemas.catalog import VendorUpdate
 from app.schemas.vendor import FulfillmentStatusUpdate, VendorFulfillmentRead
+from app.workers.notification_tasks import enqueue_fulfillment_update
+
+logger = structlog.get_logger()
 
 
 def _NOT_FOUND(noun: str) -> HTTPException:
@@ -125,7 +130,10 @@ async def update_fulfillment(
     if data.status == FulfillmentStatus.delivered and not fulfillment.delivered_at:
         kwargs["delivered_at"] = datetime.now(UTC)
 
+    status_changed = data.status != fulfillment.status
     fulfillment = await repo.update_fulfillment(fulfillment, **kwargs)
+    if status_changed:
+        await _notify_buyer(db, parent, fulfillment)
 
     # Propagate to order status
     order = await repo.get_by_id(fulfillment.order_id)
@@ -146,6 +154,29 @@ async def list_my_products(
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
+
+async def _notify_buyer(db: AsyncSession, order: Order, fulfillment: Fulfillment) -> None:
+    """Queue a status update for the buyer (best-effort).
+
+    Runs in a SAVEPOINT, like the checkout confirmation, so an outbox failure
+    never blocks the vendor's status change.
+    """
+    try:
+        buyer = await UserRepository(db).get_by_id(order.user_id) if order.user_id else None
+        async with db.begin_nested():
+            await enqueue_fulfillment_update(
+                db=db,
+                order_id=order.id,
+                fulfillment_id=fulfillment.id,
+                public_token=order.public_token,
+                status=fulfillment.status.value,
+                recipient_name=fulfillment.recipient_name,
+                buyer_email=buyer.email if buyer else order.contact_email,
+                buyer_phone=buyer.phone if buyer else order.contact_phone,
+            )
+    except Exception:
+        await logger.aexception("fulfillment_notification_enqueue_failed", order_id=str(order.id))
+
 
 def _fulfillment_to_read(f: Fulfillment) -> VendorFulfillmentRead:
     item_count = sum(i.qty for i in f.order_items)

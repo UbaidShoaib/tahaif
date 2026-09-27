@@ -1,54 +1,21 @@
-"""Tests for enqueueing order-confirmation notifications into the outbox.
+"""Tests for enqueueing order and delivery-status notifications into the outbox.
 
-notifications_outbox is created by Alembic migration 0005 and has no ORM model,
-so Base.metadata.create_all in conftest does not build it. This module creates
-it with the same column types (including the JSONB payload whose cast used to
-break the insert) and drops it afterwards.
+notifications_outbox has no ORM model; the `outbox` fixture in conftest builds
+it with the migration's column types (including the JSONB payload whose cast
+used to break the insert).
 """
 
 import uuid
-from collections.abc import AsyncIterator
 
 import pytest
-import pytest_asyncio
 import sqlalchemy as sa
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.workers.notification_tasks import enqueue_order_confirmation
-
-_DDL = [
-    "DO $$ BEGIN CREATE TYPE notification_channel AS ENUM ('email','sms','whatsapp'); "
-    "EXCEPTION WHEN duplicate_object THEN NULL; END $$",
-    "DO $$ BEGIN CREATE TYPE notification_status AS ENUM ('pending','sent','failed'); "
-    "EXCEPTION WHEN duplicate_object THEN NULL; END $$",
-    """
-    CREATE TABLE IF NOT EXISTS notifications_outbox (
-        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        channel notification_channel NOT NULL,
-        to_address VARCHAR(255) NOT NULL,
-        template VARCHAR(100) NOT NULL,
-        payload JSONB NOT NULL,
-        status notification_status NOT NULL DEFAULT 'pending',
-        attempts INTEGER NOT NULL DEFAULT 0,
-        last_error TEXT,
-        sent_at TIMESTAMPTZ,
-        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-    )
-    """,
-]
-
-
-@pytest_asyncio.fixture
-async def outbox(db: AsyncSession) -> AsyncIterator[AsyncSession]:
-    for stmt in _DDL:
-        await db.execute(sa.text(stmt))
-    await db.commit()
-    yield db
-    await db.rollback()
-    await db.execute(sa.text("DROP TABLE IF EXISTS notifications_outbox"))
-    await db.execute(sa.text("DROP TYPE IF EXISTS notification_status"))
-    await db.execute(sa.text("DROP TYPE IF EXISTS notification_channel"))
-    await db.commit()
+from app.workers.notification_tasks import (
+    enqueue_fulfillment_update,
+    enqueue_order_confirmation,
+)
+from app.workers.outbox_worker import _render_sms, fulfillment_update_text
 
 
 async def _rows_for(db: AsyncSession, order_id: uuid.UUID) -> list[sa.Row[tuple[str, str, str, str, int]]]:
@@ -103,3 +70,82 @@ async def test_enqueue_adds_sms_row_when_phone_known(outbox: AsyncSession) -> No
     rows = await _rows_for(outbox, order_id)
     assert [r.channel for r in rows] == ["email", "sms"]
     assert rows[1].to_address == "+447700900123"
+
+
+async def _update_rows(db: AsyncSession, order_id: uuid.UUID) -> list[sa.Row[tuple[str, str, str]]]:
+    result = await db.execute(
+        sa.text(
+            "SELECT channel::text AS channel, to_address, payload->>'status' AS status "
+            "FROM notifications_outbox WHERE payload->>'order_id' = :oid "
+            "AND template = 'fulfillment_update' ORDER BY channel"
+        ),
+        {"oid": str(order_id)},
+    )
+    return list(result.all())
+
+
+async def _enqueue_update(db: AsyncSession, order_id: uuid.UUID, status: str, phone: str | None) -> int:
+    return await enqueue_fulfillment_update(
+        db=db,
+        order_id=order_id,
+        fulfillment_id=uuid.uuid4(),
+        public_token=uuid.uuid4(),
+        status=status,
+        recipient_name="Ammi Jaan",
+        buyer_email="ali@example.co.uk",
+        buyer_phone=phone,
+    )
+
+
+@pytest.mark.asyncio
+async def test_fulfillment_update_queues_email_and_whatsapp(outbox: AsyncSession) -> None:
+    order_id = uuid.uuid4()
+
+    queued = await _enqueue_update(outbox, order_id, "out_for_delivery", "+447700900123")
+
+    rows = await _update_rows(outbox, order_id)
+    assert queued == 2
+    assert [(r.channel, r.to_address) for r in rows] == [
+        ("email", "ali@example.co.uk"),
+        ("whatsapp", "+447700900123"),
+    ]
+    assert {r.status for r in rows} == {"out_for_delivery"}
+
+
+@pytest.mark.asyncio
+async def test_fulfillment_update_without_phone_queues_email_only(outbox: AsyncSession) -> None:
+    order_id = uuid.uuid4()
+
+    assert await _enqueue_update(outbox, order_id, "delivered", None) == 1
+    assert [r.channel for r in await _update_rows(outbox, order_id)] == ["email"]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("status", ["pending", "ready"])
+async def test_internal_statuses_queue_nothing(outbox: AsyncSession, status: str) -> None:
+    order_id = uuid.uuid4()
+
+    assert await _enqueue_update(outbox, order_id, status, "+447700900123") == 0
+    assert await _update_rows(outbox, order_id) == []
+
+
+@pytest.mark.parametrize("status", ["preparing", "dispatched", "out_for_delivery", "delivered", "failed"])
+def test_every_notifiable_status_has_personal_copy(status: str) -> None:
+    headline, body = fulfillment_update_text({"status": status, "recipient_name": "Ammi Jaan"})
+    assert "Ammi Jaan" in headline
+    assert body
+
+
+def test_whatsapp_text_links_to_tracking() -> None:
+    token = uuid.uuid4()
+    text = _render_sms(
+        "fulfillment_update",
+        {"status": "delivered", "recipient_name": "Ammi Jaan", "public_token": str(token)},
+    )
+    assert "delivered to Ammi Jaan" in text
+    assert f"/track/{token}" in text
+
+
+def test_copy_falls_back_when_recipient_name_missing() -> None:
+    headline, _ = fulfillment_update_text({"status": "dispatched", "recipient_name": ""})
+    assert "your loved one" in headline

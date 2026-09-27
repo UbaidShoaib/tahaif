@@ -18,9 +18,11 @@ os.environ.setdefault("RESEND_API_KEY", "")
 os.environ["TESTING"] = "1"  # disables rate limiting
 
 import asyncio  # noqa: E402
+from collections.abc import AsyncIterator  # noqa: E402
 
 import pytest  # noqa: E402
 import pytest_asyncio  # noqa: E402
+import sqlalchemy as sa  # noqa: E402
 from httpx import ASGITransport, AsyncClient  # noqa: E402
 from sqlalchemy import NullPool  # noqa: E402
 from sqlalchemy.ext.asyncio import (  # noqa: E402
@@ -117,3 +119,39 @@ async def client(db: AsyncSession) -> AsyncClient:  # type: ignore[misc]
     async with AsyncClient(transport=ASGITransport(app=fastapi_app), base_url="http://test") as ac:
         yield ac  # type: ignore[misc]
     fastapi_app.dependency_overrides.clear()
+
+
+# notifications_outbox is created by Alembic migration 0005 and has no ORM
+# model, so create_all does not build it. Tests that write to it request this
+# fixture, which builds it with the same column types and drops it afterwards.
+_DDL = [
+    "DO $$ BEGIN CREATE TYPE notification_channel AS ENUM ('email','sms','whatsapp'); "
+    "EXCEPTION WHEN duplicate_object THEN NULL; END $$",
+    "DO $$ BEGIN CREATE TYPE notification_status AS ENUM ('pending','sent','failed'); "
+    "EXCEPTION WHEN duplicate_object THEN NULL; END $$",
+    """
+    CREATE TABLE IF NOT EXISTS notifications_outbox (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        channel notification_channel NOT NULL,
+        to_address VARCHAR(255) NOT NULL,
+        template VARCHAR(100) NOT NULL,
+        payload JSONB NOT NULL,
+        status notification_status NOT NULL DEFAULT 'pending',
+        attempts INTEGER NOT NULL DEFAULT 0,
+        last_error TEXT,
+        sent_at TIMESTAMPTZ,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+    """,
+]
+@pytest_asyncio.fixture
+async def outbox(db: AsyncSession) -> AsyncIterator[AsyncSession]:
+    for stmt in _DDL:
+        await db.execute(sa.text(stmt))
+    await db.commit()
+    yield db
+    await db.rollback()
+    await db.execute(sa.text("DROP TABLE IF EXISTS notifications_outbox"))
+    await db.execute(sa.text("DROP TYPE IF EXISTS notification_status"))
+    await db.execute(sa.text("DROP TYPE IF EXISTS notification_channel"))
+    await db.commit()

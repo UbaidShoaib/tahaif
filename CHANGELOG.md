@@ -7,6 +7,14 @@ pre-production-cutover).
 
 ## [Unreleased]
 
+### Added
+- Delivery-status notifications for buyers (diaspora Release A, `docs/diaspora-experience.md`):
+  when a vendor moves a fulfillment to preparing, dispatched, out for delivery, delivered
+  or failed, the buyer gets a warm, recipient-named email plus a WhatsApp message (when a
+  phone is known) with a live tracking link. The internal `ready` step and same-status
+  tracking edits send nothing. Enqueueing is best-effort in a SAVEPOINT, so an outbox error
+  never blocks the vendor's update.
+
 ### Changed
 - Rebrand to the Anaar berry (`#9f1f50`) + Zari gold palette (ADR 0003), replacing
   emerald `#16a34a`, which failed WCAG AA contrast (3.30:1) on every primary

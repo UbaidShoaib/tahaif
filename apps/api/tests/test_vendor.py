@@ -5,6 +5,7 @@ from datetime import date, timedelta
 
 import pytest
 import pytest_asyncio
+import sqlalchemy as sa
 from httpx import AsyncClient, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -624,3 +625,69 @@ async def test_list_my_products_returns_only_own(
 async def test_list_my_products_requires_auth(client: AsyncClient) -> None:
     resp = await client.get("/api/v1/vendor/products")
     assert resp.status_code == 401
+
+
+# ── Buyer delivery-status notifications ──────────────────────────────────────
+
+
+async def _queued_updates(db: AsyncSession, order_id: uuid.UUID) -> list[tuple[str, str, str]]:
+    result = await db.execute(
+        sa.text(
+            "SELECT channel::text, to_address, payload->>'status' FROM notifications_outbox "
+            "WHERE template = 'fulfillment_update' AND payload->>'order_id' = :oid "
+            "ORDER BY created_at, channel"
+        ),
+        {"oid": str(order_id)},
+    )
+    return [tuple(r) for r in result.all()]  # type: ignore[misc]
+
+
+@pytest.mark.asyncio
+async def test_status_change_notifies_buyer(
+    client: AsyncClient,
+    outbox: AsyncSession,
+    vendor_user: User,
+    buyer: User,
+    order_and_fulfillment: tuple,
+) -> None:
+    order, fulfillment = order_and_fulfillment
+    order_id, fulfillment_id = order.id, fulfillment.id
+    buyer_email = buyer.email
+    token = await _login(client, vendor_user.email)
+
+    assert (await _patch(client, token, fulfillment_id, status="out_for_delivery")).status_code == 200
+
+    queued = await _queued_updates(outbox, order_id)
+    assert ("email", buyer_email, "out_for_delivery") in queued
+
+
+@pytest.mark.asyncio
+async def test_same_status_update_does_not_renotify(
+    client: AsyncClient,
+    outbox: AsyncSession,
+    vendor_user: User,
+    order_and_fulfillment: tuple,
+) -> None:
+    order, fulfillment = order_and_fulfillment
+    order_id, fulfillment_id = order.id, fulfillment.id
+    token = await _login(client, vendor_user.email)
+
+    await _patch(client, token, fulfillment_id, status="dispatched")
+    await _patch(client, token, fulfillment_id, status="dispatched", courier_tracking="TCS-123")
+
+    assert len([q for q in await _queued_updates(outbox, order_id) if q[0] == "email"]) == 1
+
+
+@pytest.mark.asyncio
+async def test_ready_status_is_not_sent_to_buyer(
+    client: AsyncClient,
+    outbox: AsyncSession,
+    vendor_user: User,
+    order_and_fulfillment: tuple,
+) -> None:
+    order, fulfillment = order_and_fulfillment
+    order_id, fulfillment_id = order.id, fulfillment.id
+    token = await _login(client, vendor_user.email)
+
+    assert (await _patch(client, token, fulfillment_id, status="ready")).status_code == 200
+    assert await _queued_updates(outbox, order_id) == []

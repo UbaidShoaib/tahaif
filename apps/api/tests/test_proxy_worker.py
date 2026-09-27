@@ -83,7 +83,6 @@ import sqlalchemy as sa  # noqa: E402
 from sqlalchemy.ext.asyncio import AsyncSession  # noqa: E402
 
 from app.workers import outbox_worker  # noqa: E402
-from tests.test_notification_tasks import outbox  # noqa: E402, F401, I001
 
 
 async def _add_rows(db: AsyncSession, n: int) -> list[str]:

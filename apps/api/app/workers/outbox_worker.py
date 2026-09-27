@@ -14,6 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import get_settings
 from app.integrations import resend_client
 from app.integrations.twilio_client import send_sms, send_whatsapp
+from app.workers.notification_tasks import FULFILLMENT_UPDATE_TEMPLATE
 
 if TYPE_CHECKING:
     import uuid
@@ -109,6 +110,9 @@ async def _send_email(
     total = payload.get("total_pkr", 0)
     if template == "order_confirmation":
         await resend_client.send_order_confirmation_email(to, str(token), int(total))
+    elif template == FULFILLMENT_UPDATE_TEMPLATE:
+        headline, body = fulfillment_update_text(payload)
+        await resend_client.send_fulfillment_update_email(to, str(token), headline, body)
 
 
 def _render_sms(template: str, payload: dict[str, Any]) -> str:
@@ -121,5 +125,44 @@ def _render_sms(template: str, payload: dict[str, Any]) -> str:
             f"{settings.brand_name}: Your order #{str(token)[:8]} of PKR {pkr:,.0f} has been placed. "
             f"Track it at {settings.frontend_url}/track/{token}"
         )
+    if template == FULFILLMENT_UPDATE_TEMPLATE:
+        headline, body = fulfillment_update_text(payload)
+        return (
+            f"{settings.brand_name}: {headline}\n{body}\n"
+            f"Track it live: {settings.frontend_url}/track/{token}"
+        )
     return f"{settings.brand_name} notification: {template}"
 
+
+# Warm, reassuring copy: the buyer is usually far away and can't check in person.
+_FULFILLMENT_COPY: dict[str, tuple[str, str]] = {
+    "preparing": (
+        "Your gift for {name} is being prepared",
+        "The shop has started preparing your order with care.",
+    ),
+    "dispatched": (
+        "Your gift for {name} is on its way",
+        "It has left the shop and is heading to {name}.",
+    ),
+    "out_for_delivery": (
+        "Your gift for {name} is out for delivery",
+        "The rider is on the way and will reach {name} soon.",
+    ),
+    "delivered": (
+        "Your gift has been delivered to {name}",
+        "It reached {name} safely. Thank you for staying close from afar.",
+    ),
+    "failed": (
+        "We couldn't deliver your gift to {name} yet",
+        "Our team will contact you shortly to arrange a new delivery.",
+    ),
+}
+
+
+def fulfillment_update_text(payload: dict[str, Any]) -> tuple[str, str]:
+    """Headline and body for a fulfillment status update."""
+    name = str(payload.get("recipient_name") or "your loved one")
+    headline, body = _FULFILLMENT_COPY.get(
+        str(payload.get("status")), ("Your order has an update", "Open the tracking page for details.")
+    )
+    return headline.format(name=name), body.format(name=name)
