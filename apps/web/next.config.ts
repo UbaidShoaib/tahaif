@@ -5,6 +5,7 @@ import { imageHosts } from "./lib/image-hosts";
 
 // Locale from a cookie, no URL prefix (i18n/request.ts, ADR 0005).
 const withNextIntl = createNextIntlPlugin("./i18n/request.ts");
+import { withSentryConfig } from "@sentry/nextjs/config";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 const API_HOST = new URL(API_URL).host;
@@ -80,4 +81,16 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
 };
 
-export default withNextIntl(nextConfig);
+// withSentryConfig is safe to apply unconditionally: without SENTRY_AUTH_TOKEN
+// (source map upload) or NEXT_PUBLIC_SENTRY_DSN (runtime init) it's inert.
+export default withSentryConfig(withNextIntl(nextConfig), {
+  org: process.env.SENTRY_ORG,
+  project: process.env.SENTRY_PROJECT,
+  authToken: process.env.SENTRY_AUTH_TOKEN,
+  silent: true,
+  widenClientFileUpload: true,
+  webpack: {
+    treeshake: { removeDebugLogging: true },
+    automaticVercelMonitors: true,
+  },
+});
