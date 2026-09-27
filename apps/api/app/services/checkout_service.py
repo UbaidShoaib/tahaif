@@ -290,6 +290,8 @@ async def place_order(
         user_id=user.id if user else None,
         contact_email=None if user else str(body.contact_email),
         contact_phone=None if user else body.contact_phone,
+        surprise=body.surprise,
+        gift_from=(body.gift_from or "").strip() or (user.full_name if user else None),
         idempotency_key=idempotency_key,
         currency=currency,
         fx_rate_to_pkr=fx_rate,
@@ -462,6 +464,8 @@ def _order_to_read(order: Order) -> OrderRead:
         items=items,
         fulfillments=fulfillments,
         payment_method=payment_method,
+        surprise=order.surprise,
+        gift_from=order.gift_from,
     )
 
 

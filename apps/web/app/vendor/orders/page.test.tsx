@@ -38,6 +38,7 @@ function leg(overrides: Partial<VendorFulfillmentRead> = {}): VendorFulfillmentR
     received_by: null,
     item_count: 1,
     subtotal_pkr: 280000,
+    surprise: false,
     items: [{ product_name: "Fudge Cake", variant_name: null, qty: 1, greeting_message: null, note_token: null }],
     ...overrides,
   };
@@ -97,5 +98,12 @@ describe("VendorOrdersPage", () => {
 
     await waitFor(() => expect(screen.getByRole("button", { name: "Mark Ready" })).toBeInTheDocument());
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("warns the rider when the gift is a surprise", async () => {
+    vi.mocked(vendorApi.listFulfillments).mockResolvedValue([leg({ surprise: true })]);
+    render(<VendorOrdersPage />);
+
+    expect(await screen.findByText(/Surprise gift: don.t call the recipient ahead/)).toBeInTheDocument();
   });
 });

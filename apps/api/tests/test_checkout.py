@@ -942,3 +942,43 @@ async def test_place_order_same_idempotency_key_returns_same_order(
     )
     assert second.status_code == 201
     assert second.json()["id"] == first_id
+
+
+# ── Surprise mode and sender name (recipient messages) ───────────────────────
+
+
+@pytest.mark.asyncio
+async def test_place_order_keeps_surprise_and_sender_name(
+    client: AsyncClient, customer: User, product: Product, city: City
+) -> None:
+    email, product_id, city_id = customer.email, str(product.id), str(city.id)
+    token = await _login(client, email)
+    await _add_item(client, token, product_id)
+
+    resp = await client.post(
+        "/api/v1/checkout/place",
+        json=_place_body(city_id, surprise=True, gift_from="  Ali (London) "),
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert resp.status_code == 201
+    assert resp.json()["surprise"] is True
+    assert resp.json()["gift_from"] == "Ali (London)"
+
+
+@pytest.mark.asyncio
+async def test_sender_name_defaults_to_the_account_name(
+    client: AsyncClient, db: AsyncSession, customer: User, product: Product, city: City
+) -> None:
+    customer.full_name = "Ali Khan"
+    await db.commit()
+    email, product_id, city_id = customer.email, str(product.id), str(city.id)
+    token = await _login(client, email)
+    await _add_item(client, token, product_id)
+
+    resp = await client.post(
+        "/api/v1/checkout/place", json=_place_body(city_id), headers={"Authorization": f"Bearer {token}"}
+    )
+
+    assert resp.json()["surprise"] is False
+    assert resp.json()["gift_from"] == "Ali Khan"

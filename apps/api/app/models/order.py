@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 
 from sqlalchemy import (
     BigInteger,
+    Boolean,
     Date,
     DateTime,
     Enum,
@@ -14,6 +15,7 @@ from sqlalchemy import (
     Numeric,
     String,
     Text,
+    false,
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -132,6 +134,10 @@ class Order(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     # Buyer contact for guest orders (no user); null for signed-in orders. ADR 0004.
     contact_email: Mapped[str | None] = mapped_column(String(255), nullable=True)
     contact_phone: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    # Recipient messaging: whose gift it is ("A gift from Ali"), and whether to
+    # keep it a surprise (no message before delivery, rider doesn't call ahead).
+    surprise: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false(), nullable=False)
+    gift_from: Mapped[str | None] = mapped_column(String(80), nullable=True)
     currency: Mapped[str] = mapped_column(String(3), nullable=False)
     fx_rate_to_pkr: Mapped[Decimal] = mapped_column(Numeric(18, 6), default=Decimal("1"), nullable=False)
     subtotal_pkr: Mapped[int] = mapped_column(BigInteger, nullable=False)

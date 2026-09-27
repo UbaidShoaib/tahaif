@@ -51,6 +51,10 @@ export const checkoutSchema = z
     address_line2: optional(255, "Apartment / floor"),
     landmark: optional(255, "Landmark"),
     notes: optional(500, "Notes"),
+    /** Name used in WhatsApp messages to the recipient ("A gift from Ali"). */
+    gift_from: optional(80, "Your name for the recipient"),
+    /** No message before delivery; the rider doesn't call ahead. */
+    surprise: z.boolean(),
   })
   .superRefine((v, ctx) => {
     if (!v.is_guest) return;

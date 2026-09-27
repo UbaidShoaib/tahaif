@@ -196,6 +196,12 @@ export default function VendorOrdersPage() {
                     </button>
                   )}
                 </div>
+                {f.surprise && (
+                  <p className="mb-3 rounded-md bg-gold-soft px-3 py-2 text-sm font-medium text-gold-ink">
+                    🤫 Surprise gift: don&apos;t call the recipient ahead unless you can&apos;t find the address, and
+                    don&apos;t include a receipt or price.
+                  </p>
+                )}
                 {rowError[f.id] && (
                   <p role="alert" className="mb-3 text-sm text-destructive">{rowError[f.id]}</p>
                 )}

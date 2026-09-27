@@ -95,6 +95,8 @@ export default function CheckoutPage() {
       address_line2: "",
       landmark: "",
       notes: "",
+      gift_from: "",
+      surprise: false,
     },
   });
 

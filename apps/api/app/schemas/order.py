@@ -22,6 +22,16 @@ class CheckoutPlace(BaseModel):
     # Required for guest checkout (no signed-in user); ignored for signed-in buyers. ADR 0004.
     contact_email: EmailStr | None = None
     contact_phone: str | None = Field(default=None, min_length=7, max_length=30)
+    surprise: bool = Field(
+        default=False,
+        description="Keep it a surprise: no message to the recipient before delivery; the rider doesn't call ahead",
+    )
+    gift_from: str | None = Field(
+        default=None,
+        max_length=80,
+        description="Sender name used in messages to the recipient; defaults to the account's name",
+        examples=["Ali (London)"],
+    )
 
 
 class QuoteLineItem(BaseModel):
@@ -107,3 +117,5 @@ class OrderRead(BaseModel):
     items: list[OrderItemRead]
     fulfillments: list[FulfillmentRead]
     payment_method: PaymentMethod | None
+    surprise: bool = False
+    gift_from: str | None = None

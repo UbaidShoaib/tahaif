@@ -149,6 +149,10 @@ export interface OrderRead {
   placed_at: string;
   items: OrderItemRead[];
   fulfillments: FulfillmentRead[];
+  /** No message to the recipient before delivery; the rider doesn't call ahead. */
+  surprise?: boolean;
+  /** Sender name used in messages to the recipient. */
+  gift_from?: string | null;
   payment_method: PaymentMethod | null;
 }
 

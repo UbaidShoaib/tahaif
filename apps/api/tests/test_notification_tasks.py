@@ -156,3 +156,70 @@ def test_delivered_copy_points_to_photo_when_there_is_one() -> None:
     _, without = fulfillment_update_text({"status": "delivered", "recipient_name": "Ammi"})
     assert "delivery photo" in with_photo
     assert "delivery photo" not in without
+
+
+# ── Recipient messages ───────────────────────────────────────────────────────
+
+from app.workers.notification_tasks import (  # noqa: E402
+    enqueue_recipient_update,
+    recipient_template,
+)
+from app.workers.outbox_worker import recipient_text  # noqa: E402
+
+
+@pytest.mark.parametrize(
+    ("status", "surprise", "expected"),
+    [
+        ("out_for_delivery", False, "recipient_on_the_way"),
+        ("delivered", False, None),
+        ("preparing", False, None),
+        ("out_for_delivery", True, None),
+        ("dispatched", True, None),
+        ("delivered", True, "recipient_surprise_reveal"),
+    ],
+)
+def test_recipient_template_rules(status: str, surprise: bool, expected: str | None) -> None:
+    assert recipient_template(status, surprise) == expected
+
+
+def test_recipient_heads_up_names_the_sender_without_prices_or_links() -> None:
+    text = recipient_text("recipient_on_the_way", {"recipient_name": "Ammi", "gift_from": "Ali"}, "Tahaif")
+    assert text.startswith("Assalam-o-Alaikum Ammi! A gift from Ali is on its way to you today")
+    assert "http" not in text
+    assert "PKR" not in text
+
+
+def test_surprise_reveal_mentions_the_card_note_when_there_is_one() -> None:
+    with_note = recipient_text(
+        "recipient_surprise_reveal", {"recipient_name": "Ammi", "gift_from": "Ali", "has_note": True}, "Tahaif"
+    )
+    assert "Surprise! The gift you just received is from Ali" in with_note
+    assert "Scan the QR code on the card" in with_note
+
+
+def test_recipient_text_falls_back_when_sender_unknown() -> None:
+    text = recipient_text("recipient_on_the_way", {"recipient_name": "", "gift_from": None}, "Tahaif")
+    assert text.startswith("Assalam-o-Alaikum! A gift from someone who loves you")
+
+
+@pytest.mark.asyncio
+async def test_recipient_update_queues_one_whatsapp_row(outbox: AsyncSession) -> None:
+    order_id = uuid.uuid4()
+
+    queued = await enqueue_recipient_update(
+        db=outbox,
+        order_id=order_id,
+        fulfillment_id=uuid.uuid4(),
+        status="out_for_delivery",
+        surprise=False,
+        recipient_name="Ammi",
+        recipient_phone="+923001234567",
+        gift_from="Ali",
+    )
+
+    result = await outbox.execute(
+        sa.text("SELECT channel::text, to_address, template FROM notifications_outbox WHERE payload->>'order_id' = :o"),
+        {"o": str(order_id)},
+    )
+    assert queued == 1
+    assert [tuple(r) for r in result.all()] == [("whatsapp", "+923001234567", "recipient_on_the_way")]

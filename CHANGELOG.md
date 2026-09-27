@@ -48,6 +48,13 @@ pre-production-cutover).
   separate from the order's, so the recipient can't see the order. API:
   `POST`/`DELETE /orders/by-token/{token}/items/{item_id}/note`, `GET /notes/{token}`;
   migration `0009`.
+- Recipient messages and surprise mode (diaspora Release B): at checkout the buyer
+  can set the name the recipient sees ("A gift from Ali (London)", defaulting to the
+  account name) and choose "Keep it a surprise". Normal orders send the recipient a
+  WhatsApp heads-up when the rider sets out; surprise orders send nothing beforehand
+  and a reveal after delivery (mentioning the card's QR note if there is one). The
+  vendor portal flags surprise gifts: don't call ahead, no receipt or price. Messages
+  to the recipient carry no prices or links. Migration `0010`.
 
 ### Fixed
 - Vendors couldn't see the buyer's card message, so nothing told them what to

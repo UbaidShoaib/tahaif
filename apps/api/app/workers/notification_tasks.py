@@ -123,6 +123,60 @@ async def enqueue_fulfillment_update(
     return len(rows)
 
 
+# Messages to the person receiving the gift (diaspora Release B). Normal orders
+# get a heads-up when the rider sets out; surprise orders get nothing beforehand
+# and a reveal once it's delivered.
+RECIPIENT_ON_THE_WAY_TEMPLATE = "recipient_on_the_way"
+RECIPIENT_SURPRISE_TEMPLATE = "recipient_surprise_reveal"
+
+
+def recipient_template(status: str, surprise: bool) -> str | None:
+    """Which message (if any) the recipient gets when a fulfillment reaches `status`."""
+    if surprise:
+        return RECIPIENT_SURPRISE_TEMPLATE if status == "delivered" else None
+    return RECIPIENT_ON_THE_WAY_TEMPLATE if status == "out_for_delivery" else None
+
+
+async def enqueue_recipient_update(
+    db: AsyncSession,
+    order_id: uuid.UUID,
+    fulfillment_id: uuid.UUID,
+    status: str,
+    surprise: bool,
+    recipient_name: str,
+    recipient_phone: str | None,
+    gift_from: str | None,
+    has_note: bool = False,
+) -> int:
+    """Queue a WhatsApp message to the recipient, if this status calls for one.
+
+    The payload carries no prices, order token or tracking link: the recipient
+    only learns who the gift is from.
+    """
+    template = recipient_template(status, surprise)
+    if template is None or not recipient_phone:
+        return 0
+    payload = json.dumps({
+        "order_id": str(order_id),
+        "fulfillment_id": str(fulfillment_id),
+        "recipient_name": recipient_name,
+        "gift_from": gift_from,
+        "has_note": has_note,
+    })
+    await _insert(db, [{
+        "id": uuid.uuid4(),
+        "channel": "whatsapp",
+        "to_address": recipient_phone,
+        "template": template,
+        "payload": payload,
+        "status": "pending",
+        "attempts": 0,
+        "created_at": datetime.now(UTC),
+    }])
+    await logger.ainfo("recipient_notification_enqueued", order_id=str(order_id), template=template)
+    return 1
+
+
 async def _insert(db: AsyncSession, rows: list[dict[str, object]]) -> None:
     await db.execute(sa.text("""
         INSERT INTO notifications_outbox (id, channel, to_address, template, payload, status, attempts, created_at)

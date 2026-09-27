@@ -58,6 +58,8 @@ export interface VendorFulfillmentRead {
   item_count: number;
   subtotal_pkr: number;
   items: VendorLineItem[];
+  /** Surprise gift: don't call the recipient ahead, and include no receipt or price. */
+  surprise: boolean;
 }
 
 export interface FulfillmentStatusUpdate {

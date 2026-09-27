@@ -145,6 +145,27 @@ export function DeliveryDetailsSection({
       <FormField label="Notes for the rider" hint="Optional" id="notes" error={errors.notes?.message}>
         {(p) => <Textarea {...p} rows={2} placeholder="Special instructions for delivery" {...register("notes")} />}
       </FormField>
+
+      {/* Recipient messages (WhatsApp): who it's from, and whether to keep it a surprise. */}
+      <FormField
+        label="Your name for the recipient"
+        hint="Optional. We tell them who the gift is from, e.g. “A gift from Ali”. Leave empty to use your account name."
+        id="gift_from"
+        error={errors.gift_from?.message}
+      >
+        {(p) => <Input {...p} maxLength={80} placeholder="e.g. Ali (London)" {...register("gift_from")} />}
+      </FormField>
+
+      <label htmlFor="surprise" className="flex cursor-pointer items-start gap-3 rounded-lg border p-3">
+        <input id="surprise" type="checkbox" className="mt-1 h-4 w-4 accent-primary-700" {...register("surprise")} />
+        <span className="text-sm">
+          <span className="block font-medium">Keep it a surprise</span>
+          <span className="block text-muted-foreground">
+            We won&apos;t message them before it arrives, and the rider won&apos;t call ahead unless they can&apos;t
+            find the address. Once it&apos;s delivered we tell them who it&apos;s from.
+          </span>
+        </span>
+      </label>
     </section>
   );
 }

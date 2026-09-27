@@ -171,6 +171,22 @@ describe("CheckoutPage", () => {
     await waitFor(() => expect(push).toHaveBeenCalledWith("/checkout/success/t1"));
   });
 
+  it("sends the sender name and surprise choice for the recipient messages", async () => {
+    vi.mocked(cartApi.place).mockResolvedValue({ id: "o1", public_token: "t1", total_pkr: 1, payment_method: "cod", items: [] } as never);
+    render(<CheckoutPage />);
+    await pickLahore();
+    await userEvent.type(screen.getByLabelText(/^Recipient name/), "Ammi");
+    await userEvent.type(screen.getByLabelText(/^Recipient phone/), "+923001234567");
+    await userEvent.type(screen.getByLabelText(/^Address/), "12 Main Boulevard");
+    await userEvent.type(screen.getByLabelText(/^Your name for the recipient/), "Ali (London)");
+    await userEvent.click(screen.getByRole("checkbox", { name: /Keep it a surprise/ }));
+
+    await userEvent.click(screen.getByRole("button", { name: "Place Order" }));
+
+    await waitFor(() => expect(cartApi.place).toHaveBeenCalled());
+    expect(vi.mocked(cartApi.place).mock.calls[0]?.[0]).toMatchObject({ gift_from: "Ali (London)", surprise: true });
+  });
+
   it("shows an error summary and inline errors instead of placing an incomplete order", async () => {
     render(<CheckoutPage />);
     await screen.findByRole("option", { name: "Lahore" });

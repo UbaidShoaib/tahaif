@@ -890,3 +890,59 @@ async def test_vendor_cannot_read_another_vendors_fulfillment(
     resp = await client.get(f"/api/v1/vendor/fulfillments/{fulfillment_id}", headers={"Authorization": f"Bearer {token}"})
 
     assert resp.status_code == 404
+
+
+# ── Recipient messages and surprise mode ─────────────────────────────────────
+
+
+async def _recipient_messages(db: AsyncSession, order_id: uuid.UUID) -> list[tuple[str, str]]:
+    result = await db.execute(
+        sa.text(
+            "SELECT template, to_address FROM notifications_outbox "
+            "WHERE payload->>'order_id' = :oid AND template LIKE 'recipient_%' ORDER BY created_at"
+        ),
+        {"oid": str(order_id)},
+    )
+    return [tuple(r) for r in result.all()]  # type: ignore[misc]
+
+
+@pytest.mark.asyncio
+async def test_recipient_gets_a_heads_up_when_the_rider_sets_out(
+    client: AsyncClient,
+    outbox: AsyncSession,
+    vendor_user: User,
+    order_and_fulfillment: tuple,
+) -> None:
+    order, fulfillment = order_and_fulfillment
+    order_id, fulfillment_id = order.id, fulfillment.id
+    token = await _login(client, vendor_user.email)
+
+    await _patch(client, token, fulfillment_id, status="dispatched")
+    assert await _recipient_messages(outbox, order_id) == []
+    await _patch(client, token, fulfillment_id, status="out_for_delivery")
+    await _patch(client, token, fulfillment_id, status="delivered")
+
+    assert await _recipient_messages(outbox, order_id) == [("recipient_on_the_way", "+923001234567")]
+
+
+@pytest.mark.asyncio
+async def test_surprise_order_stays_quiet_until_delivered(
+    client: AsyncClient,
+    db: AsyncSession,
+    outbox: AsyncSession,
+    vendor_user: User,
+    order_and_fulfillment: tuple,
+) -> None:
+    order, fulfillment = order_and_fulfillment
+    order_id, fulfillment_id = order.id, fulfillment.id
+    order.surprise = True
+    await db.commit()
+    token = await _login(client, vendor_user.email)
+    headers = {"Authorization": f"Bearer {token}"}
+
+    assert (await client.get(f"/api/v1/vendor/fulfillments/{fulfillment_id}", headers=headers)).json()["surprise"] is True
+    await _patch(client, token, fulfillment_id, status="out_for_delivery")
+    assert await _recipient_messages(outbox, order_id) == []
+
+    await _patch(client, token, fulfillment_id, status="delivered")
+    assert await _recipient_messages(outbox, order_id) == [("recipient_surprise_reveal", "+923001234567")]

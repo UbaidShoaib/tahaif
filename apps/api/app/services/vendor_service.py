@@ -27,7 +27,10 @@ from app.schemas.vendor import (
     VendorLineItem,
 )
 from app.services import proof_service
-from app.workers.notification_tasks import enqueue_fulfillment_update
+from app.workers.notification_tasks import (
+    enqueue_fulfillment_update,
+    enqueue_recipient_update,
+)
 
 logger = structlog.get_logger()
 
@@ -208,7 +211,7 @@ async def _move_fulfillment(
     status_changed = new_status != fulfillment.status
     fulfillment = await repo.update_fulfillment(fulfillment, **kwargs)
     if status_changed:
-        await _notify_buyer(db, parent, fulfillment)
+        await _notify(db, parent, fulfillment)
 
     order = await repo.get_by_id(fulfillment.order_id)
     if order:
@@ -228,8 +231,8 @@ async def list_my_products(
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
-async def _notify_buyer(db: AsyncSession, order: Order, fulfillment: Fulfillment) -> None:
-    """Queue a status update for the buyer (best-effort).
+async def _notify(db: AsyncSession, order: Order, fulfillment: Fulfillment) -> None:
+    """Queue status messages for the buyer and, where due, the recipient (best-effort).
 
     Runs in a SAVEPOINT, like the checkout confirmation, so an outbox failure
     never blocks the vendor's status change.
@@ -247,6 +250,17 @@ async def _notify_buyer(db: AsyncSession, order: Order, fulfillment: Fulfillment
                 has_photo=fulfillment.delivery_photo_key is not None,
                 buyer_email=buyer.email if buyer else order.contact_email,
                 buyer_phone=buyer.phone if buyer else order.contact_phone,
+            )
+            await enqueue_recipient_update(
+                db=db,
+                order_id=order.id,
+                fulfillment_id=fulfillment.id,
+                status=fulfillment.status.value,
+                surprise=order.surprise,
+                recipient_name=fulfillment.recipient_name,
+                recipient_phone=fulfillment.recipient_phone,
+                gift_from=order.gift_from,
+                has_note=any(i.note_key for i in fulfillment.order_items),
             )
     except Exception:
         await logger.aexception("fulfillment_notification_enqueue_failed", order_id=str(order.id))
@@ -277,6 +291,7 @@ def _fulfillment_to_read(f: Fulfillment) -> VendorFulfillmentRead:
         received_by=f.received_by,
         item_count=item_count,
         subtotal_pkr=subtotal,
+        surprise=f.order.surprise if f.order else False,
         items=[
             VendorLineItem(
                 product_name=i.product.name,
