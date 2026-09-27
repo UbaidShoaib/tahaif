@@ -192,6 +192,42 @@ container (Compose is started with `--env-file .env` for this reason).
 
 ---
 
+### Background worker (notifications, FX rates)
+
+The container start script (`apps/api/scripts/start-api.sh`) runs migrations,
+starts `arq app.workers.main.WorkerSettings` in the background (restarting it if
+it exits), then serves the API. The worker:
+
+- sends queued order confirmations every 15 seconds; each message is claimed,
+  sent and committed on its own, failures retry on later runs, and after 3
+  attempts the row is marked `failed` with `last_error`;
+- refreshes FX rates daily at 01:00 UTC and once on start (needs
+  `OPEN_EXCHANGE_RATES_APP_ID`).
+
+Cron jobs take a Redis lock, so one worker per replica never double-sends. To run
+it as its own service, set `RUN_WORKER_IN_API=0` on the API and start a second
+service from the same image with `arq app.workers.main.WorkerSettings`.
+
+Stuck messages:
+
+```sql
+SELECT channel, status, attempts, left(last_error, 80), count(*)
+FROM notifications_outbox GROUP BY 1,2,3,4;
+```
+
+Unconfigured providers fail loudly (e.g. `Twilio credentials are not configured`)
+rather than being marked sent.
+
+### Client IPs behind the proxy
+
+Set `TRUSTED_PROXY_HOPS` to the number of proxies that append to
+`X-Forwarded-For`: **1 on Railway** (set it in the service's Variables — railway.json
+cannot hold env vars), 1 on Render/Fly (already in their configs), 2 if
+Cloudflare proxies in front. Wrong values either lump every buyer into one
+rate-limit bucket (too low) or let clients spoof their IP (too high).
+
+---
+
 ## 7. Monitoring dashboards
 
 - **Sentry** — not yet configured (`SENTRY_DSN` unset)

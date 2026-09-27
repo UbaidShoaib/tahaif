@@ -1,0 +1,226 @@
+# Changelog
+
+All notable changes to Tahaif are documented here. Format loosely follows
+[Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Dates reflect commit
+history; the project has not yet cut a versioned release (still pre-1.0,
+pre-production-cutover).
+
+## [Unreleased]
+
+### Changed
+- Rebrand to the Anaar berry (`#9f1f50`) + Zari gold palette (ADR 0003), replacing
+  emerald `#16a34a`, which failed WCAG AA contrast (3.30:1) on every primary
+  button, price and link. All hard-coded brand hex values now use tokens.
+- Storefront accessibility quick wins (`docs/ui-ux-redesign-plan.md`, Phase 0):
+  the cart drawer is inert when closed and supports Escape, focus trapping and
+  focus return; a mobile menu and header search were added; add-to-cart failures
+  are shown to the user; variant, city and payment choices expose `aria-pressed`;
+  checkout uses native validation instead of a silently disabled Place Order,
+  and adds `autocomplete`/`tel` inputs and an announced error; 44px tap targets
+  in the header and cart rows; readable error, input-border and rating-star
+  colors; a single `<main>` landmark on category pages; breadcrumb labels;
+  global `prefers-reduced-motion` support; `/cart` sign-in now returns to the
+  cart (`callbackUrl`).
+- Redesign phase 1 (foundations): light/dark design tokens for neutrals, brand,
+  gold and semantic colors; Inter + Fraunces fonts; fluid heading sizes; radius
+  and shadow scales; stronger default field borders. Ad-hoc Tailwind palette
+  colors were replaced with semantic tokens, and password strength now has a
+  text label. In dark mode the primary CTA is pink with a dark label.
+- Redesign phase 2 (base components): FormField, Input/Textarea/Select,
+  RadioGroup (RadioCard/RadioChip), Badge, OrderStatusBadge, Sheet, Toast,
+  Breadcrumb, Rating/RatingInput, QuantityStepper, Skeleton and EmptyState.
+  Order status badges now show an icon and text. Removing a cart item offers
+  Undo. Adding to cart shows a toast with a "View cart" action.
+- Redesign phase 3: the cart drawer and a new slide-in mobile menu (search,
+  Deliver to, shop, occasions, account, currency) are proper modal dialogs.
+  The header has a search box and a "Deliver to" city picker. The chosen city
+  is remembered and pre-fills search and checkout. The header no longer
+  overflows at any width from 320px up.
+- Redesign phase 4: checkout rebuilt. Fields are validated with messages that
+  explain the fix, and a focused error summary links to each problem.
+  Saved addresses and payment method are radio cards, with the default address
+  preselected. Each gift's card message appears in the summary. On phones the
+  total and Place Order stay pinned to the bottom. Retrying a failed order
+  reuses its Idempotency-Key so it can't be placed twice. Delivery time slots
+  are deferred (docs/questions.md Q15).
+- Redesign phase 6: the product page has a swipeable image gallery. Sizes are
+  radio chips. The price, delivery fee and earliest delivery day follow the
+  chosen city, with a same-day countdown only when it's genuinely possible.
+  Add to Cart is pinned with the price on phones. The average rating links to
+  reviews and ratings show half stars. A trust list is limited to promises the
+  service actually makes.
+- Redesign phase 7: search, category, occasion and vendor pages share one
+  listing. City and price filters and sort live in the URL. The first page is
+  server-rendered, "Load more" adds 24 at a time, and a filter sheet is used on
+  phones. Cards show "From" correctly and the earliest delivery day. API:
+  `GET /products` accepts `sort` (recommended, price_asc, price_desc, newest)
+  and `min_price_pkr` / `max_price_pkr`, using the city's price when `city_id`
+  is given. With no city chosen, all prices show the base price.
+- Redesign phase 5, guest checkout (ADR 0004): buyers can add to the cart and
+  place an order without an account. Guest carts use an `X-Cart-Token` header
+  and merge into the account cart on sign-in. Guests give an email and phone at
+  checkout (stored on the order; migration `0007`) and can upload bank-transfer
+  receipts with the order's tracking link. Coupons work for guests; loyalty
+  points need an account. Placing orders is rate limited. Also fixed: the
+  checkout city select could show "Select city…" while a city was already chosen.
+- Redesign phase 8: new home page with a "Deliver to" city finder, a same-day
+  rail for the chosen city (honest cutoff countdown), icon category tiles,
+  "How it works" and a trust strip. Footer and home copy no longer promise a
+  money-back guarantee or on-time delivery, since no refund policy is
+  published yet (docs/questions.md Q17).
+- Redesign phase 9: the confirmation page leads with bank-transfer details
+  (with copy buttons) and receipt upload, explains what happens next, and lets
+  buyers share the tracking link. Order timeline fixed: completed orders showed
+  no progress and cancelled ones an empty bar. Short order numbers everywhere.
+  Branded 404, error and loading screens.
+- Redesign phase 10: product images on known hosts are optimised (AVIF/WebP,
+  resized). Other hosts still render. New `NEXT_PUBLIC_IMAGE_HOSTS`.
+- Redesign phase 11 (ADR 0005): Urdu/RTL readiness. next-intl with a cookie
+  locale, `<html lang dir>`, logical CSS throughout, Urdu font fallback, and the
+  site chrome translated. Urdu stays behind `NEXT_PUBLIC_ENABLE_URDU` (off).
+- E2E suite run against the real stack (8 passed, 1 skipped, stable over 8 runs).
+  It exposed and fixed three bugs:
+  - A 422 validation error crashed the login, register and checkout pages.
+  - Input typed, or a tap on Add to Cart, before the page hydrated was lost.
+  - Every add to cart opened the modal cart drawer on top of the confirmation toast.
+
+### Added
+- Production dependency audit: bumped `next` 15.5.19 → 15.5.26 (fixes two
+  critical unauthenticated RCE advisories), and backend `anyio`,
+  `cryptography`, `h2`, `pyasn1`, `pydantic-settings`, `starlette` to their
+  latest patched versions (28 known CVEs closed; see `docs/production-gaps.md`
+  for the pre-fix audit and `docs/runbook.md` for outstanding infra items).
+- Fixed `pnpm-workspace.yaml`'s `allowBuilds` block, which had been left with
+  literal placeholder strings (`"set this to true or false"`) instead of
+  booleans — this silently made every `pnpm install` block native builds for
+  `sharp`/`esbuild`/`core-js`/`unrs-resolver` and would fail CI-adjacent
+  installs going forward.
+- This `CHANGELOG.md`, reconstructed from git history (Definition of Done
+  requires one; none existed previously).
+
+### Fixed
+- Web CSP `connect-src` now lists the API origin instead of the full
+  `/api/v1` URL. A path without a trailing slash matches only that exact URL,
+  so browsers were blocking every API call (sign-in, cart, checkout).
+- Vendors can no longer fulfil unpaid orders: non-COD legs are rejected with
+  409 until payment is verified, and the vendor queue shows "Awaiting payment".
+- Fulfilment status is forward-only (stages may be skipped, never reversed);
+  delivered and failed are final; cancelled, refunded and on-hold orders are
+  frozen; completed orders are no longer overwritten by the fulfilment sync.
+  The vendor queue now shows the API's reason when an update is rejected.
+- Order confirmations are queued again: the outbox insert used
+  `:payload::jsonb`, which broke bind parsing, and the error was swallowed.
+  It now uses `CAST(... AS jsonb)` and failures are logged.
+- Bank-transfer receipt upload sends the in-memory access token instead of
+  reading a cookie that never existed. Storage failures return 503 instead of
+  500, and `start.sh` creates the private MinIO bucket.
+- Search works: `/search` queries Meilisearch through the service layer, loads
+  results from the database (so inactive products never appear), and falls back
+  to a database match when Meilisearch is down. The search page uses it instead
+  of filtering the first 48 products in the browser. `start.sh` now passes
+  `--env-file .env` to Compose (the Meilisearch key never matched) and rebuilds
+  the index with the new `scripts/reindex_search.py`.
+- The public vendor storefront (`/vendor/[slug]`) no longer requires a vendor
+  login; only the portal routes are protected.
+- Reloading `/admin` no longer bounces admins to the login page.
+- Deactivated products return 404 on their public page, and the admin toggle
+  keeps the search index in step.
+- Missing FX rates no longer default to 1: that recorded rupee totals as
+  pounds (a Rs 5,850 order as £5,850). Without a rate the charge is in PKR, and
+  COD and bank transfers are always charged in PKR.
+- Loyalty points are worth PKR 1 each at checkout, as decided in
+  docs/questions.md Q9. They were worth PKR 100 (100% cashback).
+- A blank greeting message now clears the card instead of storing "".
+- The "Shop cakes" hero button was white text on a white fill; it is now
+  transparent over the green hero.
+- The role cookie that page routing relies on is cleared on logout and when a
+  refresh fails, and re-synced on every successful refresh.
+- Guest page loads no longer call /auth/refresh (which logged a 401 in the
+  console on every page); the session check only runs when a session cookie
+  exists. Added a site icon, which removes the remaining favicon 404.
+- Rate-limit counters live in Redis under a `tahaif-rl` prefix, so limits are
+  shared by all API workers and survive restarts; if Redis is down the limiter
+  falls back to per-process counting instead of failing requests.
+- Deleting an account also deletes the buyer's saved addresses.
+- The database session now commits before the response is sent. FastAPI's
+  default dependency scope committed after the response was on the wire, so a
+  refresh sent right after login could miss the new token, and a failed commit
+  would still have reached the client as a success.
+- Login keeps working when Redis is down: the brute-force IP ban fails open and
+  logs a warning instead of returning 500.
+- Admins open bank-transfer receipts through 15-minute signed links; the stored
+  object URL was refused by the private bucket (403). S3 requests now use SigV4
+  with a configurable `S3_REGION`.
+- Behind a proxy every request looked like it came from the proxy, so login
+  rate limits and the IP ban applied to all buyers at once; the ban also
+  trusted a client-supplied X-Forwarded-For. Client IPs now come from the
+  entry appended by `TRUSTED_PROXY_HOPS` trusted proxies.
+- Nothing ran the background jobs, so queued confirmations were never sent and
+  FX rates never refreshed. New arq worker (`app.workers.main`) runs from the
+  container start script and `start.sh`; the Docker image now includes
+  `scripts/` (also needed for the search reindex).
+- The outbox sends and commits one message at a time, so a restart never
+  re-sends mail, and failures retry on later runs instead of burning all
+  attempts at once. Unconfigured Twilio now fails instead of marking SMS sent.
+
+### Added
+- North-Star checkout: greeting-card message on the product page and editable
+  in the cart; coupon box and loyalty-points toggle at checkout, previewed by
+  `POST /checkout/quote` (new `coupon_code`, `use_loyalty_points`,
+  `payment_method` parameters and discount fields); send to a saved address.
+- Currency choice in the header with approximate prices, saved to the profile;
+  public `GET /fx-rates`; orders expose `total_charged`.
+- My Account page (profile, currency, data export, account deletion) and
+  Addresses page (add, edit, delete, default), replacing "Coming soon".
+
+## 2026-07-22 — Deploy hardening & infra fixes
+- CI: added Playwright e2e job for the 5 critical flows.
+- Fixed pnpm workspace build context and API health-check path.
+- Fixed API Dockerfile `WORKDIR` bug; added Render Blueprint and Railway config
+  as alternate deploy targets.
+- Tightened mypy/ruff compliance across endpoints and workers.
+- Added checkout test coverage: coupons, loyalty burn, variant stock,
+  idempotency.
+- Fixed a checkout bug: notification-outbox enqueue now guarded with a
+  SAVEPOINT so a failed notification write can't roll back the order.
+- Fixed admin dashboard reading the wrong auth-store field for the access
+  token.
+- Documented the Railway backend deploy decision; updated `docs/runbook.md`.
+- `.env`/`.vercel/` local files properly gitignored at both repo root and
+  `apps/web`.
+
+## 2026-06-14/15 — Phases 1–6 (full build-out)
+This was the primary build phase; all six planned phases landed in rapid
+succession:
+- **Phase 1** — auth & users backend (JWT, OAuth, register/login).
+- **Phase 2** — catalog, cart & order backend + Next.js 15 frontend scaffold;
+  occasions API, city filter, 81% backend test coverage.
+- **Phase 3** — cart, checkout, order tracking; 85% test coverage.
+- **Phase 4** — vendor portal (fulfillments, profile, products).
+- **Phase 5** — loyalty points, reviews, coupons, banners, testimonials.
+- **Phase 6** — hardening pass: perf, a11y, security headers, load-test
+  config, deploy config.
+
+Follow-up fixes closing gaps found in the 2026-06-14 production-readiness
+audit (`docs/production-gaps.md`):
+- Idempotency key enforcement on order placement (migration 0006).
+- Stock validation and decrement at checkout; delivery lead-time validation;
+  FX conversion and coupon/loyalty-burn wired into checkout.
+- S3 proof-of-payment upload endpoint + idempotency key wiring.
+- Admin backend API: orders, payment verification, products, FX overrides,
+  coupons, users — and the admin frontend replaced its "Coming soon" stub
+  with a live order-management dashboard.
+- Twilio client, notification outbox worker, and daily FX-rate worker.
+- Security: CSP header, HSTS `preload` directive, audit log, brute-force IP
+  ban, GDPR export/delete endpoints.
+- Newsletter subscribe/confirm with double opt-in.
+- Bank IBAN moved out of source into env vars; proof upload added to the
+  checkout success page.
+- PostHog analytics (pageview, cart, checkout events); JSON-LD, dynamic
+  sitemap, and robots.txt for SEO.
+- Playwright e2e specs for the 5 critical user flows.
+- `docs/runbook.md` (production operations runbook).
+
+## 2026-06-09 — Phase 0
+- Monorepo scaffold: Docker Compose, CI skeleton, FastAPI + Next.js
+  hello-world.
