@@ -32,6 +32,7 @@ export const options = {
     },
     checkout_smoke: {
       executor: "constant-vus",
+      exec: "checkoutSmoke",
       vus: 5,
       duration: "1m",
       startTime: "15s",
@@ -83,7 +84,11 @@ function getToken() {
   const reg = http.post(
     `${API}/auth/register`,
     JSON.stringify({ email, password, full_name: "Load Test" }),
-    { headers: HEADERS_JSON }
+    {
+      headers: HEADERS_JSON,
+      // 409 is expected if this email was already registered by a prior run.
+      responseCallback: http.expectedStatuses(201, 409),
+    }
   );
 
   if (reg.status !== 201) {
@@ -114,7 +119,7 @@ function authHeaders() {
 
 export default function catalogBrowse() {
   group("health", () => {
-    const res = http.get(`${BASE_URL}/health`);
+    const res = http.get(`${API}/healthz`);
     assertOk(res, "health");
     sleep(0.1);
   });
@@ -147,8 +152,12 @@ export default function catalogBrowse() {
   });
 
   group("coupon validate", () => {
-    const res = http.get(`${API}/coupons/WELCOME10/validate`);
-    // 404 is acceptable — coupon may not exist in load-test env
+    // 404 is acceptable — coupon may not exist in the load-test env. Mark it as
+    // an expected status so it doesn't inflate the http_req_failed threshold,
+    // which otherwise counts any 4xx as a failure regardless of our own checks.
+    const res = http.get(`${API}/coupons/WELCOME10/validate`, {
+      responseCallback: http.expectedStatuses(200, 404),
+    });
     check(res, {
       "coupon validate not 5xx": (r) => r.status < 500,
     });
@@ -210,8 +219,13 @@ export function checkoutSmoke() {
 
     const cityId = citiesBody[0].id;
 
-    const res = http.get(`${API}/checkout/quote?city_id=${cityId}`, { headers });
-    // 400 is OK if cart is empty for this VU
+    // checkout/quote is a POST endpoint (city_id is a query param, no body needed).
+    // 400 is OK if cart is empty for this VU — mark it expected so it doesn't
+    // inflate the http_req_failed threshold.
+    const res = http.post(`${API}/checkout/quote?city_id=${cityId}`, null, {
+      headers,
+      responseCallback: http.expectedStatuses(200, 400),
+    });
     check(res, {
       "checkout quote not 5xx": (r) => r.status < 500,
     });
