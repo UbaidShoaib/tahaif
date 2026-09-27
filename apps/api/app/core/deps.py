@@ -12,6 +12,13 @@ from app.repositories.user_repository import UserRepository
 
 _bearer = HTTPBearer(auto_error=False)
 
+# scope="function": the session commits when the endpoint returns, BEFORE the
+# response is sent. FastAPI's default ("request") runs yield-dependency cleanup
+# after the response is on the wire, so a client could act on a success response
+# (e.g. refresh right after login) before its data was committed, and a failed
+# commit would still have been reported to the client as a success.
+DB = Annotated[AsyncSession, Depends(get_db, scope="function")]
+
 _UNAUTHORIZED = HTTPException(
     status_code=status.HTTP_401_UNAUTHORIZED,
     detail="Not authenticated",
@@ -22,7 +29,7 @@ _FORBIDDEN = HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Insuff
 
 async def get_current_user(
     credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(_bearer)],
-    db: Annotated[AsyncSession, Depends(get_db)],
+    db: DB,
 ) -> User:
     if not credentials:
         raise _UNAUTHORIZED
@@ -45,7 +52,6 @@ async def get_current_user(
 
 
 CurrentUser = Annotated[User, Depends(get_current_user)]
-DB = Annotated[AsyncSession, Depends(get_db)]
 
 
 def require_roles(*roles: UserRole):  # type: ignore[no-untyped-def]
