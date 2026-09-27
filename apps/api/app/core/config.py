@@ -2,7 +2,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Literal
 
-from pydantic import AnyHttpUrl, PostgresDsn, RedisDsn
+from pydantic import AnyHttpUrl, Field, PostgresDsn, RedisDsn
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -48,6 +48,9 @@ class Settings(BaseSettings):
 
     # Frontend
     frontend_url: str = "http://localhost:3000"
+    # Reverse proxies in front of the API that append to X-Forwarded-For:
+    # 0 locally, 1 on Railway/Render/Fly, 2 with Cloudflare in front of those.
+    trusted_proxy_hops: int = Field(default=0, ge=0, le=5)
 
     # Meilisearch
     meilisearch_url: AnyHttpUrl = "http://localhost:7700"  # type: ignore[assignment]

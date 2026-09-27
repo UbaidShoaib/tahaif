@@ -4,6 +4,7 @@ import structlog
 from fastapi import APIRouter, Cookie, Depends, HTTPException, Request, Response, status
 from fastapi.responses import RedirectResponse
 
+from app.core.client_ip import client_ip
 from app.core.config import get_settings
 from app.core.deps import DB
 from app.core.rate_limit import limiter
@@ -33,10 +34,7 @@ _BAN_TTL_SECS = 86400      # 24 hours
 
 
 def _client_ip(request: Request) -> str:
-    forwarded = request.headers.get("X-Forwarded-For")
-    if forwarded:
-        return forwarded.split(",")[0].strip()
-    return request.client.host if request.client else "unknown"
+    return client_ip(request)
 
 
 async def _check_ip_not_banned(request: Request) -> None:

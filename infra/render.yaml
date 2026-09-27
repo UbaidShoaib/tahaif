@@ -29,7 +29,7 @@ services:
     # preDeployCommand isn't available on the free plan, so migrations run as
     # part of the container's own start command instead (idempotent — safe to
     # re-run on every restart of this single always-on instance).
-    dockerCommand: "sh -c 'alembic upgrade head && exec uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 2'"
+    dockerCommand: "sh scripts/start-api.sh"
     envVars:
       - key: ENVIRONMENT
         value: production
@@ -37,6 +37,9 @@ services:
         generateValue: true
       - key: COOKIE_SECURE
         value: "true"
+      # Render's proxy appends the client IP to X-Forwarded-For (use 2 behind Cloudflare).
+      - key: TRUSTED_PROXY_HOPS
+        value: "1"
       - key: FRONTEND_URL
         value: https://tahaif-web.vercel.app
       - key: DATABASE_URL

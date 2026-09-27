@@ -1,8 +1,8 @@
 import os
 
 from slowapi import Limiter
-from slowapi.util import get_remote_address
 
+from app.core.client_ip import client_ip
 from app.core.config import get_settings
 
 
@@ -14,7 +14,7 @@ def build_limiter(storage_uri: str, enabled: bool = True) -> Limiter:
     falls back to per-process counting rather than failing requests.
     """
     return Limiter(
-        key_func=get_remote_address,
+        key_func=client_ip,
         default_limits=["200/minute"],
         storage_uri=storage_uri,
         key_prefix="tahaif-rl",

@@ -47,6 +47,7 @@ echo ""
 # ── Cleanup on exit ────────────────────────────────────────────────────────────
 API_PID=""
 WEB_PID=""
+WORKER_PID=""
 
 cleanup() {
   echo ""
@@ -60,6 +61,11 @@ cleanup() {
   if [[ -n "$WEB_PID" ]] && kill -0 "$WEB_PID" 2>/dev/null; then
     kill "$WEB_PID" 2>/dev/null || true
     success "Web server stopped"
+  fi
+
+  if [[ -n "$WORKER_PID" ]] && kill -0 "$WORKER_PID" 2>/dev/null; then
+    kill "$WORKER_PID" 2>/dev/null || true
+    success "Worker stopped"
   fi
 
   echo ""
@@ -237,6 +243,10 @@ else
   warn "Search index not built — /search will fall back to the database"
 fi
 
+info "Starting background worker (notifications, FX rates)..."
+uv run arq app.workers.main.WorkerSettings > ../../logs/worker.log 2>&1 &
+WORKER_PID=$!
+
 info "Starting API server (uvicorn, port 8000)..."
 # Free the port in case a previous server is still running
 fuser -k 8000/tcp 2>/dev/null || true
@@ -327,6 +337,7 @@ echo ""
 echo -e "  ${BOLD}Logs:${NC}"
 echo -e "    API → logs/api.log"
 echo -e "    Web → logs/web.log"
+echo -e "    Worker → logs/worker.log"
 echo ""
 echo -e "  ${BOLD}Press Ctrl+C to stop all servers.${NC}"
 echo ""

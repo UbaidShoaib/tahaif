@@ -170,8 +170,9 @@ def create_app() -> FastAPI:
                     import uuid as _uuid
 
                     import sqlalchemy as _sa
-                    forwarded = req.headers.get("X-Forwarded-For", "")
-                    ip = forwarded.split(",")[0].strip() if forwarded else (req.client.host if req.client else None)
+
+                    from app.core.client_ip import client_ip
+                    ip = client_ip(req)
 
                     async for _db in get_db():
                         await _db.execute(_sa.text("""

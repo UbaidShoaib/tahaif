@@ -16,7 +16,9 @@ COPY --from=builder /app/apps/api/.venv /app/apps/api/.venv
 COPY apps/api/app app
 COPY apps/api/alembic alembic
 COPY apps/api/alembic.ini alembic.ini
+COPY apps/api/scripts scripts
 ENV PATH="/app/apps/api/.venv/bin:$PATH"
 USER app
 EXPOSE 8000
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "2"]
+# Migrates, starts the background worker (RUN_WORKER_IN_API=1), then serves the API.
+CMD ["sh", "scripts/start-api.sh"]
