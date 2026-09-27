@@ -43,5 +43,14 @@ describe("TrustList", () => {
     render(<TrustList />);
     expect(screen.getAllByRole("listitem")).toHaveLength(4);
     expect(screen.getByText(/Cash on delivery or bank transfer/)).toBeInTheDocument();
+    expect(screen.queryByText(/arrived on the chosen day/)).not.toBeInTheDocument();
+  });
+
+  it("leads with the shop's measured on-time rate when there is one", () => {
+    render(<TrustList onTimePercent={96} />);
+    expect(screen.getAllByRole("listitem")).toHaveLength(5);
+    expect(screen.getAllByRole("listitem")[0]).toHaveTextContent(
+      "96% of this shop's gifts arrived on the chosen day (last 90 days)",
+    );
   });
 });

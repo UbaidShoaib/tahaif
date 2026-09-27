@@ -2,6 +2,7 @@ import Link from "next/link";
 import {
   Banknote,
   Cake,
+  CalendarCheck,
   CircleCheck,
   Candy,
   Flower2,
@@ -18,6 +19,7 @@ import { ProductCard } from "@/components/catalog/ProductCard";
 import { HeroFinder } from "@/components/home/HeroFinder";
 import { SameDayRail } from "@/components/home/SameDayRail";
 import { brand } from "@/lib/brand";
+import { onTimePercent } from "@/lib/stats";
 
 const CATEGORIES: { name: string; slug: string; icon: LucideIcon; desc: string }[] = [
   { name: "Cakes", slug: "cakes", icon: Cake, desc: "Birthday, wedding & custom cakes" },
@@ -52,9 +54,15 @@ const TRUST: { icon: LucideIcon; title: string; desc: string }[] = [
 ];
 
 export default async function HomePage() {
-  const { items: featuredProducts } = await catalogApi
-    .getProducts({ page_size: 8 })
-    .catch(() => ({ items: [], total: 0, page: 1, page_size: 8 }));
+  const [{ items: featuredProducts }, onTime] = await Promise.all([
+    catalogApi.getProducts({ page_size: 8 }).catch(() => ({ items: [], total: 0, page: 1, page_size: 8 })),
+    onTimePercent(),
+  ]);
+  // A measured rate, shown only once there's enough delivery history.
+  const trust =
+    onTime === null
+      ? TRUST
+      : [{ icon: CalendarCheck, title: `${onTime}% on the chosen day`, desc: "Measured over the last 90 days" }, ...TRUST];
 
   return (
     <div>
@@ -196,8 +204,10 @@ export default async function HomePage() {
 
       {/* Trust */}
       <section aria-label={`Why ${brand.name}`} className="border-t bg-background-alt px-4 py-10">
-        <ul className="container mx-auto grid grid-cols-2 gap-6 md:grid-cols-4">
-          {TRUST.map(({ icon: Icon, title, desc }) => (
+        <ul
+          className={`container mx-auto grid grid-cols-2 gap-6 ${trust.length > 4 ? "md:grid-cols-5" : "md:grid-cols-4"}`}
+        >
+          {trust.map(({ icon: Icon, title, desc }) => (
             <li key={title} className="flex items-start gap-3">
               <span className="rounded-lg bg-success-soft p-2.5">
                 <Icon aria-hidden className="h-5 w-5 text-success-foreground" />

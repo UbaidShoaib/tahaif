@@ -9,6 +9,7 @@ import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { Rating } from "@/components/ui/rating";
 import { ProductGallery } from "@/components/catalog/ProductGallery";
 import { TrustList } from "@/components/catalog/TrustList";
+import { onTimePercent } from "@/lib/stats";
 
 type Props = { params: Promise<{ slug: string }> };
 
@@ -29,10 +30,11 @@ export default async function ProductPage({ params }: Props) {
   const product = await catalogApi.getProduct(slug).catch(() => null);
   if (!product) notFound();
 
-  const [categories, cities, reviews] = await Promise.all([
+  const [categories, cities, reviews, vendorOnTime] = await Promise.all([
     catalogApi.getCategories(),
     catalogApi.getCities(),
     loyaltyApi.listReviews(product.id).catch(() => []),
+    onTimePercent(product.vendor_id),
   ]);
 
   const flat = (cats: typeof categories): typeof categories =>
@@ -119,7 +121,7 @@ export default async function ProductPage({ params }: Props) {
 
           <VariantPicker product={product} cities={cities} />
 
-          <TrustList />
+          <TrustList onTimePercent={vendorOnTime} />
         </div>
       </div>
 

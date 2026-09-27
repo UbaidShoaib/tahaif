@@ -1,17 +1,43 @@
 import uuid
+from datetime import datetime
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import Date, case, cast, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from sqlalchemy.sql import Select
 
+from app.models.catalog import City
 from app.models.order import Fulfillment, FulfillmentStatus, Order, OrderItem, Payment
 
 
 class OrderRepository:
     def __init__(self, db: AsyncSession) -> None:
         self._db = db
+
+    async def on_time_counts(self, since: datetime, vendor_id: uuid.UUID | None = None) -> tuple[int, int]:
+        """(delivered, on_time) for fulfillments delivered since `since`.
+
+        On time = delivered on or before the chosen delivery date, judged by
+        the calendar day in the delivery city's own time zone.
+        """
+        local_day = cast(func.timezone(City.timezone, Fulfillment.delivered_at), Date)
+        stmt = (
+            select(
+                func.count(),
+                func.coalesce(func.sum(case((local_day <= Fulfillment.delivery_date, 1), else_=0)), 0),
+            )
+            .join(City, City.id == Fulfillment.city_id)
+            .where(
+                Fulfillment.status == FulfillmentStatus.delivered,
+                Fulfillment.delivered_at.is_not(None),
+                Fulfillment.delivered_at >= since,
+            )
+        )
+        if vendor_id is not None:
+            stmt = stmt.where(Fulfillment.vendor_id == vendor_id)
+        delivered, on_time = (await self._db.execute(stmt)).one()
+        return int(delivered), int(on_time)
 
     def _with_relations(self) -> Select[tuple[Order]]:
         return select(Order).options(

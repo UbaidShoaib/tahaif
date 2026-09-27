@@ -11,6 +11,7 @@ from app.api.v1.endpoints import (
     me,
     orders,
     reviews,
+    stats,
     vendor,
 )
 
@@ -25,4 +26,5 @@ api_router.include_router(vendor.router)
 api_router.include_router(loyalty.router)
 api_router.include_router(reviews.router)
 api_router.include_router(marketing.router)
+api_router.include_router(stats.router)
 api_router.include_router(admin.router)

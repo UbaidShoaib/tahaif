@@ -25,6 +25,11 @@ pre-production-cutover).
   ("Order by 2:00 pm Lahore time (10:00 am your time)"). Tracking shows dispatch
   and delivery times as "28 Sep, 2:30 pm PKT (10:30 am your time)". API:
   fulfillments carry `city_timezone`.
+- Measured on-time rate (diaspora Release A): `GET /stats/on-time[?vendor_id=]`
+  returns the share of deliveries in the last 90 days that arrived on or before the
+  chosen day (judged by the city's calendar day). The product page leads its trust
+  list with the shop's rate and the home trust strip shows the overall rate. It's a
+  measured fact, not a guarantee (Q17), and stays hidden below 20 deliveries.
 
 ### Fixed
 - Delivery dates showed the previous day for buyers west of UTC (e.g. Toronto,
