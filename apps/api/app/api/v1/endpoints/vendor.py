@@ -31,6 +31,12 @@ async def list_fulfillments(
     return await vendor_service.list_my_fulfillments(db, user, filter_status)
 
 
+@router.get("/fulfillments/{fulfillment_id}", response_model=VendorFulfillmentRead)
+async def get_fulfillment(fulfillment_id: uuid.UUID, user: CurrentUser, db: DB) -> VendorFulfillmentRead:
+    """One of your fulfillments, with each item's card message (used by the print view)."""
+    return await vendor_service.get_my_fulfillment(db, user, fulfillment_id)
+
+
 @router.patch("/fulfillments/{fulfillment_id}", response_model=VendorFulfillmentRead)
 async def update_fulfillment(
     fulfillment_id: uuid.UUID,

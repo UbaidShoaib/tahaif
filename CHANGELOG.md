@@ -38,6 +38,15 @@ pre-production-cutover).
   hours in PKT and, for buyers abroad, in their own time. Configured with
   `NEXT_PUBLIC_SUPPORT_WHATSAPP` and `NEXT_PUBLIC_SUPPORT_HOURS`; hidden when no
   number is set.
+- Rich greeting card (diaspora Release B): message ideas in English, Urdu and
+  Roman Urdu, and a live preview of the printed card (Urdu laid out right-to-left)
+  on the product page and in the cart.
+
+### Fixed
+- Vendors couldn't see the buyer's card message, so nothing told them what to
+  print. Fulfillments now list their items with each card message
+  (`items[]` on `/vendor/fulfillments`, plus `GET /vendor/fulfillments/{id}`), the
+  vendor portal shows them, and a print view lays out one card per message.
 
 ### Fixed
 - Delivery dates showed the previous day for buyers west of UTC (e.g. Toronto,

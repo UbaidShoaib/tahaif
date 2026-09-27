@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { MessageSquareHeart } from "lucide-react";
 import { useCartStore } from "@/stores/cart.store";
-import { GREETING_MAX, type CartItemRead } from "@/lib/cart";
+import { type CartItemRead } from "@/lib/cart";
+import { GreetingComposer } from "@/components/greeting/GreetingComposer";
 
 /** Shows and edits the greeting card that ships with one cart line. */
 export function GreetingEditor({ item }: { item: CartItemRead }) {
@@ -33,7 +34,7 @@ export function GreetingEditor({ item }: { item: CartItemRead }) {
       <div className="flex items-start gap-2 pb-3 text-sm">
         <MessageSquareHeart className="mt-0.5 h-4 w-4 shrink-0 text-link" aria-hidden />
         {item.greeting_message ? (
-          <p className="flex-1 italic text-muted-foreground">“{item.greeting_message}”</p>
+          <p dir="auto" className="flex-1 italic text-muted-foreground">“{item.greeting_message}”</p>
         ) : (
           <p className="flex-1 text-muted-foreground">No greeting card</p>
         )}
@@ -50,17 +51,8 @@ export function GreetingEditor({ item }: { item: CartItemRead }) {
 
   return (
     <div className="space-y-1.5 pb-3">
-      <label htmlFor={fieldId} className="text-sm font-medium">Greeting card message</label>
-      <textarea
-        id={fieldId}
-        value={draft}
-        maxLength={GREETING_MAX}
-        rows={3}
-        onChange={(e) => setDraft(e.target.value)}
-        className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-700"
-      />
-      <div className="flex items-center justify-between text-xs text-muted-foreground">
-        <span>{draft.length}/{GREETING_MAX}</span>
+      <GreetingComposer id={fieldId} value={draft} onChange={setDraft} hint="Leave empty to send no card." />
+      <div className="flex items-center justify-end text-xs text-muted-foreground">
         <div className="flex gap-3">
           <button type="button" onClick={() => setEditing(false)} className="hover:underline">Cancel</button>
           <button

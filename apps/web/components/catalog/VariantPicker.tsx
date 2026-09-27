@@ -4,14 +4,11 @@ import { useEffect, useId, useState } from "react";
 import { AlertTriangle, Clock, MapPin, ShoppingBag, Truck } from "lucide-react";
 import { Price } from "@/components/money/Price";
 import type { City, Product, ProductCity } from "@/lib/catalog";
-import { GREETING_MAX } from "@/lib/cart";
 import { earliestDelivery, formatCountdown, formatDeliveryDay } from "@/lib/delivery";
 import { cityTimeToInstant, formatClock, viewerSuffix, viewerTimeZone } from "@/lib/datetime";
 import { formatMoney } from "@/lib/money";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
-import { FormField } from "@/components/ui/form-field";
 import { RadioChip, RadioGroup } from "@/components/ui/radio-group";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { toast } from "@/components/ui/toast";
@@ -19,6 +16,7 @@ import { useCartStore } from "@/stores/cart.store";
 import { useDeliveryStore } from "@/stores/delivery.store";
 import { captureEvent } from "@/components/providers";
 import { useHydrated } from "@/hooks/use-hydrated";
+import { GreetingComposer } from "@/components/greeting/GreetingComposer";
 
 type Props = {
   product: Product;
@@ -241,29 +239,7 @@ export function VariantPicker({ product, cities = [] }: Props) {
       )}
 
       {/* Greeting card */}
-      <FormField
-        label="Greeting card message"
-        hint={
-          <span className="flex justify-between gap-2">
-            <span>Optional. Printed on a card delivered with this gift.</span>
-            <span className="tabular-nums">
-              {greeting.length}/{GREETING_MAX}
-            </span>
-          </span>
-        }
-        id="greeting-message"
-      >
-        {(p) => (
-          <Textarea
-            {...p}
-            value={greeting}
-            maxLength={GREETING_MAX}
-            rows={3}
-            onChange={(e) => setGreeting(e.target.value)}
-            placeholder="Happy birthday, Ammi! Wish I could be there. Love, Ali"
-          />
-        )}
-      </FormField>
+      <GreetingComposer id="greeting-message" value={greeting} onChange={setGreeting} />
 
       {addError && (
         <Alert variant="destructive">

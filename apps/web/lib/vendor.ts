@@ -24,6 +24,14 @@ export type FulfillmentStatus =
   | "delivered"
   | "failed";
 
+export interface VendorLineItem {
+  product_name: string;
+  variant_name: string | null;
+  qty: number;
+  /** Buyer's card message, printed and sent with this item. */
+  greeting_message: string | null;
+}
+
 export interface VendorFulfillmentRead {
   id: string;
   order_id: string;
@@ -47,6 +55,7 @@ export interface VendorFulfillmentRead {
   received_by: string | null;
   item_count: number;
   subtotal_pkr: number;
+  items: VendorLineItem[];
 }
 
 export interface FulfillmentStatusUpdate {
@@ -73,6 +82,9 @@ export const vendorApi = {
     const qs = filterStatus ? `?filter_status=${filterStatus}` : "";
     return apiFetch<VendorFulfillmentRead[]>(`/vendor/fulfillments${qs}`, { token });
   },
+
+  getFulfillment: (id: string, token: string) =>
+    apiFetch<VendorFulfillmentRead>(`/vendor/fulfillments/${id}`, { token }),
 
   updateFulfillment: (id: string, body: FulfillmentStatusUpdate, token: string) =>
     apiFetch<VendorFulfillmentRead>(`/vendor/fulfillments/${id}`, {

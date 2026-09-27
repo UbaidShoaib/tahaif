@@ -36,7 +36,7 @@ export async function Footer() {
   ];
 
   return (
-    <footer className="border-t bg-muted/40">
+    <footer className="border-t bg-muted/40 print:hidden">
       <div className="container mx-auto px-4 py-10">
         <div className="grid grid-cols-2 gap-8 md:grid-cols-4">
           <div className="col-span-2 md:col-span-1">

@@ -234,6 +234,22 @@ export default function VendorOrdersPage() {
                       {f.courier_tracking}
                     </p>
                   )}
+                  {f.items.some((i) => i.greeting_message) && (
+                    <div className="sm:col-span-2 mt-1 space-y-1">
+                      <span className="text-muted-foreground">Card messages: </span>
+                      {f.items
+                        .filter((i) => i.greeting_message)
+                        .map((i, n) => (
+                          <p key={n} className="rounded-md bg-muted/60 px-2 py-1">
+                            <span className="text-xs text-muted-foreground">{i.product_name}: </span>
+                            <span dir="auto" className="italic">“{i.greeting_message}”</span>
+                          </p>
+                        ))}
+                      <Link href={`/vendor/orders/${f.id}/cards`} className="inline-block text-sm text-link hover:underline">
+                        Print cards
+                      </Link>
+                    </div>
+                  )}
                   {f.received_by && (
                     <p className="sm:col-span-2">
                       <span className="text-muted-foreground">Received by: </span>

@@ -38,6 +38,7 @@ function leg(overrides: Partial<VendorFulfillmentRead> = {}): VendorFulfillmentR
     received_by: null,
     item_count: 1,
     subtotal_pkr: 280000,
+    items: [{ product_name: "Fudge Cake", variant_name: null, qty: 1, greeting_message: null }],
     ...overrides,
   };
 }

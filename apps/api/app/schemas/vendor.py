@@ -11,6 +11,16 @@ class FulfillmentStatusUpdate(BaseModel):
     courier_tracking: str | None = Field(default=None, max_length=255)
 
 
+class VendorLineItem(BaseModel):
+    """One product in a fulfillment, with the card to print for it."""
+    product_name: str
+    variant_name: str | None
+    qty: int
+    greeting_message: str | None = Field(
+        default=None, description="Buyer's card message, printed and sent with this item"
+    )
+
+
 class VendorFulfillmentRead(BaseModel):
     """Fulfillment enriched with order context — used in the vendor portal."""
     id: uuid.UUID
@@ -34,3 +44,4 @@ class VendorFulfillmentRead(BaseModel):
     received_by: str | None = None
     item_count: int
     subtotal_pkr: int
+    items: list[VendorLineItem] = Field(default_factory=list)

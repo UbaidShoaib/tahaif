@@ -34,6 +34,7 @@ function leg(overrides: Partial<VendorFulfillmentRead> = {}): VendorFulfillmentR
     received_by: null,
     item_count: 1,
     subtotal_pkr: 280000,
+    items: [],
     ...overrides,
   };
 }

@@ -21,7 +21,11 @@ from app.repositories.catalog_repository import ProductRepository, VendorReposit
 from app.repositories.order_repository import OrderRepository
 from app.repositories.user_repository import UserRepository
 from app.schemas.catalog import VendorUpdate
-from app.schemas.vendor import FulfillmentStatusUpdate, VendorFulfillmentRead
+from app.schemas.vendor import (
+    FulfillmentStatusUpdate,
+    VendorFulfillmentRead,
+    VendorLineItem,
+)
 from app.services import proof_service
 from app.workers.notification_tasks import enqueue_fulfillment_update
 
@@ -101,6 +105,14 @@ async def list_my_fulfillments(
     repo = OrderRepository(db)
     fulfillments = await repo.list_fulfillments_for_vendor(vendor.id, status=filter_status)
     return [_fulfillment_to_read(f) for f in fulfillments]
+
+
+async def get_my_fulfillment(db: AsyncSession, user: User, fulfillment_id: uuid.UUID) -> VendorFulfillmentRead:
+    vendor = await _get_vendor_or_403(db, user)
+    fulfillment = await OrderRepository(db).get_fulfillment(fulfillment_id, vendor.id)
+    if not fulfillment:
+        raise _NOT_FOUND("Fulfillment")
+    return _fulfillment_to_read(fulfillment)
 
 
 async def update_fulfillment(
@@ -265,6 +277,15 @@ def _fulfillment_to_read(f: Fulfillment) -> VendorFulfillmentRead:
         received_by=f.received_by,
         item_count=item_count,
         subtotal_pkr=subtotal,
+        items=[
+            VendorLineItem(
+                product_name=i.product.name,
+                variant_name=i.variant.name if i.variant else None,
+                qty=i.qty,
+                greeting_message=i.greeting_message,
+            )
+            for i in f.order_items
+        ],
     )
 
 

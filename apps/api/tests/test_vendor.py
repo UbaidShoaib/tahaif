@@ -119,6 +119,7 @@ async def _make_order_with_fulfillment(
         qty=1,
         unit_price_pkr=product.base_price_pkr,
         line_total_pkr=product.base_price_pkr,
+        greeting_message="Happy birthday Ammi! Love, Ali",
     )
     db.add(item)
 
@@ -845,3 +846,47 @@ async def test_delivery_photo_only_for_own_fulfillments(
 
     assert resp.status_code == 404
     assert fake_photo_store == []
+
+
+# ── Card messages for the vendor ─────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_vendor_sees_each_items_card_message(
+    client: AsyncClient,
+    vendor_user: User,
+    product: Product,
+    order_and_fulfillment: tuple,
+) -> None:
+    _order, fulfillment = order_and_fulfillment
+    fulfillment_id, product_name = fulfillment.id, product.name
+    token = await _login(client, vendor_user.email)
+
+    listed = (await client.get("/api/v1/vendor/fulfillments", headers={"Authorization": f"Bearer {token}"})).json()
+    one = await client.get(f"/api/v1/vendor/fulfillments/{fulfillment_id}", headers={"Authorization": f"Bearer {token}"})
+
+    expected = [
+        {"product_name": product_name, "variant_name": None, "qty": 1, "greeting_message": "Happy birthday Ammi! Love, Ali"}
+    ]
+    assert listed[0]["items"] == expected
+    assert one.status_code == 200
+    assert one.json()["items"] == expected
+
+
+@pytest.mark.asyncio
+async def test_vendor_cannot_read_another_vendors_fulfillment(
+    client: AsyncClient,
+    db: AsyncSession,
+    order_and_fulfillment: tuple,
+) -> None:
+    _order, fulfillment = order_and_fulfillment
+    fulfillment_id = fulfillment.id
+    other_owner = await _make_user(db, UserRole.vendor)
+    other_email = other_owner.email
+    await _make_vendor(db, await _make_city(db), other_owner)
+    await db.commit()
+    token = await _login(client, other_email)
+
+    resp = await client.get(f"/api/v1/vendor/fulfillments/{fulfillment_id}", headers={"Authorization": f"Bearer {token}"})
+
+    assert resp.status_code == 404
