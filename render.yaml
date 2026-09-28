@@ -1,0 +1,87 @@
+# Render Blueprint — Tahaif API (dev server)
+# Render dashboard → New → Blueprint → pick this repo. Values marked `sync: false`
+# are prompted for on first deploy (see docs/deploy-render.md).
+#
+# Web app runs on Vercel; Postgres on Supabase; Redis on Upstash. Scheduled jobs
+# run from .github/workflows/jobs.yml (Render cron jobs are not on the free plan).
+
+services:
+  - type: web
+    name: tahaif-api
+    runtime: docker
+    plan: free
+    region: singapore
+    branch: master
+    autoDeploy: true
+    dockerfilePath: ./infra/Dockerfile.api
+    dockerContext: .
+    # Pre-deploy commands need a paid plan, so migrations run at container start
+    # (a no-op when the schema is already current).
+    dockerCommand: sh -c "alembic upgrade head && exec uvicorn app.main:app --host 0.0.0.0 --port $PORT --proxy-headers --forwarded-allow-ips='*'"
+    healthCheckPath: /api/v1/healthz
+    buildFilter:
+      paths:
+        - apps/api/**
+        - infra/Dockerfile.api
+        - render.yaml
+    envVars:
+      - key: ENVIRONMENT
+        value: staging
+      # One worker fits the free instance's 512 MB.
+      - key: WEB_CONCURRENCY
+        value: "1"
+      - key: SECRET_KEY
+        generateValue: true
+      - key: JOBS_TOKEN
+        generateValue: true
+
+      # Postgres (Supabase). Use the session pooler URI (…pooler.supabase.com:5432)
+      # with the postgresql+asyncpg:// scheme: Supabase's direct host is IPv6-only
+      # and Render has no IPv6 egress. For the transaction pooler (6543) set DB_PGBOUNCER=true.
+      - key: DATABASE_URL
+        sync: false
+      - key: DB_POOL_SIZE
+        value: "3"
+      - key: DB_MAX_OVERFLOW
+        value: "2"
+      - key: DB_PGBOUNCER
+        value: "false"
+
+      # Redis (Upstash), rediss:// URL
+      - key: REDIS_URL
+        sync: false
+
+      # Web origin, e.g. https://dev.tahaif.pk
+      - key: FRONTEND_URL
+        sync: false
+
+      # Object storage (Supabase Storage S3 endpoint, or Cloudflare R2)
+      - key: S3_ENDPOINT_URL
+        sync: false
+      - key: S3_ACCESS_KEY_ID
+        sync: false
+      - key: S3_SECRET_ACCESS_KEY
+        sync: false
+      - key: S3_BUCKET_NAME
+        value: tahaif-media
+      - key: S3_PUBLIC_URL
+        sync: false
+
+      # Email
+      - key: RESEND_API_KEY
+        sync: false
+      - key: EMAIL_FROM
+        sync: false
+
+      # Optional: leave blank to disable. Search stays off until MEILISEARCH_URL and
+      # MEILISEARCH_MASTER_KEY are added in the dashboard.
+      - key: SENTRY_DSN
+        sync: false
+      - key: OPEN_EXCHANGE_RATES_APP_ID
+        sync: false
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: GOOGLE_REDIRECT_URI
+        sync: false

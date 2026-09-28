@@ -2,6 +2,7 @@
 
 import asyncio
 from pathlib import PurePosixPath
+from typing import Any
 
 import boto3
 import structlog
@@ -14,7 +15,7 @@ _ALLOWED_MIME_TYPES = {"image/jpeg", "image/png", "image/webp", "application/pdf
 _MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
 
 
-def _get_client() -> "boto3.client":  # type: ignore[name-defined]
+def _get_client() -> Any:
     settings = get_settings()
     kwargs: dict[str, object] = {
         "service_name": "s3",
@@ -23,7 +24,7 @@ def _get_client() -> "boto3.client":  # type: ignore[name-defined]
     }
     if settings.s3_endpoint_url:
         kwargs["endpoint_url"] = settings.s3_endpoint_url
-    return boto3.client(**kwargs)  # type: ignore[call-overload]
+    return boto3.client(**kwargs)
 
 
 def _upload_sync(key: str, data: bytes, content_type: str) -> str:

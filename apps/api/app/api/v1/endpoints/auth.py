@@ -42,7 +42,8 @@ def _client_ip(request: Request) -> str:
 async def _check_ip_not_banned(request: Request) -> None:
     redis = get_redis()
     ip = _client_ip(request)
-    if await redis.sismember("ip_blocklist", ip):
+    # redis-py types sync/async clients with one union return type.
+    if await redis.sismember("ip_blocklist", ip):  # type: ignore[misc]
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             detail="Too many failed login attempts. Try again in 24 hours.",
@@ -56,7 +57,7 @@ async def _record_failed_login(request: Request) -> None:
     count = await redis.incr(key)
     await redis.expire(key, _FAIL_WINDOW_SECS)
     if count >= _FAIL_THRESHOLD:
-        await redis.sadd("ip_blocklist", ip)
+        await redis.sadd("ip_blocklist", ip)  # type: ignore[misc]
         await redis.expire("ip_blocklist", _BAN_TTL_SECS)
         await logger.awarning("ip_blocked", ip=ip, failures=count)
 

@@ -63,7 +63,7 @@ export default function AdminDashboard() {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!resp.ok) throw new Error("Failed to fetch orders");
-      setOrders(await resp.json());
+      setOrders((await resp.json()) as OrderSummary[]);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error");
     } finally {

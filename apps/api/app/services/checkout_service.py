@@ -1,6 +1,8 @@
 import uuid
 from datetime import UTC, datetime
+from typing import Any
 
+import structlog
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -26,6 +28,8 @@ from app.schemas.order import (
 )
 from app.services import delivery_service, fx_service, loyalty_service
 from app.services.cart_service import _cart_to_read, _unit_price
+
+logger = structlog.get_logger()
 
 _EMPTY_CART = HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cart is empty")
 _CITY_NOT_FOUND = HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Delivery city not found")
@@ -101,7 +105,7 @@ async def place_order(
 
     # ── Stock validation (must happen before any writes) ──────────────────────
     now = datetime.now(UTC)
-    item_details: list[tuple] = []  # (cart_item, product, variant, unit, pc)
+    item_details: list[tuple[Any, ...]] = []  # (cart_item, product, variant, unit, pc)
 
     for cart_item in cart.items:
         product = await prod_repo.get_by_id(cart_item.product_id)
@@ -156,6 +160,7 @@ async def place_order(
             )
 
         from decimal import Decimal
+
         from app.models.loyalty import CouponType
         if coupon.coupon_type == CouponType.percent:
             discount_pkr = int(subtotal_pkr * coupon.value / Decimal("100"))
@@ -274,20 +279,22 @@ async def place_order(
 
     await loyalty_service.award_for_order(db, user.id, order.id, total_pkr)
 
-    # Enqueue order confirmation notifications (best-effort)
+    # Enqueue order confirmation notifications (best-effort). The savepoint keeps a
+    # failed insert from aborting the order's transaction.
     try:
         from app.workers.notification_tasks import enqueue_order_confirmation
         order_reloaded_for_notif = await order_repo.reload(order)
-        await enqueue_order_confirmation(
-            db=db,
-            order_id=order.id,
-            user_email=user.email,
-            user_phone=user.phone,
-            order_total_pkr=total_pkr,
-            public_token=order_reloaded_for_notif.public_token,
-        )
+        async with db.begin_nested():
+            await enqueue_order_confirmation(
+                db=db,
+                order_id=order.id,
+                user_email=user.email,
+                user_phone=user.phone,
+                order_total_pkr=total_pkr,
+                public_token=order_reloaded_for_notif.public_token,
+            )
     except Exception:
-        pass
+        await logger.aexception("order_notification_enqueue_failed", order_id=str(order.id))
 
     order = await order_repo.reload(order)
     return _order_to_read(order)

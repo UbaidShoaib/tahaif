@@ -4,16 +4,18 @@ Run with arq, or call drain_pending() from a scheduled task.
 """
 
 import json
-import uuid
 from datetime import UTC, datetime
+from typing import TYPE_CHECKING, Any
 
 import sqlalchemy as sa
 import structlog
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.db import get_db
 from app.integrations import resend_client
 from app.integrations.twilio_client import send_sms, send_whatsapp
+
+if TYPE_CHECKING:
+    import uuid
 
 logger = structlog.get_logger()
 
@@ -37,7 +39,7 @@ async def drain_pending(db: AsyncSession) -> int:
         row_id: uuid.UUID = row["id"]
         channel: str = row["channel"]
         to_address: str = row["to_address"]
-        payload: dict = row["payload"] if isinstance(row["payload"], dict) else json.loads(row["payload"])
+        payload: dict[str, Any] = row["payload"] if isinstance(row["payload"], dict) else json.loads(row["payload"])
 
         try:
             await _dispatch(channel, to_address, row["template"], payload)
@@ -62,7 +64,7 @@ async def drain_pending(db: AsyncSession) -> int:
     return processed
 
 
-async def _dispatch(channel: str, to_address: str, template: str, payload: dict) -> None:  # pragma: no cover
+async def _dispatch(channel: str, to_address: str, template: str, payload: dict[str, Any]) -> None:  # pragma: no cover
     if channel == "email":
         await _send_email(to_address, template, payload)
     elif channel == "sms":
@@ -71,14 +73,14 @@ async def _dispatch(channel: str, to_address: str, template: str, payload: dict)
         await send_whatsapp(to_address, _render_sms(template, payload))
 
 
-async def _send_email(to: str, template: str, payload: dict) -> None:  # pragma: no cover
+async def _send_email(to: str, template: str, payload: dict[str, Any]) -> None:  # pragma: no cover
     token = payload.get("public_token", "")
     total = payload.get("total_pkr", 0)
     if template == "order_confirmation":
         await resend_client.send_order_confirmation_email(to, str(token), int(total))
 
 
-def _render_sms(template: str, payload: dict) -> str:
+def _render_sms(template: str, payload: dict[str, Any]) -> str:
     token = payload.get("public_token", "")
     total = payload.get("total_pkr", 0)
     if template == "order_confirmation_sms":
