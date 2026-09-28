@@ -18,7 +18,7 @@ multi-recipient carts, real-time order tracking, and eventual vendor portal — 
 |---|---|---|
 | API | FastAPI 0.110+, Python 3.12 | Async-first, typed, excellent DX, fast enough |
 | ORM | SQLAlchemy 2 (async) + Alembic | Industry standard, async support, proper migrations |
-| DB | PostgreSQL 16 | ltree for category hierarchy, JSONB for product attrs, BIGINT for money |
+| DB | PostgreSQL 17 | JSONB for product attrs, BIGINT for money; 17 matches managed hosts (Supabase) so local, CI and deployed DBs run the same major version |
 | Cache / guest cart | Redis 7 | Guest cart TTL, session blacklist, rate-limit counters |
 | Task queue | Arq | Lightweight async task queue; Celery if complexity grows |
 | Search | Meilisearch | Typo-tolerant, fast to operate, good filters |

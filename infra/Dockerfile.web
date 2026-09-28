@@ -1,19 +1,31 @@
+# Build context: repo root (docker build -f infra/Dockerfile.web .)
+# Only needed when self-hosting the web app; Vercel builds from source.
 FROM node:22-alpine AS base
 RUN npm install -g pnpm
 
 # ---- deps ----
+# The lockfile and workspace manifest live at the repo root, so install from a
+# workspace-shaped tree rather than from apps/web alone.
 FROM base AS deps
-WORKDIR /app
-COPY apps/web/package.json ./
-RUN pnpm install --frozen-lockfile --ignore-scripts
+WORKDIR /repo
+COPY pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY apps/web/package.json apps/web/.npmrc apps/web/
+RUN cd apps/web && pnpm install --frozen-lockfile
 
 # ---- builder ----
 FROM base AS builder
-WORKDIR /app
-COPY --from=deps /app/node_modules ./node_modules
-COPY apps/web/ .
+WORKDIR /repo
+COPY --from=deps /repo ./
+COPY apps/web/ apps/web/
+# NEXT_PUBLIC_* values are inlined into the client bundle at build time.
+ARG NEXT_PUBLIC_API_URL
+ARG NEXT_PUBLIC_SITE_URL
+ARG NEXT_PUBLIC_POSTHOG_KEY
+ARG NEXT_PUBLIC_POSTHOG_HOST
+ARG NEXT_PUBLIC_BANK_IBAN
+ARG NEXT_PUBLIC_BANK_ACCOUNT_NAME
 ENV NEXT_TELEMETRY_DISABLED=1
-RUN pnpm build
+RUN mkdir -p apps/web/public && cd apps/web && pnpm build
 
 # ---- runner ----
 FROM node:22-alpine AS runner
@@ -23,13 +35,15 @@ ENV NEXT_TELEMETRY_DISABLED=1
 
 RUN addgroup --system --gid 1001 nodejs && adduser --system --uid 1001 nextjs
 
-COPY --from=builder /app/public ./public
-COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
-COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+# outputFileTracingRoot is the repo root, so standalone output mirrors the repo
+# layout and server.js lives at apps/web/server.js.
+COPY --from=builder --chown=nextjs:nodejs /repo/apps/web/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /repo/apps/web/.next/static ./apps/web/.next/static
+COPY --from=builder --chown=nextjs:nodejs /repo/apps/web/public ./apps/web/public
 
 USER nextjs
 EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
-CMD ["node", "server.js"]
+CMD ["node", "apps/web/server.js"]

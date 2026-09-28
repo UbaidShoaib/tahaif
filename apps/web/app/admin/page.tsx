@@ -39,7 +39,7 @@ const ORDER_STATUSES = [
 
 export default function AdminDashboard() {
   const router = useRouter();
-  const { token, user } = useAuthStore();
+  const { accessToken: token, user } = useAuthStore();
   const [orders, setOrders] = useState<OrderSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
