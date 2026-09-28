@@ -1,0 +1,523 @@
+<title>Tahaif Infrastructure Review</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Schibsted+Grotesk:wght@600;700;800&display=swap">
+<style>
+:root{
+  --bg:#F4F7F5; --surface:#FFFFFF; --sunk:#EAF0EC; --ink:#13201A; --muted:#56675D; --line:#D6E0D9;
+  --accent:#15803D; --accent-soft:#DDF0E3; --accent-ink:#0E5A2B;
+  --free:#15803D; --free-bg:#DDF0E3;
+  --usage:#1D5FD1; --usage-bg:#E1EAFB;
+  --fixed:#A15C07; --fixed-bg:#FBEFD9;
+  --crit:#B42318; --crit-bg:#FBE4E1;
+  --warn:#A15C07; --warn-bg:#FBEFD9;
+  --info:#46545C; --info-bg:#E7ECEF;
+  --code-bg:#EEF3EF;
+  --display:"Schibsted Grotesk", "Helvetica Neue", Arial, sans-serif;
+  --body:"IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --mono:"IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#0D1310; --surface:#141C17; --sunk:#1A241E; --ink:#E4ECE6; --muted:#97A89E; --line:#27342C;
+    --accent:#4ADE80; --accent-soft:#16301F; --accent-ink:#86EFAC;
+    --free:#4ADE80; --free-bg:#16301F;
+    --usage:#7FA8F5; --usage-bg:#17243D;
+    --fixed:#F2B660; --fixed-bg:#33250F;
+    --crit:#F7877A; --crit-bg:#3A1714;
+    --warn:#F2B660; --warn-bg:#33250F;
+    --info:#B3C0C7; --info-bg:#222C31;
+    --code-bg:#1A241E;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#0D1310; --surface:#141C17; --sunk:#1A241E; --ink:#E4ECE6; --muted:#97A89E; --line:#27342C;
+  --accent:#4ADE80; --accent-soft:#16301F; --accent-ink:#86EFAC;
+  --free:#4ADE80; --free-bg:#16301F;
+  --usage:#7FA8F5; --usage-bg:#17243D;
+  --fixed:#F2B660; --fixed-bg:#33250F;
+  --crit:#F7877A; --crit-bg:#3A1714;
+  --warn:#F2B660; --warn-bg:#33250F;
+  --info:#B3C0C7; --info-bg:#222C31;
+  --code-bg:#1A241E;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15.5px;line-height:1.6;margin:0}
+.wrap{max-width:1180px;margin:0 auto;padding-inline:20px;padding-block:28px 80px;display:grid;grid-template-columns:210px minmax(0,1fr);gap:48px}
+@media (max-width:900px){.wrap{grid-template-columns:minmax(0,1fr);gap:0;padding-inline:16px}.toc{display:none}}
+.toc{position:sticky;top:calc(env(safe-area-inset-top,0px) + 24px);align-self:start;font-size:13.5px}
+.toc b{font-family:var(--display);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:10px}
+.toc a{display:block;color:var(--muted);text-decoration:none;padding:5px 0 5px 12px;border-left:2px solid var(--line)}
+.toc a:hover,.toc a:focus-visible{color:var(--accent-ink);border-left-color:var(--accent);outline:none}
+main{min-width:0}
+header.doc{padding-bottom:26px;border-bottom:1px solid var(--line);margin-bottom:34px}
+.eyebrow{font-family:var(--mono);font-size:12.5px;color:var(--muted);letter-spacing:.02em}
+h1{font-family:var(--display);font-weight:800;font-size:clamp(30px,4.6vw,44px);line-height:1.08;letter-spacing:-.02em;margin:10px 0 14px;text-wrap:balance}
+h1 .ur{font-family:var(--body);font-weight:400;color:var(--accent);font-size:.62em;margin-left:.3em;letter-spacing:0}
+.lede{font-size:17.5px;max-width:68ch;color:var(--ink);margin:0}
+.meta{display:flex;flex-wrap:wrap;gap:8px 22px;margin-top:18px;font-size:13px;color:var(--muted)}
+.meta span b{color:var(--ink);font-weight:600}
+section{margin-top:56px;scroll-margin-top:20px}
+h2{font-family:var(--display);font-weight:700;font-size:26px;letter-spacing:-.01em;line-height:1.2;margin:0 0 6px;text-wrap:balance}
+h2 + .sub{color:var(--muted);margin:0 0 22px;max-width:70ch}
+h3{font-family:var(--display);font-weight:700;font-size:18.5px;margin:28px 0 8px;text-wrap:balance}
+p{max-width:72ch}
+code,.mono{font-family:var(--mono);font-size:.86em}
+code{background:var(--code-bg);padding:1px 5px;border-radius:4px;overflow-wrap:anywhere}
+a{color:var(--accent-ink)}
+.verdict{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+@media (max-width:760px){.verdict{grid-template-columns:minmax(0,1fr)}}
+.vcard{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:18px 18px 16px;display:flex;flex-direction:column;gap:8px}
+.vcard .k{font-family:var(--mono);font-size:12px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted)}
+.vcard .v{font-family:var(--display);font-weight:800;font-size:30px;line-height:1.05;font-variant-numeric:tabular-nums}
+.vcard p{margin:0;font-size:14px;color:var(--muted)}
+.vcard.crit .v{color:var(--crit)}
+.vcard.free .v{color:var(--free)}
+.vcard.usage .v{color:var(--usage)}
+.tbl{overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:var(--surface);margin:14px 0}
+table{border-collapse:collapse;width:100%;font-size:14px;min-width:720px}
+th,td{text-align:left;vertical-align:top;padding:11px 14px;border-bottom:1px solid var(--line)}
+th{font-family:var(--mono);font-weight:500;font-size:11.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);background:var(--sunk);white-space:nowrap}
+tr:last-child td{border-bottom:0}
+td.num{font-variant-numeric:tabular-nums;white-space:nowrap}
+td b{font-weight:600}
+td .small{display:block;color:var(--muted);font-size:12.5px;margin-top:3px}
+.pill{display:inline-block;font-family:var(--mono);font-size:11px;font-weight:500;letter-spacing:.04em;padding:2px 8px;border-radius:999px;white-space:nowrap;vertical-align:1px}
+.p-crit{color:var(--crit);background:var(--crit-bg)}
+.p-warn{color:var(--warn);background:var(--warn-bg)}
+.p-info{color:var(--info);background:var(--info-bg)}
+.p-free{color:var(--free);background:var(--free-bg)}
+.p-usage{color:var(--usage);background:var(--usage-bg)}
+.p-fixed{color:var(--fixed);background:var(--fixed-bg)}
+.legend{display:flex;flex-wrap:wrap;gap:8px 18px;font-size:13px;color:var(--muted);margin:6px 0 4px}
+.findings{display:flex;flex-direction:column;gap:10px;margin-top:14px}
+.finding{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px 16px;display:grid;grid-template-columns:92px minmax(0,1fr);gap:4px 14px}
+@media (max-width:560px){.finding{grid-template-columns:minmax(0,1fr)}}
+.finding h4{margin:0;font-size:15px;font-weight:600;line-height:1.4}
+.finding p{margin:4px 0 0;font-size:14px;color:var(--muted);max-width:none}
+.finding .where{font-family:var(--mono);font-size:12px;color:var(--muted);margin-top:6px;overflow-wrap:anywhere}
+.finding .fix{font-size:14px;margin-top:6px;max-width:none}
+.finding .fix b{color:var(--accent-ink)}
+.options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-top:14px}
+@media (max-width:760px){.options{grid-template-columns:minmax(0,1fr)}}
+.opt{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:18px;display:flex;flex-direction:column;gap:10px}
+.opt.rec{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset}
+.opt h3{margin:0}
+.opt .tag{font-family:var(--mono);font-size:11.5px;color:var(--accent-ink);text-transform:uppercase;letter-spacing:.07em}
+.opt ul{margin:0;padding-left:18px;font-size:14px}
+.opt li{margin:3px 0}
+.opt .pc{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;font-size:13.5px}
+.opt .pc div b{display:block;font-family:var(--mono);font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);margin-bottom:3px;font-weight:500}
+.opt .pc ul{padding-left:16px}
+.note{background:var(--sunk);border-radius:10px;padding:14px 16px;font-size:14px;margin:16px 0;max-width:none}
+.note b{color:var(--ink)}
+.steps{counter-reset:s;list-style:none;padding:0;margin:14px 0 0;display:flex;flex-direction:column;gap:12px}
+.steps li{counter-increment:s;display:grid;grid-template-columns:34px minmax(0,1fr);gap:12px;align-items:start}
+.steps li::before{content:counter(s);font-family:var(--mono);font-size:13px;font-weight:500;width:28px;height:28px;border-radius:50%;display:grid;place-items:center;background:var(--accent-soft);color:var(--accent-ink)}
+.steps li div{padding-top:3px}
+.steps li b{font-weight:600}
+.steps .small{color:var(--muted);font-size:13.5px;display:block}
+.diagram{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px;overflow-x:auto}
+.diagram svg{display:block;min-width:760px;width:100%;height:auto}
+.diagram text{font-family:var(--body);fill:var(--ink)}
+.diagram .lbl{font-size:13px;font-weight:600}
+.diagram .sm{font-size:11px;fill:var(--muted);font-family:var(--mono)}
+.diagram .grp{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;fill:var(--muted)}
+.diagram .box{fill:var(--surface);stroke:var(--line);stroke-width:1.2}
+.diagram .box.core{fill:var(--accent-soft);stroke:var(--accent)}
+.diagram .box.gap{stroke:var(--crit);stroke-dasharray:4 3}
+.diagram .zone{fill:var(--sunk);stroke:none}
+.diagram .edge{stroke:var(--muted);stroke-width:1.3;fill:none}
+.diagram .edge.dash{stroke-dasharray:5 4}
+.diagram .ah{fill:var(--muted)}
+.cols2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+@media (max-width:760px){.cols2{grid-template-columns:minmax(0,1fr)}}
+footer{margin-top:64px;padding-top:18px;border-top:1px solid var(--line);font-size:13px;color:var(--muted)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+</style>
+
+<div class="wrap">
+<nav class="toc" aria-label="Sections">
+  <b>Contents</b>
+  <a href="#summary">Summary</a>
+  <a href="#architecture">Runtime architecture</a>
+  <a href="#inventory">Dependency inventory</a>
+  <a href="#blockers">Deploy blockers</a>
+  <a href="#dev">Free dev server</a>
+  <a href="#prod">Pay-per-use production</a>
+  <a href="#matrix">Provider matrix</a>
+  <a href="#costs">Cost by stage</a>
+  <a href="#region">Region &amp; latency</a>
+  <a href="#env">Environment variables</a>
+  <a href="#plan">Rollout plan</a>
+</nav>
+
+<main>
+<header class="doc">
+  <div class="eyebrow">DevOps review · repo ubaidshoaib/tahaif · branch master @ f3633b2 · 28 Sep 2026</div>
+  <h1>Tahaif Infrastructure Review <span class="ur" lang="ur">تحائف</span></h1>
+  <p class="lede">What it takes to run the Tahaif gift-delivery platform outside a laptop: every service the code actually calls, the problems that would stop a deploy today, a zero-cost stack for a shared development server, and production options that bill by usage instead of by reserved capacity.</p>
+  <div class="meta">
+    <span><b>Web</b> Next.js 15 · React 19</span>
+    <span><b>API</b> FastAPI · Python 3.12 · SQLAlchemy async</span>
+    <span><b>Data</b> Postgres 16 · Redis 7 · Meilisearch · S3</span>
+    <span><b>Money</b> BIGINT paisa, PKR base, 7 FX quotes</span>
+  </div>
+</header>
+
+<section id="summary">
+  <h2>Summary</h2>
+  <p class="sub">The application needs <b>5 self-hosted runtime pieces</b> (web, API, worker/scheduler, Postgres, Redis), <b>2 stateful add-ons</b> (Meilisearch, object storage) and <b>up to 8 SaaS APIs</b>. All of it fits in free tiers for a dev server. Production can start at roughly $25–45/month and grow with traffic.</p>
+  <div class="verdict">
+    <div class="vcard crit"><span class="k">Blocks deploy today</span><span class="v">6 issues</span><p>Both Dockerfiles fail to build or boot, the Fly health check hits a path that does not exist, and no background worker runs.</p></div>
+    <div class="vcard free"><span class="k">Dev server</span><span class="v">$0 / mo</span><p>Vercel Hobby + Render/Koyeb free API + Neon + Upstash + R2 + Resend. Or one Oracle Always Free VM running the existing compose file.</p></div>
+    <div class="vcard usage"><span class="k">Production, launch</span><span class="v">≈ $25–45</span><p>Cloud Run + Neon Launch + Upstash PAYG + R2 + Meilisearch on a small VM, with web on Vercel Pro. Scales to zero between orders.</p></div>
+  </div>
+  <div class="note"><b>Recommendation.</b> Use the <b>serverless, usage-billed stack</b> (Option B below) for production and the <b>free-tier version of the same stack</b> for the dev server, so dev and prod differ only in plan size. Fix the six blockers first; none of the hosting choices work until the images build.</div>
+</section>
+
+<section id="architecture">
+  <h2>Runtime architecture</h2>
+  <p class="sub">How the pieces call each other in production, derived from <code>apps/api/app/integrations/*</code>, <code>workers/*</code> and <code>next.config.ts</code>. The dashed red box is required by the code but not implemented as a runnable process yet.</p>
+  <div class="diagram">
+  <svg viewBox="0 0 960 470" role="img" aria-label="Architecture: browser to CDN, Next.js web and FastAPI API; API to Postgres, Redis, Meilisearch, object storage and SaaS providers; worker drains outbox from Postgres to Resend and Twilio.">
+    <defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="ah" d="M0,0 L10,5 L0,10 z"/></marker></defs>
+    <rect class="zone" x="10" y="10" width="200" height="450" rx="10"/>
+    <text class="grp" x="24" y="32">EDGE</text>
+    <rect class="zone" x="230" y="10" width="260" height="450" rx="10"/>
+    <text class="grp" x="244" y="32">COMPUTE (STATELESS)</text>
+    <rect class="zone" x="510" y="10" width="200" height="450" rx="10"/>
+    <text class="grp" x="524" y="32">STATE</text>
+    <rect class="zone" x="730" y="10" width="220" height="450" rx="10"/>
+    <text class="grp" x="744" y="32">THIRD-PARTY APIS</text>
+
+    <rect class="box" x="30" y="60" width="160" height="56" rx="8"/><text class="lbl" x="44" y="84">Customer browser</text><text class="sm" x="44" y="102">PK + diaspora</text>
+    <rect class="box" x="30" y="170" width="160" height="56" rx="8"/><text class="lbl" x="44" y="194">DNS · CDN · WAF</text><text class="sm" x="44" y="212">Cloudflare (ADR 0001)</text>
+
+    <rect class="box core" x="250" y="60" width="220" height="62" rx="8"/><text class="lbl" x="264" y="85">Web · Next.js 15 SSR</text><text class="sm" x="264" y="104">standalone output · :3000</text>
+    <rect class="box core" x="250" y="170" width="220" height="62" rx="8"/><text class="lbl" x="264" y="195">API · FastAPI/uvicorn</text><text class="sm" x="264" y="214">/api/v1 · :8000 · Alembic</text>
+    <rect class="box gap" x="250" y="290" width="220" height="74" rx="8"/><text class="lbl" x="264" y="315">Worker + scheduler</text><text class="sm" x="264" y="334">outbox drain · every 5 min</text><text class="sm" x="264" y="350">FX refresh · daily 00:00 UTC</text>
+
+    <rect class="box" x="530" y="60" width="160" height="56" rx="8"/><text class="lbl" x="544" y="84">PostgreSQL 16</text><text class="sm" x="544" y="102">JSONB · SKIP LOCKED</text>
+    <rect class="box" x="530" y="140" width="160" height="56" rx="8"/><text class="lbl" x="544" y="164">Redis 7</text><text class="sm" x="544" y="182">login lockout · IP ban</text>
+    <rect class="box" x="530" y="220" width="160" height="56" rx="8"/><text class="lbl" x="544" y="244">Meilisearch</text><text class="sm" x="544" y="262">products index</text>
+    <rect class="box" x="530" y="300" width="160" height="56" rx="8"/><text class="lbl" x="544" y="324">Object storage</text><text class="sm" x="544" y="342">S3 · proofs, images</text>
+
+    <rect class="box" x="750" y="60" width="180" height="46" rx="8"/><text class="lbl" x="764" y="81">Resend</text><text class="sm" x="764" y="97">order + reset email</text>
+    <rect class="box" x="750" y="118" width="180" height="46" rx="8"/><text class="lbl" x="764" y="139">Twilio</text><text class="sm" x="764" y="155">SMS · WhatsApp</text>
+    <rect class="box" x="750" y="176" width="180" height="46" rx="8"/><text class="lbl" x="764" y="197">Open Exchange Rates</text><text class="sm" x="764" y="213">PKR ↔ 7 currencies</text>
+    <rect class="box" x="750" y="234" width="180" height="46" rx="8"/><text class="lbl" x="764" y="255">Google OAuth</text><text class="sm" x="764" y="271">sign-in</text>
+    <rect class="box" x="750" y="292" width="180" height="46" rx="8"/><text class="lbl" x="764" y="313">Sentry · PostHog</text><text class="sm" x="764" y="329">errors · analytics</text>
+    <rect class="box" x="750" y="350" width="180" height="46" rx="8"/><text class="lbl" x="764" y="371">Stripe · JazzCash</text><text class="sm" x="764" y="387">config only, no code yet</text>
+
+    <path class="edge" d="M110,116 V170" marker-end="url(#ah)"/>
+    <path class="edge" d="M190,188 H220 V91 H250" marker-end="url(#ah)"/>
+    <path class="edge" d="M190,208 H250" marker-end="url(#ah)"/>
+    <path class="edge dash" d="M360,122 V170" marker-end="url(#ah)"/>
+    <text class="sm" x="366" y="150">SSR fetch</text>
+    <path class="edge" d="M470,190 H500 V88 H530" marker-end="url(#ah)"/>
+    <path class="edge" d="M470,200 H510 V168 H530" marker-end="url(#ah)"/>
+    <path class="edge" d="M470,212 H510 V248 H530" marker-end="url(#ah)"/>
+    <path class="edge" d="M470,222 H496 V328 H530" marker-end="url(#ah)"/>
+    <path class="edge dash" d="M470,320 H490 V100 H530" marker-end="url(#ah)"/>
+    <path class="edge" d="M470,178 H484 V46 H728 V83 H750" marker-end="url(#ah)"/>
+    <path class="edge" d="M728,83 V257 H750" marker-end="url(#ah)"/>
+    <path class="edge dash" d="M360,364 V414 H738 V141 H750" marker-end="url(#ah)"/>
+    <path class="edge dash" d="M738,199 H750" marker-end="url(#ah)"/>
+    <text class="sm" x="380" y="438">worker → Resend · Twilio · OXR (dashed = not running yet)</text>
+  </svg>
+  </div>
+  <p style="font-size:13.5px;color:var(--muted)">The API also calls Resend directly for password-reset mail. The web app only talks to the API (<code>NEXT_PUBLIC_API_URL</code>) plus PostHog and Sentry from the browser, so Meilisearch can stay on a private network.</p>
+</section>
+
+<section id="inventory">
+  <h2>Dependency inventory</h2>
+  <p class="sub">Every dependency the code touches, what happens when it is missing, and what replaces it in each environment. “Degrades” means the code checks for an empty key and skips the call.</p>
+  <div class="legend"><span><span class="pill p-crit">required</span> app breaks without it</span><span><span class="pill p-warn">feature</span> a feature silently stops</span><span><span class="pill p-info">optional</span> safe to leave unset</span></div>
+  <div class="tbl"><table>
+    <thead><tr><th>Dependency</th><th>Used for (evidence)</th><th>If absent</th><th>Local (compose)</th><th>Managed options</th></tr></thead>
+    <tbody>
+      <tr><td><b>Web runtime</b><span class="small">Node 22, Next.js 15</span></td><td>SSR/ISR pages, sitemap, middleware auth redirect. <code>output: "standalone"</code></td><td><span class="pill p-crit">required</span></td><td><code>pnpm dev</code></td><td>Vercel, Cloudflare Workers (OpenNext), Netlify, any container host</td></tr>
+      <tr><td><b>API runtime</b><span class="small">Python 3.12 container</span></td><td>All <code>/api/v1</code> routes; <code>alembic upgrade head</code> on release</td><td><span class="pill p-crit">required</span></td><td><code>uvicorn</code></td><td>Cloud Run, Fly Machines, Render, Koyeb, Railway, ECS Fargate</td></tr>
+      <tr><td><b>Worker + scheduler</b></td><td><code>outbox_worker.drain_pending</code> (5 min), <code>fx_rate_worker.refresh_fx_rates</code> (daily). <code>arq</code> is a dependency but no <code>WorkerSettings</code> exists</td><td><span class="pill p-warn">feature</span> no order emails/SMS, stale FX</td><td>not run</td><td>Cloud Run Jobs + Cloud Scheduler, Fly scheduled Machine, Render Cron, GitHub Actions cron hitting an internal endpoint</td></tr>
+      <tr><td><b>PostgreSQL 16</b></td><td>All data; JSONB columns, <code>FOR UPDATE SKIP LOCKED</code> outbox, idempotency keys, 5 Alembic migrations</td><td><span class="pill p-crit">required</span></td><td><code>postgres:16-alpine</code> :5433</td><td>Neon, Supabase, Fly Managed Postgres, Aiven, RDS, Cloud SQL</td></tr>
+      <tr><td><b>Redis 7</b></td><td>Login-failure counters and IP blocklist in <code>auth.py</code>; runbook notes auth returns 500 when Redis is down. Planned: arq queue, guest cart</td><td><span class="pill p-crit">required</span> for login</td><td><code>redis:7-alpine</code> :6380</td><td>Upstash, Redis Cloud, Fly/Railway Redis, ElastiCache, Memorystore</td></tr>
+      <tr><td><b>Meilisearch</b></td><td>Index on product create/update/delete; <code>GET /search</code> proxies to it</td><td><span class="pill p-warn">feature</span> search returns 0 hits (no DB fallback)</td><td><code>getmeili/meilisearch:latest</code></td><td>Meilisearch Cloud, self-host on a 1 GB VM with a volume</td></tr>
+      <tr><td><b>Object storage</b><span class="small">S3 API via boto3</span></td><td>Bank-transfer proof uploads (10 MB, jpg/png/webp/pdf), product images</td><td><span class="pill p-crit">required</span> for bank-transfer checkout</td><td>MinIO :9000</td><td>Cloudflare R2, Backblaze B2, AWS S3, Supabase Storage</td></tr>
+      <tr><td><b>Resend</b></td><td>Password reset, order confirmation</td><td><span class="pill p-warn">feature</span> no email</td><td>MailHog :8025</td><td>Resend (or SES via SMTP later)</td></tr>
+      <tr><td><b>Twilio</b></td><td>SMS / WhatsApp order confirmation from outbox</td><td><span class="pill p-info">optional</span> logs a warning</td><td>unset</td><td>Twilio, Meta WhatsApp Cloud API, local PK SMS gateway</td></tr>
+      <tr><td><b>Open Exchange Rates</b></td><td>Daily PKR→USD/GBP/EUR/CAD/AUD/AED/SAR, base USD (free-plan compatible)</td><td><span class="pill p-info">optional</span> manual rates only</td><td>unset</td><td>OXR free (1,000 req/mo)</td></tr>
+      <tr><td><b>Google OAuth</b></td><td><code>/auth/oauth/google/*</code></td><td><span class="pill p-info">optional</span></td><td>unset</td><td>Google Cloud console (free)</td></tr>
+      <tr><td><b>Payments</b></td><td>COD and bank transfer are live. Stripe SDK is installed and JazzCash/Easypaisa vars exist, but no integration code</td><td><span class="pill p-info">optional</span> for now</td><td>n/a</td><td>Stripe needs a non-PK legal entity; JazzCash/Easypaisa need a PK merchant account</td></tr>
+      <tr><td><b>Sentry · PostHog</b></td><td><code>sentry_sdk.init</code> when DSN set; PostHog in <code>providers.tsx</code></td><td><span class="pill p-info">optional</span></td><td>unset</td><td>Sentry Developer, PostHog Cloud free</td></tr>
+      <tr><td><b>DNS · TLS · CDN</b></td><td>Cookies are <code>SameSite=Lax</code>, so web and API must share a registrable domain</td><td><span class="pill p-crit">required</span> for login to work</td><td>localhost</td><td>Cloudflare DNS (free) + host-issued certificates</td></tr>
+      <tr><td><b>CI · registry</b></td><td>GitHub Actions: ruff, mypy, eslint, tsc, pytest (with PG + Redis services), vitest. No build or deploy job</td><td>n/a</td><td>n/a</td><td>GitHub Actions + GHCR / Artifact Registry</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="blockers">
+  <h2>Deploy blockers and risks</h2>
+  <p class="sub">Checked against the code at <code>f3633b2</code>. The API image was reproduced locally: its dependency install succeeds, then <code>import app.main</code> from <code>/app</code> fails with <code>ModuleNotFoundError: No module named 'app'</code>.</p>
+
+  <div class="findings">
+    <div class="finding"><span><span class="pill p-crit">blocker</span></span><div>
+      <h4>API container cannot start</h4>
+      <p>The image sets <code>WORKDIR /app</code> but copies the package to <code>/app/apps/api/app</code>, and the CMD runs <code>uvicorn app.main:app</code> from <code>/app</code>.</p>
+      <div class="where">infra/Dockerfile.api:2, :15, :21</div>
+      <p class="fix"><b>Fix:</b> add <code>WORKDIR /app/apps/api</code> in the runtime stage (also makes <code>alembic.ini</code> resolvable), and use <code>uv sync --no-install-project</code> in the builder.</p>
+    </div></div>
+
+    <div class="finding"><span><span class="pill p-crit">blocker</span></span><div>
+      <h4>Migration release command uses a binary that isn't in the image</h4>
+      <p><code>uv</code> is installed only in the builder stage. The runtime venv has <code>alembic</code> but no <code>uv</code>, so every Fly deploy fails at the release step.</p>
+      <div class="where">infra/fly.toml:46</div>
+      <p class="fix"><b>Fix:</b> <code>release_command = "alembic upgrade head"</code> (the venv is already on <code>PATH</code>).</p>
+    </div></div>
+
+    <div class="finding"><span><span class="pill p-crit">blocker</span></span><div>
+      <h4>Health check targets a route that returns 404</h4>
+      <p>Fly probes <code>/health</code>; the API serves <code>/api/v1/healthz</code> and <code>/api/v1/readyz</code>. Machines never pass the check. <code>readyz</code> also doesn't test DB or Redis yet.</p>
+      <div class="where">infra/fly.toml:34 · apps/api/app/api/v1/endpoints/health.py</div>
+      <p class="fix"><b>Fix:</b> point the check at <code>/api/v1/healthz</code>; add DB <code>SELECT 1</code> and Redis <code>PING</code> to <code>readyz</code>.</p>
+    </div></div>
+
+    <div class="finding"><span><span class="pill p-crit">blocker</span></span><div>
+      <h4>Web image fails at install and copy steps</h4>
+      <p><code>pnpm install --frozen-lockfile</code> runs with only <code>package.json</code>; the lockfile lives at the repo root. The runner stage copies <code>/app/public</code>, which doesn't exist. With <code>outputFileTracingRoot</code> set to the monorepo root, <code>server.js</code> lands at <code>.next/standalone/apps/web/server.js</code>, not the root.</p>
+      <div class="where">infra/Dockerfile.web:7–8, :26, :35 · apps/web/next.config.ts</div>
+      <p class="fix"><b>Fix:</b> only matters if you self-host the web app. On Vercel this file is unused. Otherwise copy <code>pnpm-lock.yaml</code> + <code>pnpm-workspace.yaml</code>, create <code>public/</code>, and run <code>node apps/web/server.js</code>.</p>
+    </div></div>
+
+    <div class="finding"><span><span class="pill p-crit">blocker</span></span><div>
+      <h4>No worker process exists</h4>
+      <p>Order confirmations are written to <code>notifications_outbox</code>, but nothing drains it. The runbook lists arq schedules that aren't defined anywhere, so customers get no confirmation email or SMS.</p>
+      <div class="where">apps/api/app/workers/outbox_worker.py · docs/runbook.md §8</div>
+      <p class="fix"><b>Fix:</b> add a small CLI entrypoint (<code>python -m app.workers.run outbox|fx</code>) and trigger it on a schedule. The outbox already uses <code>SKIP LOCKED</code>, so a cron job works without a queue; arq can come later.</p>
+    </div></div>
+
+    <div class="finding"><span><span class="pill p-crit">blocker</span></span><div>
+      <h4>Auth breaks across different domains</h4>
+      <p>Refresh cookies are <code>SameSite=Lax</code> and the web client uses <code>credentials: "include"</code>. On default hostnames like <code>*.vercel.app</code> + <code>*.onrender.com</code>, the browser won't send the cookie. <code>COOKIE_SECURE</code> defaults to false.</p>
+      <div class="where">apps/api/app/api/v1/endpoints/auth.py:73 · apps/api/app/core/config.py:40</div>
+      <p class="fix"><b>Fix:</b> use custom subdomains on every environment (<code>dev.tahaif.pk</code> + <code>api.dev.tahaif.pk</code>), and set <code>COOKIE_SECURE=true</code> outside local.</p>
+    </div></div>
+
+    <div class="finding"><span><span class="pill p-warn">risk</span></span><div>
+      <h4>Bank-transfer receipts are stored at public URLs</h4>
+      <p>Proof uploads return a public object URL. These are financial documents with customer names and account details.</p>
+      <div class="where">apps/api/app/integrations/s3_client.py:38–41</div>
+      <p class="fix"><b>Fix:</b> private bucket for <code>proofs/</code>, serve through short-lived presigned GET URLs to admins only. Keep product images in a separate public bucket.</p>
+    </div></div>
+
+    <div class="finding"><span><span class="pill p-warn">risk</span></span><div>
+      <h4>Connection pool too large for free and serverless Postgres</h4>
+      <p><code>pool_size=10, max_overflow=20</code> per process, × 2 uvicorn workers, × every instance. Three instances can open 180 connections; free Postgres tiers allow far fewer.</p>
+      <div class="where">apps/api/app/core/db.py:14–15</div>
+      <p class="fix"><b>Fix:</b> make pool size an env var (2–5 on serverless), connect through the provider's PgBouncer endpoint, and pass <code>connect_args={"statement_cache_size": 0}</code> for asyncpg in transaction-pooling mode.</p>
+    </div></div>
+
+    <div class="finding"><span><span class="pill p-warn">risk</span></span><div>
+      <h4>Rate limits are per process, not global</h4>
+      <p>The slowapi <code>Limiter</code> has no <code>storage_uri</code>, so the 200/min limit is counted in memory and multiplies with each worker and instance.</p>
+      <div class="where">apps/api/app/core/rate_limit.py:8</div>
+      <p class="fix"><b>Fix:</b> <code>Limiter(..., storage_uri=settings.redis_url)</code>.</p>
+    </div></div>
+
+    <div class="finding"><span><span class="pill p-warn">risk</span></span><div>
+      <h4>Content-Security-Policy will block PostHog and media</h4>
+      <p><code>connect-src</code> doesn't include the PostHog host, and <code>img-src</code> allows only <code>*.tahaif.pk</code> and Unsplash, so images from an R2/S3 domain won't render.</p>
+      <div class="where">apps/web/next.config.ts:16–17</div>
+      <p class="fix"><b>Fix:</b> add <code>NEXT_PUBLIC_POSTHOG_HOST</code> to <code>connect-src</code>, and the media domain to <code>img-src</code> and <code>images.remotePatterns</code>.</p>
+    </div></div>
+
+    <div class="finding"><span><span class="pill p-info">cleanup</span></span><div>
+      <h4>Config drift between files</h4>
+      <p>fly.toml says region <code>sin</code>, the runbook says <code>iad</code>. The README says <code>tahaif.pk</code>, env and runbook say <code>tahaif.com</code>. fly.toml asks for <code>ALLOWED_ORIGINS</code> but the code reads <code>FRONTEND_URL</code>. <code>.env.example</code> lacks <code>FRONTEND_URL</code>, <code>COOKIE_SECURE</code>, <code>GOOGLE_*</code>. <code>NEXT_PUBLIC_MEILISEARCH_*</code> are unused. Compose pins <code>:latest</code> for Meilisearch, MinIO and MailHog. The empty <code>[[statics]]</code> and <code>[mounts]</code> tables in fly.toml should be removed.</p>
+      <div class="where">infra/fly.toml · docs/runbook.md · .env.example · infra/docker-compose.yml</div>
+    </div></div>
+  </div>
+</section>
+
+<section id="dev">
+  <h2>Free dev server</h2>
+  <p class="sub">Two ways to get a shared, always-reachable dev environment for $0. Both need a domain you control so cookies work (see blocker 6). A <code>.pk</code> domain from PKNIC or any cheap <code>.com</code> costs money; subdomains of it are free.</p>
+
+  <div class="options">
+    <div class="opt rec">
+      <span class="tag">Recommended · mirrors production</span>
+      <h3>A. Free tiers of the production stack</h3>
+      <ul>
+        <li><b>Web:</b> Vercel Hobby, preview deploys per PR</li>
+        <li><b>API:</b> Render free web service or Koyeb free instance (Docker). Cloud Run's free tier also fits and is the same product as prod</li>
+        <li><b>Worker:</b> GitHub Actions cron calling a protected <code>POST /internal/jobs/outbox</code> every 15 min</li>
+        <li><b>Postgres:</b> Neon free (0.5 GB, scales to zero, DB branch per PR)</li>
+        <li><b>Redis:</b> Upstash free (256 MB)</li>
+        <li><b>Storage:</b> Cloudflare R2 free (10 GB, no egress fees)</li>
+        <li><b>Search:</b> leave Meilisearch unset, or run it on the Oracle VM from option B</li>
+        <li><b>Email:</b> Resend free (3,000/mo, 100/day). Twilio trial credit only</li>
+        <li><b>Errors:</b> Sentry Developer, PostHog free</li>
+      </ul>
+      <div class="pc">
+        <div><b>Good</b><ul><li>Same config shape as prod</li><li>PR previews for web and DB</li><li>No servers to patch</li></ul></div>
+        <div><b>Watch</b><ul><li>Render free sleeps after 15 min idle, ~30–60 s cold start</li><li>Neon compute suspends when idle, first query is slower</li><li>Vercel Hobby is for non-commercial use only; fine for dev, not prod</li></ul></div>
+      </div>
+    </div>
+
+    <div class="opt">
+      <span class="tag">Closest to local compose</span>
+      <h3>B. One Oracle Always Free VM</h3>
+      <ul>
+        <li><b>Machine:</b> Ampere A1, up to 4 OCPU and 24 GB RAM, 200 GB block storage, always free</li>
+        <li><b>Region:</b> Dubai, Abu Dhabi or Jeddah for Pakistan latency</li>
+        <li><b>Runs:</b> the existing <code>docker-compose.yml</code> (Postgres, Redis, Meilisearch, MinIO, MailHog) plus API and web containers</li>
+        <li><b>Edge:</b> Caddy for automatic TLS, or a Cloudflare Tunnel so no port is open</li>
+        <li><b>Worker:</b> host crontab running <code>docker compose exec api python -m app.workers.run outbox</code></li>
+      </ul>
+      <div class="pc">
+        <div><b>Good</b><ul><li>Everything in one place, including Meilisearch and MailHog</li><li>No sleep or cold starts</li><li>Plenty of headroom for load tests with <code>infra/load-test.js</code></li></ul></div>
+        <div><b>Watch</b><ul><li>ARM64: images must be multi-arch (all current ones are)</li><li>Signup needs a card; A1 capacity can be scarce in some regions</li><li>Idle free instances can be reclaimed; you own backups and OS patching</li></ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="note"><b>Other free options considered.</b> Fly.io no longer has a free allowance for new organizations (small Machines cost about $2–6/mo each). Supabase free pauses after a week without activity and its 500 MB DB is fine, but Neon's branching suits PR previews better. Railway gives a one-time trial credit, then $5/mo. GCP's always-free e2-micro (1 GB) is US-only and too small for Meilisearch.</div>
+</section>
+
+<section id="prod">
+  <h2>Pay-per-use production</h2>
+  <p class="sub">Three shapes, ranked for Tahaif's likely first year: low and spiky traffic (Eid, Mother's Day, Valentine's), a small team, and a cost that should track orders.</p>
+
+  <div class="tbl"><table>
+    <thead><tr><th>Layer</th><th>B · Serverless (recommended)</th><th>A · Fly.io + Vercel (current plan)</th><th>C · AWS (grow into)</th></tr></thead>
+    <tbody>
+      <tr><td><b>Web</b></td><td>Vercel Pro, or Cloudflare Workers via OpenNext <span class="pill p-usage">usage</span></td><td>Vercel Pro <span class="pill p-fixed">$20/seat</span> + usage</td><td>Amplify Hosting or CloudFront + Lambda</td></tr>
+      <tr><td><b>API</b></td><td>Cloud Run, min 0–1 instances, concurrency 80 <span class="pill p-usage">per request-second</span></td><td>Fly Machines, shared-cpu-1x 512 MB–1 GB, autostop <span class="pill p-usage">per second</span></td><td>ECS Fargate behind ALB <span class="pill p-fixed">ALB ≈ $16+ floor</span></td></tr>
+      <tr><td><b>Worker</b></td><td>Cloud Run Jobs + Cloud Scheduler (3 jobs free)</td><td>Fly process group or scheduled Machine</td><td>EventBridge Scheduler + Fargate task</td></tr>
+      <tr><td><b>Postgres</b></td><td>Neon Launch: autoscaling compute, scale to zero, PITR <span class="pill p-usage">CU-hours + GB</span></td><td>Fly Managed Postgres <span class="pill p-fixed">≈ $38+/mo</span> or Neon</td><td>RDS / Aurora Serverless v2 <span class="pill p-fixed">floor ≈ $45+</span></td></tr>
+      <tr><td><b>Redis</b></td><td>Upstash pay-as-you-go <span class="pill p-usage">per 100k commands</span></td><td>Upstash via Fly</td><td>ElastiCache Serverless <span class="pill p-fixed">floor ≈ $90</span></td></tr>
+      <tr><td><b>Search</b></td><td>Meilisearch on a 1 GB Fly Machine or Hetzner VM with volume <span class="pill p-fixed">≈ $5–7</span></td><td>Meilisearch on Fly with volume</td><td>Meilisearch on EC2 t4g.small, or OpenSearch</td></tr>
+      <tr><td><b>Storage</b></td><td>Cloudflare R2 <span class="pill p-usage">per GB, $0 egress</span></td><td>R2 or Tigris</td><td>S3 + CloudFront</td></tr>
+      <tr><td><b>Ops effort</b></td><td>Low. No servers except the search VM</td><td>Low–medium. Fly CLI, one platform for API + search</td><td>High. VPC, IAM, NAT, Terraform needed</td></tr>
+      <tr><td><b>Monthly floor</b></td><td class="num">≈ $25–45</td><td class="num">≈ $70–90</td><td class="num">≈ $180+</td></tr>
+      <tr><td><b>Pick when</b></td><td>Traffic is low and bursty; cost must follow orders</td><td>You want to keep the existing fly.toml and runbook</td><td>Compliance, a payment processor or enterprise buyer requires AWS; team has AWS skills</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>Why B for Tahaif</h3>
+  <p>Gift delivery is spiky. Orders cluster around a handful of dates, and between them the API is mostly idle. Cloud Run and Neon both drop to near zero during quiet weeks and scale out on Eid morning without a capacity decision. R2's zero egress matters because product photos are the heaviest thing the site serves. The one fixed cost is Meilisearch, which needs a disk; a $5 VM covers the catalog for a long time.</p>
+  <p>Keep <b>min instances = 1</b> on the API from launch onward. A cold Python container with SQLAlchemy and boto3 takes a few seconds to start, which is too slow for checkout. That adds roughly $10–15/mo on Cloud Run, and is included in the estimates below.</p>
+</section>
+
+<section id="matrix">
+  <h2>Provider matrix</h2>
+  <p class="sub">Free allowance vs. what you pay once past it. List prices as of mid-2026; providers change these often, so confirm on their pricing pages before committing.</p>
+  <div class="legend"><span><span class="pill p-free">free</span> covers dev</span><span><span class="pill p-usage">usage</span> billed by consumption</span><span><span class="pill p-fixed">fixed</span> flat monthly</span></div>
+  <div class="tbl"><table>
+    <thead><tr><th>Service</th><th>Free tier</th><th>Paid, scaling</th><th>Notes for this codebase</th></tr></thead>
+    <tbody>
+      <tr><td><b>Vercel</b></td><td><span class="pill p-free">free</span> Hobby, non-commercial</td><td><span class="pill p-fixed">$20/seat</span> Pro incl. usage credit, then per GB / invocation</td><td>Zero config for Next 15. Needed once the shop takes real orders</td></tr>
+      <tr><td><b>Cloudflare Workers</b></td><td><span class="pill p-free">free</span> 100k req/day</td><td><span class="pill p-usage">$5/mo</span> + per million requests</td><td>Next via OpenNext adapter; test middleware and ISR first</td></tr>
+      <tr><td><b>Google Cloud Run</b></td><td><span class="pill p-free">free</span> 2M req, 180k vCPU-s, 360k GiB-s per month</td><td><span class="pill p-usage">usage</span> per vCPU-s and GiB-s</td><td>Regions me-central1 (Doha), asia-south1 (Mumbai). Jobs + Scheduler for workers</td></tr>
+      <tr><td><b>Fly.io</b></td><td>none for new orgs</td><td><span class="pill p-usage">≈ $2–6</span> per small Machine/mo, per-second</td><td>Existing fly.toml; regions sin, bom</td></tr>
+      <tr><td><b>Render</b></td><td><span class="pill p-free">free</span> web service, sleeps; free Postgres expires after 30 days</td><td><span class="pill p-fixed">$7+</span> per instance</td><td>Good dev API host; Render Cron for workers on paid plans</td></tr>
+      <tr><td><b>Koyeb</b></td><td><span class="pill p-free">free</span> 1 small instance, scale to zero</td><td><span class="pill p-usage">usage</span> per second</td><td>Docker deploys from GitHub</td></tr>
+      <tr><td><b>Neon Postgres</b></td><td><span class="pill p-free">free</span> 0.5 GB/project, limited CU-hours, scale to zero</td><td><span class="pill p-usage">usage</span> per CU-hour + GB-month</td><td>Pooled endpoint for asyncpg; branch per PR. Singapore and Frankfurt regions</td></tr>
+      <tr><td><b>Supabase</b></td><td><span class="pill p-free">free</span> 500 MB, pauses after 7 days idle</td><td><span class="pill p-fixed">$25</span> Pro + compute add-ons</td><td>Mumbai region; includes Supavisor pooler and storage</td></tr>
+      <tr><td><b>Fly Managed Postgres</b></td><td>none</td><td><span class="pill p-fixed">≈ $38+</span></td><td>Same network as API; runbook assumes this</td></tr>
+      <tr><td><b>Upstash Redis</b></td><td><span class="pill p-free">free</span> 256 MB, 500k commands/mo</td><td><span class="pill p-usage">≈ $0.20</span> per 100k commands, or fixed plans</td><td>Fine for lockout counters and rate limits. For arq's polling, pick a fixed plan</td></tr>
+      <tr><td><b>Meilisearch Cloud</b></td><td>14-day trial</td><td><span class="pill p-fixed">≈ $30+</span></td><td>Self-hosting on a 1 GB VM is cheaper at catalog sizes under ~100k products</td></tr>
+      <tr><td><b>Cloudflare R2</b></td><td><span class="pill p-free">free</span> 10 GB, 1M writes, 10M reads/mo</td><td><span class="pill p-usage">$0.015/GB-mo</span>, $0 egress</td><td>boto3 works with <code>S3_ENDPOINT_URL</code>; use two buckets (public media, private proofs)</td></tr>
+      <tr><td><b>Resend</b></td><td><span class="pill p-free">free</span> 3,000/mo, 100/day</td><td><span class="pill p-fixed">$20</span> for 50k/mo</td><td>Verify the sending domain with SPF/DKIM</td></tr>
+      <tr><td><b>Twilio</b></td><td>trial credit</td><td><span class="pill p-usage">per message</span></td><td>SMS to Pakistan is costly per message. WhatsApp templates via Meta Cloud API, or a local SMS aggregator, are cheaper at volume</td></tr>
+      <tr><td><b>Open Exchange Rates</b></td><td><span class="pill p-free">free</span> 1,000 req/mo, USD base</td><td><span class="pill p-fixed">$12+</span></td><td>Daily job uses ~30 req/mo; free is enough</td></tr>
+      <tr><td><b>Sentry</b></td><td><span class="pill p-free">free</span> 5k errors/mo, 1 user</td><td><span class="pill p-fixed">$26+</span> Team</td><td>Lower <code>traces_sample_rate</code> from 0.2 in prod to stay in quota</td></tr>
+      <tr><td><b>PostHog</b></td><td><span class="pill p-free">free</span> 1M events/mo</td><td><span class="pill p-usage">usage</span> per event</td><td>Needs CSP change first</td></tr>
+      <tr><td><b>GitHub Actions</b></td><td><span class="pill p-free">free</span> 2,000 min/mo on private repos</td><td><span class="pill p-usage">per minute</span></td><td>Current CI uses ~5–8 min per push</td></tr>
+      <tr><td><b>Cloudflare DNS / WAF</b></td><td><span class="pill p-free">free</span> DNS, proxy, basic WAF, Tunnel</td><td><span class="pill p-fixed">$20+</span> Pro WAF rules</td><td>Put the web and API hostnames behind it</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="costs">
+  <h2>Cost by stage</h2>
+  <p class="sub">Estimates for Option B. Order counts are assumptions to size things, not forecasts. Payment-processor fees and SMS are excluded because they scale with revenue, not infrastructure.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Component</th><th>Dev server</th><th>Launch<span class="small" style="text-transform:none;letter-spacing:0">~1k orders/mo, ~50k visits</span></th><th>Growth<span class="small" style="text-transform:none;letter-spacing:0">~10k orders/mo, ~500k visits</span></th></tr></thead>
+    <tbody>
+      <tr><td>Web (Vercel)</td><td class="num">$0 Hobby</td><td class="num">$20</td><td class="num">$20–60</td></tr>
+      <tr><td>API (Cloud Run, min 1)</td><td class="num">$0 (min 0)</td><td class="num">$10–15</td><td class="num">$30–80</td></tr>
+      <tr><td>Worker jobs + scheduler</td><td class="num">$0</td><td class="num">$0</td><td class="num">$0–5</td></tr>
+      <tr><td>Postgres (Neon)</td><td class="num">$0</td><td class="num">$5–20</td><td class="num">$40–100</td></tr>
+      <tr><td>Redis (Upstash)</td><td class="num">$0</td><td class="num">$0–2</td><td class="num">$5–10</td></tr>
+      <tr><td>Meilisearch VM</td><td class="num">$0 (unset or Oracle)</td><td class="num">$5–7</td><td class="num">$7–15</td></tr>
+      <tr><td>Object storage (R2)</td><td class="num">$0</td><td class="num">$0</td><td class="num">$1–3</td></tr>
+      <tr><td>Email (Resend)</td><td class="num">$0</td><td class="num">$0</td><td class="num">$20</td></tr>
+      <tr><td>Sentry · PostHog · CI · DNS</td><td class="num">$0</td><td class="num">$0</td><td class="num">$0–26</td></tr>
+      <tr><td><b>Total per month</b></td><td class="num"><b>$0</b></td><td class="num"><b>≈ $40–65</b></td><td class="num"><b>≈ $125–320</b></td></tr>
+    </tbody>
+  </table></div>
+  <p style="font-size:13.5px;color:var(--muted)">The domain (≈ $10–15/yr for <code>.com</code>; <code>.pk</code> via PKNIC) is extra in every column. Launch lands under $45 if the web app runs on Cloudflare Workers instead of Vercel Pro.</p>
+</section>
+
+<section id="region">
+  <h2>Region and latency</h2>
+  <p class="sub">Two audiences pull in different directions: buyers in Pakistan and the diaspora in the UK, US, Canada, Australia and the Gulf.</p>
+  <div class="cols2">
+    <div>
+      <h3>Put state near Pakistan</h3>
+      <p>No major cloud has a Pakistan region. Traffic from PTCL, Jazz and Zong usually exits through the Gulf, Singapore or Europe, so test each candidate from Pakistani ISPs before choosing. Good candidates: <b>me-central1</b> (Doha) or <b>asia-south1</b> (Mumbai) on GCP, <b>Singapore</b> on Neon and Fly (the current fly.toml already says <code>sin</code>). Keep the API, Postgres, Redis and Meilisearch in the <b>same region</b>; each checkout makes many DB round-trips.</p>
+    </div>
+    <div>
+      <h3>Serve pages from the edge</h3>
+      <p>Diaspora users mostly browse, and catalog pages are cacheable. Vercel or Cloudflare serve static assets and ISR pages from nearby edges, so a UK visitor only pays the long hop on cart and checkout calls. Product images on R2 behind a Cloudflare custom domain are cached globally.</p>
+    </div>
+  </div>
+</section>
+
+<section id="env">
+  <h2>Environment variables per environment</h2>
+  <p class="sub">What each variable points to once the stack moves off <code>localhost</code>. Secrets live in the host's secret store (Cloud Run: Secret Manager; Fly: <code>fly secrets</code>; Vercel: project env).</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Variable</th><th>Dev server</th><th>Production</th></tr></thead>
+    <tbody>
+      <tr><td><code>DATABASE_URL</code></td><td>Neon free, pooled host, <code>postgresql+asyncpg://</code></td><td>Neon Launch, pooled host</td></tr>
+      <tr><td><code>REDIS_URL</code></td><td>Upstash free, <code>rediss://</code> (TLS)</td><td>Upstash PAYG, <code>rediss://</code></td></tr>
+      <tr><td><code>SECRET_KEY</code></td><td>unique 64-hex</td><td>unique 64-hex, never shared with dev</td></tr>
+      <tr><td><code>FRONTEND_URL</code> <span class="pill p-warn">missing</span></td><td><code>https://dev.tahaif.pk</code></td><td><code>https://tahaif.pk</code></td></tr>
+      <tr><td><code>COOKIE_SECURE</code> <span class="pill p-warn">missing</span></td><td><code>true</code></td><td><code>true</code></td></tr>
+      <tr><td><code>ENVIRONMENT</code></td><td><code>staging</code></td><td><code>production</code></td></tr>
+      <tr><td><code>MEILISEARCH_URL</code> / <code>_MASTER_KEY</code></td><td>unset, or Oracle VM private URL</td><td>private URL of the search VM</td></tr>
+      <tr><td><code>S3_ENDPOINT_URL</code> + keys</td><td>R2 endpoint, dev bucket</td><td>R2 endpoint, prod buckets (public media, private proofs)</td></tr>
+      <tr><td><code>S3_PUBLIC_URL</code></td><td><code>https://media.dev.tahaif.pk</code></td><td><code>https://media.tahaif.pk</code></td></tr>
+      <tr><td><code>RESEND_API_KEY</code>, <code>EMAIL_FROM</code></td><td>free key, test domain</td><td>verified <code>tahaif.pk</code> sender</td></tr>
+      <tr><td><code>GOOGLE_CLIENT_ID/SECRET/REDIRECT_URI</code> <span class="pill p-warn">missing</span></td><td>dev OAuth client</td><td>prod OAuth client</td></tr>
+      <tr><td><code>SENTRY_DSN</code></td><td>same project, <code>staging</code> env tag</td><td>same project, <code>production</code> env tag</td></tr>
+      <tr><td><code>NEXT_PUBLIC_API_URL</code></td><td><code>https://api.dev.tahaif.pk/api/v1</code></td><td><code>https://api.tahaif.pk/api/v1</code></td></tr>
+      <tr><td><code>NEXT_PUBLIC_MEILISEARCH_*</code></td><td colspan="2">Unused by the web app. Remove to avoid leaking a key by mistake.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="plan">
+  <h2>Rollout plan</h2>
+  <p class="sub">In order. Each step can be verified before the next.</p>
+  <ol class="steps">
+    <li><div><b>Fix the container builds.</b> Runtime <code>WORKDIR</code>, <code>--no-install-project</code>, drop <code>uv</code> from the release command, correct health path. Add a CI job that runs <code>docker build</code> for the API on every PR so this can't regress.<span class="small">Done when: <code>docker run</code> answers <code>/api/v1/healthz</code>.</span></div></li>
+    <li><div><b>Add the job entrypoint.</b> <code>python -m app.workers.run outbox|fx</code>, plus a token-protected internal endpoint for environments without a job runner.<span class="small">Done when: placing a test order produces an email in Resend's log within one schedule tick.</span></div></li>
+    <li><div><b>Make config environment-safe.</b> Pool size from env, <code>statement_cache_size=0</code>, Redis-backed rate limits, <code>readyz</code> checks DB and Redis, CSP additions, private proofs bucket with presigned URLs. Update <code>.env.example</code>.</div></li>
+    <li><div><b>Register the domain and DNS on Cloudflare.</b> Create <code>dev.</code>, <code>api.dev.</code>, <code>media.dev.</code> records. Pick one of <code>tahaif.pk</code> / <code>tahaif.com</code> and update README, runbook and CSP to match.</div></li>
+    <li><div><b>Stand up the dev server (Option A).</b> Neon, Upstash, R2, Resend accounts; API on Cloud Run or Render; web on Vercel Hobby. Run <code>alembic upgrade head</code> and <code>scripts/seed.py</code> once.<span class="small">Done when: the five Playwright specs in <code>apps/web/tests</code> pass against the dev URL.</span></div></li>
+    <li><div><b>Add a deploy workflow.</b> On merge to <code>main</code>: build, push to Artifact Registry/GHCR, migrate, deploy to dev. Production deploys on a tagged release with a manual approval.</div></li>
+    <li><div><b>Load-test before launch.</b> Run <code>infra/load-test.js</code> against dev with production-sized DB settings to pick Cloud Run concurrency and max instances, and confirm p95 under 500 ms.</div></li>
+    <li><div><b>Promote to production (Option B).</b> Upgrade Vercel to Pro, Neon to Launch, set API min instances to 1, deploy Meilisearch VM with a volume and snapshot backups, enable Neon PITR, rewrite the runbook for the chosen platform.</div></li>
+  </ol>
+</section>
+
+<footer>
+  Prepared from a read of the repository at commit <code>f3633b2</code>. Blocker 1 was reproduced by installing the image's dependencies and importing the app from the image's working directory; the others are from reading configuration and code. Prices are list prices known as of mid-2026 and should be rechecked with each provider.
+</footer>
+</main>
+</div>
