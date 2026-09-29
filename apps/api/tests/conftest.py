@@ -18,11 +18,13 @@ os.environ.setdefault("RESEND_API_KEY", "")
 os.environ["TESTING"] = "1"  # disables rate limiting
 
 import asyncio  # noqa: E402
+from pathlib import Path  # noqa: E402
 
 import pytest  # noqa: E402
 import pytest_asyncio  # noqa: E402
+from alembic.config import Config  # noqa: E402
 from httpx import ASGITransport, AsyncClient  # noqa: E402
-from sqlalchemy import NullPool  # noqa: E402
+from sqlalchemy import NullPool, text  # noqa: E402
 from sqlalchemy.ext.asyncio import (  # noqa: E402
     AsyncSession,
     async_sessionmaker,
@@ -30,39 +32,57 @@ from sqlalchemy.ext.asyncio import (  # noqa: E402
 )
 
 import app.models as _models  # noqa: F401, E402 — registers all ORM metadata
+from alembic import command  # noqa: E402
 from app.core.db import get_db  # noqa: E402
 from app.main import app as fastapi_app  # noqa: E402
-from app.models.base import Base  # noqa: E402
 
 TEST_DB_URL = os.environ["DATABASE_URL"]
 
 
-# ── Table setup (sync, no pytest-asyncio event loop involved) ─────────────────
+# ── Schema setup (sync, no pytest-asyncio event loop involved) ─────────────────
+# The schema is built by running the real Alembic migrations, so tests see the
+# same tables production does (including raw-SQL tables such as
+# notifications_outbox and audit_logs that have no ORM model).
+
+_API_DIR = Path(__file__).resolve().parents[1]
+
 
 def _run(coro):  # type: ignore[no-untyped-def]
     asyncio.run(coro)
 
 
-async def _create_tables() -> None:
+async def _reset_schema() -> None:
     engine = create_async_engine(TEST_DB_URL, poolclass=NullPool)
     async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
-        await conn.run_sync(Base.metadata.create_all)
+        await conn.execute(text("DROP SCHEMA public CASCADE"))
+        await conn.execute(text("CREATE SCHEMA public"))
     await engine.dispose()
 
 
-async def _drop_tables() -> None:
-    engine = create_async_engine(TEST_DB_URL, poolclass=NullPool)
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
-    await engine.dispose()
+def _migrate() -> None:
+    cfg = Config(str(_API_DIR / "alembic.ini"))
+    cfg.set_main_option("script_location", str(_API_DIR / "alembic"))
+    cfg.set_main_option("sqlalchemy.url", TEST_DB_URL)
+    command.upgrade(cfg, "head")
 
 
 @pytest.fixture(scope="session", autouse=True)
 def _setup_db() -> None:  # type: ignore[misc]
-    _run(_create_tables())
+    _run(_reset_schema())
+    _migrate()
     yield  # type: ignore[misc]
-    _run(_drop_tables())
+    _run(_reset_schema())
+
+
+# ── Per-test Redis client ─────────────────────────────────────────────────────
+# get_redis() caches one client per process; its connections are bound to the
+# event loop that opened them, and each test runs in a fresh loop.
+
+@pytest.fixture(autouse=True)
+def _fresh_redis_client() -> None:
+    from app.core import redis_client
+
+    redis_client._redis = None
 
 
 # ── Per-test DB session (NullPool = no cross-loop connection sharing) ─────────

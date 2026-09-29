@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { Upload, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useAuthStore } from "@/stores/auth.store";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api/v1";
 
@@ -11,21 +12,21 @@ export function ProofUpload({ orderId }: { orderId: string }) {
   const [uploading, setUploading] = useState(false);
   const [uploaded, setUploaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const accessToken = useAuthStore((s) => s.accessToken);
 
   async function handleFile(file: File) {
     setUploading(true);
     setError(null);
     try {
-      const token = document.cookie.match(/access_token=([^;]+)/)?.[1] ?? "";
       const form = new FormData();
       form.append("file", file);
       const resp = await fetch(`${API_URL}/orders/${orderId}/proof`, {
         method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { Authorization: `Bearer ${accessToken ?? ""}` },
         body: form,
       });
       if (!resp.ok) {
-        const data = await resp.json().catch(() => ({}));
+        const data = (await resp.json().catch(() => ({}))) as { detail?: string };
         throw new Error(data.detail ?? "Upload failed");
       }
       setUploaded(true);

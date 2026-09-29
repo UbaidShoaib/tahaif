@@ -6,6 +6,7 @@ from app.api.v1.endpoints import (
     cart,
     catalog,
     health,
+    internal,
     loyalty,
     marketing,
     me,
@@ -26,3 +27,4 @@ api_router.include_router(loyalty.router)
 api_router.include_router(reviews.router)
 api_router.include_router(marketing.router)
 api_router.include_router(admin.router)
+api_router.include_router(internal.router)

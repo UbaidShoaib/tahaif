@@ -49,7 +49,7 @@ jobs:
         working-directory: apps/api
     services:
       postgres:
-        image: postgres:16-alpine
+        image: postgres:17-alpine
         env:
           POSTGRES_USER: tahaif_user
           POSTGRES_PASSWORD: tahaif_test_password

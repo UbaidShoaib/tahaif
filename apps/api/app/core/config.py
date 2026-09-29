@@ -29,6 +29,13 @@ class Settings(BaseSettings):
 
     # Database
     database_url: PostgresDsn
+    # Per-process pool. Keep small on serverless / free-tier Postgres, where
+    # connections are capped; every uvicorn worker and instance gets its own pool.
+    db_pool_size: int = 10
+    db_max_overflow: int = 20
+    # Set when DATABASE_URL points at a PgBouncer / Supavisor transaction pooler,
+    # which can't hold asyncpg's server-side prepared statements.
+    db_pgbouncer: bool = False
 
     # Redis
     redis_url: RedisDsn = "redis://localhost:6379/0"  # type: ignore[assignment]
@@ -78,9 +85,18 @@ class Settings(BaseSettings):
     # Observability
     sentry_dsn: str = ""
 
+    # Background jobs: bearer token for POST /internal/jobs/{job}.
+    # Empty disables the endpoint (404), e.g. when jobs run via `python -m app.workers.run`.
+    jobs_token: str = ""
+
     @property
     def is_production(self) -> bool:
         return self.environment == "production"
+
+    @property
+    def secure_cookies(self) -> bool:
+        # Deployed environments are always HTTPS; only local dev may use plain HTTP.
+        return self.cookie_secure or self.environment != "development"
 
 
 @lru_cache

@@ -1,3 +1,4 @@
+import contextlib
 import secrets
 
 from fastapi import APIRouter, HTTPException, Query, Response, status
@@ -44,8 +45,9 @@ class NewsletterSubscribeRequest(BaseModel):
 async def newsletter_subscribe(body: NewsletterSubscribeRequest, db: DB) -> dict[str, str]:
     """Subscribe an email address; sends a double opt-in confirmation email."""
     from sqlalchemy import select
-    from app.models.loyalty import NewsletterSubscriber
+
     from app.integrations.resend_client import send_newsletter_confirmation_email
+    from app.models.loyalty import NewsletterSubscriber
 
     settings = get_settings()
 
@@ -66,10 +68,8 @@ async def newsletter_subscribe(body: NewsletterSubscribeRequest, db: DB) -> dict
 
     confirm_url = f"{settings.frontend_url}/newsletter/confirm?token={token}"
     if settings.resend_api_key:
-        try:
+        with contextlib.suppress(Exception):
             await send_newsletter_confirmation_email(body.email, confirm_url)
-        except Exception:
-            pass
 
     return {"message": "Confirmation email sent. Please check your inbox."}
 
@@ -77,6 +77,7 @@ async def newsletter_subscribe(body: NewsletterSubscribeRequest, db: DB) -> dict
 @router.get("/newsletter/confirm", status_code=status.HTTP_200_OK)
 async def newsletter_confirm(token: str, db: DB) -> dict[str, str]:
     from sqlalchemy import select
+
     from app.models.loyalty import NewsletterSubscriber
 
     result = await db.execute(

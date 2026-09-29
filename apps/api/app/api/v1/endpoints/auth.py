@@ -42,7 +42,8 @@ def _client_ip(request: Request) -> str:
 async def _check_ip_not_banned(request: Request) -> None:
     redis = get_redis()
     ip = _client_ip(request)
-    if await redis.sismember("ip_blocklist", ip):
+    # redis-py types sync/async clients with one union return type.
+    if await redis.sismember("ip_blocklist", ip):  # type: ignore[misc]
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             detail="Too many failed login attempts. Try again in 24 hours.",
@@ -56,7 +57,7 @@ async def _record_failed_login(request: Request) -> None:
     count = await redis.incr(key)
     await redis.expire(key, _FAIL_WINDOW_SECS)
     if count >= _FAIL_THRESHOLD:
-        await redis.sadd("ip_blocklist", ip)
+        await redis.sadd("ip_blocklist", ip)  # type: ignore[misc]
         await redis.expire("ip_blocklist", _BAN_TTL_SECS)
         await logger.awarning("ip_blocked", ip=ip, failures=count)
 
@@ -71,7 +72,7 @@ _COOKIE_NAME = "refresh_token"
 _COOKIE_OPTS: dict[str, object] = {
     "httponly": True,
     "samesite": "lax",
-    "secure": settings.cookie_secure,
+    "secure": settings.secure_cookies,
     "max_age": settings.refresh_token_expire_days * 86400,
     "path": "/api/v1/auth",
 }
@@ -195,7 +196,10 @@ async def reset_password(
 async def google_authorize(request: Request, response: Response) -> RedirectResponse:  # pragma: no cover  # noqa: ARG001
     state = secrets.token_urlsafe(32)
     # Store state in a short-lived cookie for CSRF validation
-    response.set_cookie("oauth_state", state, httponly=True, max_age=300, samesite="lax")
+    response.set_cookie(
+        "oauth_state", state, httponly=True, max_age=300, samesite="lax",
+        secure=settings.secure_cookies,
+    )
     url = google_oauth.get_authorization_url(state)
     return RedirectResponse(url)
 

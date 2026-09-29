@@ -1,8 +1,9 @@
 packages:
   - 'apps/*'
   - 'packages/*'
+# Packages whose install scripts may run. core-js's only prints a funding notice.
 allowBuilds:
-  core-js: set this to true or false
-  esbuild: set this to true or false
-  sharp: set this to true or false
-  unrs-resolver: set this to true or false
+  core-js: false
+  esbuild: true
+  sharp: true
+  unrs-resolver: true

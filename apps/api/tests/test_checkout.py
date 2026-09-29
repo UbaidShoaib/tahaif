@@ -5,6 +5,7 @@ from datetime import date, timedelta
 
 import pytest
 import pytest_asyncio
+import sqlalchemy as sa
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -179,7 +180,7 @@ async def test_quote_requires_auth(client: AsyncClient, city: City) -> None:
 
 @pytest.mark.asyncio
 async def test_place_order_cod(
-    client: AsyncClient, customer: User, product: Product, city: City
+    client: AsyncClient, db: AsyncSession, customer: User, product: Product, city: City
 ) -> None:
     email = customer.email
     product_id = str(product.id)
@@ -210,6 +211,18 @@ async def test_place_order_cod(
     assert len(data["items"]) == 1
     assert len(data["fulfillments"]) == 1
     assert "public_token" in data
+
+    # Confirmation email is queued for the outbox worker.
+    queued = (await db.execute(
+        sa.text(
+            "SELECT channel, template, payload->>'public_token' AS token "
+            "FROM notifications_outbox WHERE to_address = :to"
+        ),
+        {"to": email},
+    )).all()
+    assert [(r.channel, r.template, r.token) for r in queued] == [
+        ("email", "order_confirmation", data["public_token"])
+    ]
 
 
 @pytest.mark.asyncio

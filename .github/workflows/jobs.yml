@@ -1,0 +1,43 @@
+name: Scheduled jobs
+
+# Triggers the API's background jobs over HTTP for hosts without a job runner.
+# Requires repository secrets:
+#   JOBS_API_URL  e.g. https://api.dev.tahaif.pk/api/v1
+#   JOBS_TOKEN    same value as the API's JOBS_TOKEN env var
+# Runs are skipped (not failed) until both secrets are set.
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"  # outbox drain
+    - cron: "5 0 * * *"     # FX refresh, daily 00:05 UTC
+  workflow_dispatch:
+    inputs:
+      job:
+        description: Job to run
+        type: choice
+        options: [outbox, fx]
+        default: outbox
+
+concurrency:
+  group: jobs-${{ github.event.schedule || inputs.job }}
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      JOBS_API_URL: ${{ secrets.JOBS_API_URL }}
+      JOBS_TOKEN: ${{ secrets.JOBS_TOKEN }}
+      JOB: ${{ inputs.job || (github.event.schedule == '5 0 * * *' && 'fx' || 'outbox') }}
+    steps:
+      - name: Run ${{ env.JOB }}
+        run: |
+          if [ -z "$JOBS_API_URL" ] || [ -z "$JOBS_TOKEN" ]; then
+            echo "::notice::JOBS_API_URL / JOBS_TOKEN not set; skipping."
+            exit 0
+          fi
+          curl --fail-with-body --silent --show-error --max-time 120 \
+            --retry 2 --retry-delay 10 --retry-all-errors \
+            -X POST -H "Authorization: Bearer $JOBS_TOKEN" \
+            "$JOBS_API_URL/internal/jobs/$JOB"

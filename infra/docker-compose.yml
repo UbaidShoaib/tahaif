@@ -1,6 +1,6 @@
 services:
   postgres:
-    image: postgres:16-alpine
+    image: postgres:17-alpine
     environment:
       POSTGRES_USER: tahaif_user
       POSTGRES_PASSWORD: tahaif_dev_password

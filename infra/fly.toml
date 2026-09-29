@@ -7,13 +7,13 @@ primary_region = "sin"  # Singapore (closest to Pakistan)
 [build]
   dockerfile = "infra/Dockerfile.api"
   # Build context is the repo root so COPY apps/api/ works
-  build_target = ""
 
 [env]
   PORT = "8000"
   PYTHONUNBUFFERED = "1"
   # Remaining secrets injected via: fly secrets set KEY=value
-  # Required: DATABASE_URL, REDIS_URL, SECRET_KEY, ALLOWED_ORIGINS
+  # Required: DATABASE_URL, REDIS_URL, SECRET_KEY, FRONTEND_URL
+  ENVIRONMENT = "production"
 
 [http_service]
   internal_port = 8000
@@ -31,7 +31,7 @@ primary_region = "sin"  # Singapore (closest to Pakistan)
   grace_period = "10s"
   interval = "15s"
   method = "GET"
-  path = "/health"
+  path = "/api/v1/healthz"
   protocol = "http"
   timeout = "5s"
 
@@ -43,12 +43,11 @@ primary_region = "sin"  # Singapore (closest to Pakistan)
 [deploy]
   strategy = "rolling"
   # Run Alembic migrations before traffic shifts to new version
-  release_command = "uv run alembic upgrade head"
+  # (the image's venv is on PATH and WORKDIR holds alembic.ini)
+  release_command = "alembic upgrade head"
 
-[[statics]]
-  # No static files from API — served by Vercel (web app)
-
-[mounts]
-  # Uncomment if MinIO / local storage is used in staging
-  # source = "tahaif_data"
-  # destination = "/data"
+# Scheduled jobs. Fly scheduled Machines run at most hourly, which suits the daily FX job:
+#   fly machine run . --config infra/fly.toml --schedule daily \
+#     --command "python -m app.workers.run fx"
+# The outbox needs a tighter interval: set the JOBS_TOKEN secret and let
+# .github/workflows/jobs.yml call /api/v1/internal/jobs/outbox every 15 minutes.

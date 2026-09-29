@@ -37,7 +37,7 @@ Full documentation: [`docs/production-roadmap.md`](docs/production-roadmap.md)
 | Layer | Technology |
 |---|---|
 | API | FastAPI 0.110+, Python 3.12 |
-| ORM / DB | SQLAlchemy 2 async + Alembic + PostgreSQL 16 |
+| ORM / DB | SQLAlchemy 2 async + Alembic + PostgreSQL 17 |
 | Cache | Redis 7 |
 | Search | Meilisearch |
 | Object Storage | MinIO (local) / S3 (production) |
@@ -143,7 +143,12 @@ docker compose -f infra/docker-compose.yml ps
 ```
 
 Services started:
-- **PostgreSQL 16** → `localhost:5433`
+- **PostgreSQL 17** → `localhost:5433`
+
+> **Upgrading from Postgres 16?** Data directories aren't compatible across major
+> versions. Reset the local volume once with
+> `docker compose -f infra/docker-compose.yml down -v`, then rerun `./start.sh`
+> (migrations and seed data are reapplied).
 - **Redis 7** → `localhost:6380`
 - **Meilisearch** → `localhost:7700`
 - **MinIO** (S3-compatible storage) → `localhost:9000` (console: `localhost:9001`)
