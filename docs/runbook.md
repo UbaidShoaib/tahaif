@@ -1,106 +1,123 @@
 # Tahaif Production Runbook
 
-**Last updated:** 2026-07-22
+**Last updated:** 2026-10-14
 
 ---
 
 ## Service inventory
 
-| Service | Platform | Region | URL |
-|---|---|---|---|
-| API | Railway (Trial — no card; see ADR 0002) | Singapore (`sfo` builder, service region auto) | `tahaif-api-production.up.railway.app` |
-| Web | Vercel | auto | `tahaif-web.vercel.app` (Preview; production cutover pending) |
-| DB | Railway Postgres | same project | private network (`postgres.railway.internal`) |
-| Redis | Railway Key Value | same project | private network (`redis.railway.internal`) |
-| MinIO / S3 | **not yet provisioned** | — | proof-of-payment upload is non-functional until set up. Keep the bucket private: admins open receipts through 15-minute SigV4 links; set `S3_REGION` to the bucket's region |
-| Meilisearch | **not yet provisioned** | — | search works through the database fallback until set up |
+Everything runs on one VPS with Docker Compose (ADR 0007).
 
-`infra/fly.toml` and `infra/render.yaml` are kept in the repo, fully configured
-and validated, as ready alternatives if the project moves to a paid host later.
+| Service | Where | Notes |
+|---|---|---|
+| VPS | DigitalOcean droplet `139.59.80.229` — Ubuntu 24.04, 2 vCPU / 2 GB RAM (+2 GB swap) / 58 GB | SSH as `root`; firewall (ufw) allows only 22, 80, 443 |
+| Site | `https://139-59-80-229.sslip.io` | **Temporary hostname** until `bouquetbar.pk` resolves — see §1 "Changing the domain" |
+| Caddy | container `caddy` | TLS (Let's Encrypt), routes `/api/*` → api, `/tahaif-media/*` → minio, rest → web |
+| Web | container `web` | Next.js standalone |
+| API + worker | container `api` | migrations run on start; arq worker runs inside (`RUN_WORKER_IN_API=1`) |
+| DB | container `postgres` (16) | volume `tahaif_postgres_data` |
+| Redis | container `redis` (7, AOF on) | volume `tahaif_redis_data` |
+| Meilisearch | container `meilisearch` (pinned `v1.46.1`) | volume `tahaif_meilisearch_data` |
+| Object storage | container `minio` | private bucket `tahaif-media`, volume `tahaif_minio_data` |
+
+Code lives in `/opt/tahaif` on the server; settings in `/opt/tahaif/.env.prod`
+(mode 600, never in git; template `infra/env.prod.example`).
+
+All commands below run on the server from `/opt/tahaif`, with:
+
+```bash
+alias dc='docker compose --env-file .env.prod -f infra/docker-compose.prod.yml'
+```
+
+`railway.json`, `infra/fly.toml` and `infra/render.yaml` are kept as alternatives
+(ADR 0002); the Railway and Vercel deployments are no longer the active target.
 
 ---
 
-## 1. Service restart
+## 1. Deploy, restart, logs
 
-### API (Railway)
-
-```bash
-railway redeploy --service tahaif-api --yes   # restart without rebuilding
-railway logs --service tahaif-api --deployment --latest
-railway status --json
-```
-
-### Web (Vercel)
-
-Redeploy from Vercel dashboard → "Deployments" → pick latest → "Redeploy".
-
-Or via CLI:
+Deploy from a workstation (ships a git ref, rebuilds, restarts; only committed code):
 
 ```bash
-vercel --prod
+infra/deploy.sh root@139.59.80.229          # HEAD
+infra/deploy.sh root@139.59.80.229 <ref>    # any commit or tag
 ```
+
+A fresh server needs `ssh root@host 'bash -s' < infra/vps-setup.sh` and an
+`.env.prod` first.
+
+```bash
+dc ps                          # health of every service
+dc logs -f --tail=100 api      # or web, caddy, postgres, ...
+dc restart api                 # restart without rebuilding
+dc up -d                       # apply .env.prod changes to the API
+```
+
+`NEXT_PUBLIC_*` values are baked into the web image: after changing them, redeploy
+(or `dc up -d --build web`).
+
+### Changing the domain
+
+1. Point the new domain's A record at the server and wait until it resolves.
+2. In `.env.prod` set `DOMAIN`, `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_SITE_URL` (and `EMAIL_FROM`).
+3. `dc up -d --build` — Caddy fetches the new certificate on start.
+
+Links already stored for uploaded proofs keep working: they are re-signed from the object key.
 
 ---
 
 ## 2. Database backup
 
-Railway's free Postgres plugin does not include managed automated backups.
-Take manual snapshots via `pg_dump` against the public connection string
-(`railway variable list --service Postgres --kv` for `DATABASE_PUBLIC_URL`):
+Nothing is backed up automatically yet. Take a dump and **copy it off the server**:
 
 ```bash
-pg_dump "$DATABASE_PUBLIC_URL" -Fc -f tahaif-backup-$(date +%F).dump
+mkdir -p /opt/tahaif-backups
+dc exec -T postgres pg_dump -U tahaif -Fc tahaif > /opt/tahaif-backups/tahaif-$(date +%F).dump
+```
+
+Nightly at 21:00 UTC, keeping 14 days (`crontab -e` as root):
+
+```cron
+0 21 * * * cd /opt/tahaif && docker compose --env-file .env.prod -f infra/docker-compose.prod.yml exec -T postgres pg_dump -U tahaif -Fc tahaif > /opt/tahaif-backups/tahaif-$(date +\%F).dump && find /opt/tahaif-backups -name '*.dump' -mtime +14 -delete
 ```
 
 Restore:
 
 ```bash
-pg_restore -d "$DATABASE_PUBLIC_URL" --clean tahaif-backup-<date>.dump
+dc exec -T postgres pg_restore -U tahaif -d tahaif --clean < /opt/tahaif-backups/tahaif-<date>.dump
 ```
+
+Uploaded media lives in the `tahaif_minio_data` volume; back it up with the droplet
+(DigitalOcean backups/snapshots) or `docker run --rm -v tahaif_minio_data:/d -v /opt/tahaif-backups:/b alpine tar czf /b/media-$(date +%F).tgz -C /d .`
 
 ---
 
 ## 3. Rollback procedure
 
-### API rollback
+Redeploy the last good commit:
 
 ```bash
-railway deployment list --service tahaif-api --json   # find a prior SUCCESS deployment id
-railway redeploy --service tahaif-api --yes            # re-runs the latest; for an older
-                                                        # deployment, use the dashboard's
-                                                        # "Redeploy" on that specific deployment
+infra/deploy.sh root@139.59.80.229 <good-commit>
 ```
 
-### Web rollback
-
-Vercel dashboard → Deployments → click the previous successful deployment → "Promote to Production".
-
-### Database migration rollback
+Database migration rollback (before rolling the code back past the migration):
 
 ```bash
-railway ssh --service tahaif-api
-# Inside the container
-cd /app/apps/api
-alembic downgrade <target_revision>
+dc exec api alembic downgrade <target_revision>
 ```
 
 ---
 
 ## 4. Key secrets and where they live
 
-All secrets are stored in **Railway service variables** (for API) and **Vercel environment variables** (for web).
+Everything is in `/opt/tahaif/.env.prod` on the server. `SECRET_KEY`,
+`POSTGRES_PASSWORD`, `MEILISEARCH_MASTER_KEY` and `MINIO_ROOT_PASSWORD` were generated
+on the server and exist nowhere else — include the file in off-server backups.
 
-To view / update API variables:
+Changing `POSTGRES_PASSWORD` or `MINIO_ROOT_PASSWORD` in the file does not change an
+existing volume's password; change it inside the service first.
 
-```bash
-railway variable list --service tahaif-api --kv
-railway variable set KEY=value --service tahaif-api
-```
-
-To update web variables: Vercel dashboard → Project → Settings → Environment Variables,
-or `vercel env add KEY <environment>`.
-
-**Never commit secrets to git.** See `.env.example` for the full list of required variables.
+**Never commit secrets to git.**
 
 ---
 
@@ -134,16 +151,15 @@ or `vercel env add KEY <environment>`.
 
 **Symptom:** `POST /orders/{id}/proof` returns 500.
 
-**Status:** expected until S3/MinIO is provisioned — `S3_*` variables are currently unset.
-
 **Check:**
 ```bash
-railway logs --service tahaif-api --filter "s3"
-railway variable list --service tahaif-api --kv | grep S3
+dc logs --tail=200 api | grep s3_
+dc ps minio caddy
 ```
 
-**Remedy:** provision an S3-compatible bucket (AWS S3 or Cloudflare R2) and set
-`S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_BUCKET_NAME`, `S3_ENDPOINT_URL`, `S3_PUBLIC_URL`.
+**Remedy:** the API uploads through Caddy at `https://$DOMAIN` (the same host the
+signed links use), so both `minio` and `caddy` must be up and the certificate valid.
+`dc up -d minio-init` recreates the bucket if it is missing.
 
 ---
 
@@ -156,15 +172,12 @@ counters, so limits are temporarily per worker rather than shared.
 
 **Check:**
 ```bash
-railway logs --service Redis --deployment --latest
-railway variable list --service tahaif-api --kv | grep REDIS_URL
+dc ps redis
+dc logs --tail=50 redis
 ```
 
-**Remedy:** restart the Redis service (`railway redeploy --service Redis --yes`), verify `REDIS_URL`.
-
-Note: Railway's free Key Value plan is in-memory only — data (including rate-limit
-counters, stored under the `tahaif-rl` key prefix) is lost when Redis restarts. API
-restarts no longer reset limits. Not an issue for correctness, only for state continuity.
+**Remedy:** `dc restart redis`. Redis runs with append-only persistence, so guest
+carts and rate-limit counters (key prefix `tahaif-rl`) survive a restart.
 
 ---
 
@@ -182,9 +195,10 @@ Postgres. Search keeps working, with simpler ranking.
 (searchable and filterable attributes) and upserts every active product.
 
 ```bash
-railway ssh --service tahaif-api
-uv run python scripts/reindex_search.py     # prints "Indexed N products"
+dc exec api python scripts/reindex_search.py     # prints "Indexed N products"
 ```
+
+Run it once after the first products are added, and after a Meilisearch upgrade.
 
 Locally, `start.sh` runs the same script on every start. If it warns that the
 index was not built, check that `MEILISEARCH_MASTER_KEY` in `.env` matches the
@@ -221,9 +235,8 @@ rather than being marked sent.
 ### Client IPs behind the proxy
 
 Set `TRUSTED_PROXY_HOPS` to the number of proxies that append to
-`X-Forwarded-For`: **1 on Railway** (set it in the service's Variables — railway.json
-cannot hold env vars), 1 on Render/Fly (already in their configs), 2 if
-Cloudflare proxies in front. Wrong values either lump every buyer into one
+`X-Forwarded-For`: **1 on the VPS** (Caddy; the Compose file's default), 2 if
+Cloudflare proxies in front (set `TRUSTED_PROXY_HOPS=2` in `.env.prod`). Wrong values either lump every buyer into one
 rate-limit bucket (too low) or let clients spoof their IP (too high).
 
 ---
@@ -232,8 +245,8 @@ rate-limit bucket (too low) or let clients spoof their IP (too high).
 
 - **Sentry** — not yet configured (`SENTRY_DSN` unset)
 - **PostHog** — not yet configured (`NEXT_PUBLIC_POSTHOG_KEY` unset on web)
-- **Railway metrics** — CPU / memory / network per service: `railway.com` project dashboard, or `railway metrics --service tahaif-api`
-- **Railway usage** — trial credit remaining: `railway usage`
+- **Server** — `docker stats` for per-container CPU/memory, `df -h /` for disk; DigitalOcean's droplet graphs for history
+- No uptime alerting yet: nothing notifies anyone if the site goes down
 
 ---
 
@@ -241,9 +254,10 @@ rate-limit bucket (too low) or let clients spoof their IP (too high).
 
 | Task | Schedule | Where |
 |---|---|---|
-| FX rate refresh | Daily 00:00 UTC | `workers/fx_rate_worker.py` via arq — **not yet scheduled on Railway; needs a cron-triggered job or always-on worker** |
-| Outbox drain | Every 5 minutes | `workers/outbox_worker.py` via arq — **same; not yet scheduled** |
-| DB vacuum | Managed by Postgres | Railway Postgres template handles autovacuum by default |
+| FX rate refresh | Daily 01:00 UTC and on start | arq worker inside the `api` container (needs `OPEN_EXCHANGE_RATES_APP_ID`) |
+| Outbox drain | Every 15 seconds | same worker |
+| DB backup | Nightly, once the cron line in §2 is installed | root crontab on the VPS |
+| DB vacuum | Managed by Postgres | autovacuum defaults |
 
 ---
 
