@@ -3,6 +3,8 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Package, CheckCircle, XCircle, Eye, RefreshCw } from "lucide-react";
+import { HiddenProducts } from "@/components/admin/HiddenProducts";
+import { VendorApplications } from "@/components/admin/VendorApplications";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { useAuthStore } from "@/stores/auth.store";
@@ -37,6 +39,13 @@ const ORDER_STATUSES = [
   "out_for_delivery", "delivered", "completed", "cancelled", "on_hold",
 ];
 
+type Section = "orders" | "applications" | "products";
+const SECTIONS: { key: Section; label: string }[] = [
+  { key: "orders", label: "Orders" },
+  { key: "applications", label: "Shop applications" },
+  { key: "products", label: "Hidden products" },
+];
+
 export default function AdminDashboard() {
   const router = useRouter();
   const { accessToken: token, user, isLoading: authLoading } = useAuthStore();
@@ -45,6 +54,7 @@ export default function AdminDashboard() {
   const [error, setError] = useState<string | null>(null);
   const [filterStatus, setFilterStatus] = useState<string>("");
   const [actionInProgress, setActionInProgress] = useState<string | null>(null);
+  const [section, setSection] = useState<Section>("orders");
 
   useEffect(() => {
     // On a hard reload the session is restored from the refresh cookie after
@@ -109,12 +119,33 @@ export default function AdminDashboard() {
           <Package className="h-6 w-6 text-link" />
           Admin Dashboard
         </h1>
-        <Button variant="outline" size="sm" onClick={() => void fetchOrders()} className="gap-2">
-          <RefreshCw className="h-4 w-4" />
-          Refresh
-        </Button>
+        {section === "orders" && (
+          <Button variant="outline" size="sm" onClick={() => void fetchOrders()} className="gap-2">
+            <RefreshCw className="h-4 w-4" />
+            Refresh
+          </Button>
+        )}
       </div>
 
+      <nav aria-label="Admin sections" className="mb-6 flex flex-wrap gap-2 border-b pb-3">
+        {SECTIONS.map((s) => (
+          <Button
+            key={s.key}
+            variant={section === s.key ? "default" : "ghost"}
+            size="sm"
+            aria-current={section === s.key ? "page" : undefined}
+            onClick={() => setSection(s.key)}
+          >
+            {s.label}
+          </Button>
+        ))}
+      </nav>
+
+      {section === "applications" && token && <VendorApplications token={token} />}
+      {section === "products" && token && <HiddenProducts token={token} />}
+
+      {section === "orders" && (
+      <>
       {/* Status filter */}
       <div className="flex flex-wrap gap-2 mb-6">
         <Button
@@ -223,6 +254,8 @@ export default function AdminDashboard() {
             </div>
           ))}
         </div>
+      )}
+      </>
       )}
     </div>
   );

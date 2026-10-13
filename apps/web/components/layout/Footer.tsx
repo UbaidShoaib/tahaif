@@ -21,6 +21,7 @@ export async function Footer() {
         { href: "/register", label: t("footer.register") },
         { href: "/account/orders", label: t("footer.myOrders") },
         { href: "/account/addresses", label: t("footer.addresses") },
+        { href: "/sell", label: t("footer.sell") },
       ],
     },
     {

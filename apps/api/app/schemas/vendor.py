@@ -3,6 +3,7 @@ from datetime import date, datetime
 
 from pydantic import BaseModel, Field
 
+from app.models.catalog import VendorApprovalStatus
 from app.models.order import FulfillmentStatus, OrderStatus, PaymentMethod
 
 
@@ -54,3 +55,50 @@ class VendorFulfillmentRead(BaseModel):
     surprise: bool = Field(
         default=False, description="Surprise gift: don't call the recipient ahead, and include no receipt or price"
     )
+
+
+# ── Vendor applications ───────────────────────────────────────────────────────
+
+class VendorApplicationCreate(BaseModel):
+    name: str = Field(min_length=2, max_length=255, examples=["Gulberg Florist"])
+    city_id: uuid.UUID
+    contact_phone: str = Field(
+        min_length=7, max_length=30, pattern=r"^\+?[\d\s()-]+$", examples=["+92 300 1234567"]
+    )
+    description: str | None = Field(
+        default=None, max_length=2000, examples=["Hand-tied bouquets, delivered same day in Lahore."]
+    )
+
+
+class VendorApplicationRead(BaseModel):
+    """A shop application as its applicant sees it."""
+    id: uuid.UUID
+    name: str
+    slug: str
+    city_id: uuid.UUID
+    city_name: str
+    contact_phone: str | None
+    description: str | None
+    status: VendorApprovalStatus = Field(examples=["pending"])
+    review_note: str | None = Field(default=None, description="Staff's reason when rejected")
+    created_at: datetime
+    reviewed_at: datetime | None
+
+
+class AdminVendorApplicationRead(VendorApplicationRead):
+    applicant_email: str
+    applicant_name: str | None
+
+
+class VendorApplicationReject(BaseModel):
+    note: str | None = Field(default=None, max_length=1000, examples=["We are not onboarding bakeries yet."])
+
+
+class AdminProductRead(BaseModel):
+    id: uuid.UUID
+    name: str
+    slug: str
+    vendor_name: str
+    base_price_pkr: int
+    is_active: bool
+    created_at: datetime

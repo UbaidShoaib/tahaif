@@ -10,14 +10,19 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 
 from app.core.deps import DB, require_roles
-from app.models.catalog import FxRate, FxRateSource
+from app.models.catalog import FxRate, FxRateSource, VendorApprovalStatus
 from app.models.loyalty import Coupon, CouponType
 from app.models.order import Order, OrderStatus, PaymentStatus
 from app.models.user import User, UserRole
 from app.repositories.loyalty_repository import CouponRepository
 from app.repositories.order_repository import OrderRepository
 from app.repositories.user_repository import UserRepository
-from app.services import catalog_service, proof_service
+from app.schemas.vendor import (
+    AdminProductRead,
+    AdminVendorApplicationRead,
+    VendorApplicationReject,
+)
+from app.services import catalog_service, proof_service, vendor_application_service
 
 AdminUser = Annotated[User, require_roles(UserRole.admin, UserRole.staff)]
 
@@ -129,7 +134,50 @@ async def verify_payment(
     return {"payment_status": payment.status, "order_status": order.status}
 
 
+# ── Vendor applications ───────────────────────────────────────────────────────
+
+@router.get("/vendor-applications", response_model=list[AdminVendorApplicationRead])
+async def list_vendor_applications(
+    _admin: AdminUser,
+    db: DB,
+    status: VendorApprovalStatus | None = None,
+) -> list[AdminVendorApplicationRead]:
+    """Shop applications, newest first. Filter with `status=pending` for the review queue."""
+    return await vendor_application_service.list_applications(db, status)
+
+
+@router.post("/vendor-applications/{vendor_id}/approve", response_model=AdminVendorApplicationRead)
+async def approve_vendor_application(
+    vendor_id: uuid.UUID, admin: AdminUser, db: DB
+) -> AdminVendorApplicationRead:
+    """Open the shop and give its owner the vendor role."""
+    return await vendor_application_service.approve(db, admin, vendor_id)
+
+
+@router.post("/vendor-applications/{vendor_id}/reject", response_model=AdminVendorApplicationRead)
+async def reject_vendor_application(
+    vendor_id: uuid.UUID, body: VendorApplicationReject, admin: AdminUser, db: DB
+) -> AdminVendorApplicationRead:
+    """Turn the application down; the note is shown to the applicant, who may apply again."""
+    return await vendor_application_service.reject(db, admin, vendor_id, body.note)
+
+
 # ── Products ──────────────────────────────────────────────────────────────────
+
+@router.get("/products", response_model=list[AdminProductRead])
+async def list_products(
+    _admin: AdminUser, db: DB, is_active: bool | None = None
+) -> list[AdminProductRead]:
+    """Every product, hidden ones included. `is_active=false` lists what is waiting to be published."""
+    products = await catalog_service.list_admin_products(db, is_active)
+    return [
+        AdminProductRead(
+            id=p.id, name=p.name, slug=p.slug, vendor_name=p.vendor.name,
+            base_price_pkr=p.base_price_pkr, is_active=p.is_active, created_at=p.created_at,
+        )
+        for p in products
+    ]
+
 
 @router.patch("/products/{product_id}/active")
 async def set_product_active(

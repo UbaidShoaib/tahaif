@@ -1,15 +1,33 @@
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Form, Query, UploadFile
+from fastapi import APIRouter, Form, Query, UploadFile, status
 
 from app.core.deps import DB, CurrentUser
 from app.models.order import FulfillmentStatus
 from app.schemas.catalog import ProductRead, VendorRead, VendorUpdate
-from app.schemas.vendor import FulfillmentStatusUpdate, VendorFulfillmentRead
-from app.services import vendor_service
+from app.schemas.vendor import (
+    FulfillmentStatusUpdate,
+    VendorApplicationCreate,
+    VendorApplicationRead,
+    VendorFulfillmentRead,
+)
+from app.services import vendor_application_service, vendor_service
 
 router = APIRouter(prefix="/vendor", tags=["vendor"])
+
+
+@router.post("/application", response_model=VendorApplicationRead, status_code=status.HTTP_201_CREATED)
+async def apply_to_sell(body: VendorApplicationCreate, user: CurrentUser, db: DB) -> VendorApplicationRead:
+    """Apply to open a shop. It stays hidden until staff approve it; a rejected
+    application can be sent again."""
+    return await vendor_application_service.apply(db, user, body)
+
+
+@router.get("/application", response_model=VendorApplicationRead)
+async def my_application(user: CurrentUser, db: DB) -> VendorApplicationRead:
+    """Your shop application and its status (404 if you have not applied)."""
+    return await vendor_application_service.get_mine(db, user)
 
 
 @router.get("/me", response_model=VendorRead)

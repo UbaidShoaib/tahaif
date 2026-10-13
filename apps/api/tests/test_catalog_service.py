@@ -263,7 +263,7 @@ async def test_update_category_no_changes(db: AsyncSession) -> None:
 
 @pytest.mark.asyncio
 async def test_create_and_get_product_success(db: AsyncSession) -> None:
-    user = await _user(db, UserRole.vendor)
+    user = await _user(db, UserRole.staff)
     city = await CityRepository(db).create(name="H", slug=f"h-{uuid.uuid4().hex[:4]}", timezone="UTC")
     vendor = await VendorRepository(db).create(
         city_id=city.id, owner_user_id=user.id, name="VH", slug=f"vh-{uuid.uuid4().hex[:4]}"

@@ -8,6 +8,15 @@ pre-production-cutover).
 ## [Unreleased]
 
 ### Added
+- Shops join by application (ADR 0008): a signed-in user applies at `/sell`
+  (`POST /vendor/application`, status at `GET /vendor/application`); the shop stays hidden
+  until staff approve it in the admin panel's new "Shop applications" section
+  (`GET /admin/vendor-applications`, `POST …/{id}/approve`, `POST …/{id}/reject` with an
+  optional reason shown to the applicant, who can resend). Approval opens the shop and makes
+  its owner a vendor. Migration `0014` adds `vendors.approval_status`, `contact_phone`,
+  `review_note` and `reviewed_at`. Footer link "Sell with us".
+- Admin panel "Hidden products" section (`GET /admin/products?is_active=false`) with a
+  Publish button.
 - Catalog loader: `apps/api/scripts/load_catalog.py` fills the shop from a `catalog.json`
   (vendors, categories, products with options, photos, occasions, personalisation and
   per-city delivery; format in `docs/catalog-template.md`). It validates the whole file
@@ -110,6 +119,9 @@ pre-production-cutover).
   of Pakistan time.
 
 ### Changed
+- A product created by a vendor now starts hidden until staff publish it, and a shop owner
+  can no longer change their shop's `is_active` or re-publish a hidden product (ADR 0008,
+  `docs/questions.md` Q26). A pending or rejected shop has no public page.
 - Rebrand to the Anaar berry (`#9f1f50`) + Zari gold palette (ADR 0003), replacing
   emerald `#16a34a`, which failed WCAG AA contrast (3.30:1) on every primary
   button, price and link. All hard-coded brand hex values now use tokens.

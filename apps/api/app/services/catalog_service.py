@@ -5,7 +5,15 @@ from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.integrations import meilisearch_client
-from app.models.catalog import Category, City, Occasion, Product, ProductImage, Vendor
+from app.models.catalog import (
+    Category,
+    City,
+    Occasion,
+    Product,
+    ProductImage,
+    Vendor,
+    VendorApprovalStatus,
+)
 from app.models.user import User, UserRole
 from app.repositories.catalog_repository import (
     CategoryRepository,
@@ -42,9 +50,17 @@ def _CONFLICT(entity: str) -> HTTPException:
 _FORBIDDEN = HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not your vendor")
 
 
+def _is_staff(user: User) -> bool:
+    return user.role in (UserRole.staff, UserRole.admin)
+
+
+def _STAFF_ONLY(detail: str = "Staff only") -> HTTPException:
+    return HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=detail)
+
+
 def _require_staff(user: User) -> None:
-    if user.role not in (UserRole.staff, UserRole.admin):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Staff only")
+    if not _is_staff(user):
+        raise _STAFF_ONLY()
 
 
 def _owns_vendor(user: User, vendor: Vendor) -> bool:
@@ -94,7 +110,8 @@ async def list_vendors(
 
 async def get_vendor(db: AsyncSession, slug: str) -> Vendor:
     vendor = await VendorRepository(db).get_by_slug(slug)
-    if not vendor:
+    # A shop still under review (or turned down) has no public page.
+    if not vendor or vendor.approval_status != VendorApprovalStatus.approved.value:
         raise _NOT_FOUND("Vendor")
     return vendor
 
@@ -125,6 +142,9 @@ async def update_vendor(
         raise _FORBIDDEN
 
     updates = data.model_dump(exclude_none=True)
+    if "is_active" in updates and not _is_staff(user):
+        # Opening or closing a shop is the approval decision; owners can't make it.
+        raise _STAFF_ONLY("Only staff can open or close a shop")
     if not updates:
         return vendor
     return await repo.update(vendor, **updates)
@@ -224,6 +244,11 @@ async def get_product(db: AsyncSession, slug: str) -> Product:
     return product
 
 
+async def list_admin_products(db: AsyncSession, is_active: bool | None = None) -> list[Product]:
+    """Admin list, hidden products included (vendor listings wait here to be published)."""
+    return await ProductRepository(db).list_for_admin(is_active)
+
+
 async def set_product_active(db: AsyncSession, product_id: uuid.UUID, is_active: bool) -> Product:
     """Admin toggle. Keeps the search index in step with the storefront."""
     repo = ProductRepository(db)
@@ -287,9 +312,15 @@ async def create_product(db: AsyncSession, data: ProductCreate, user: User) -> P
     if await product_repo.get_by_slug(data.slug):
         raise _CONFLICT("Product")
 
-    product = await product_repo.create(**data.model_dump())
-    await meilisearch_client.index_product(_to_meili_doc(product, vendor.name))
-    return product
+    if _is_staff(user):
+        product = await product_repo.create(**data.model_dump())
+        await meilisearch_client.index_product(_to_meili_doc(product, vendor.name))
+        return product
+    # A vendor's own listing starts hidden; staff publish it from the admin panel
+    # (docs/questions.md, "Vendor product approval").
+    if not vendor.is_active:
+        raise _STAFF_ONLY("Your shop has not been approved yet")
+    return await product_repo.create(**data.model_dump(), is_active=False)
 
 
 async def update_product(
@@ -305,9 +336,15 @@ async def update_product(
         raise _FORBIDDEN
 
     updates = data.model_dump(exclude_none=True)
+    if updates.get("is_active") and not product.is_active and not _is_staff(user):
+        # Vendors may hide their own product, but publishing one is staff's call.
+        raise _STAFF_ONLY("Only staff can publish a product")
     if updates:
         product = await repo.update(product, **updates)
-    await meilisearch_client.index_product(_to_meili_doc(product, vendor.name))
+    if product.is_active:
+        await meilisearch_client.index_product(_to_meili_doc(product, vendor.name))
+    else:
+        await meilisearch_client.delete_product(str(product.id))
     return product
 
 

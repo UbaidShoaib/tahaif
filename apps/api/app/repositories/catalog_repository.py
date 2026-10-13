@@ -80,6 +80,37 @@ class VendorRepository:
         )
         return result.scalar_one_or_none()
 
+    async def get_application_by_owner(self, user_id: uuid.UUID) -> Vendor | None:
+        """The user's shop whatever its state (pending, approved or rejected)."""
+        result = await self._db.execute(
+            select(Vendor)
+            .where(Vendor.owner_user_id == user_id)
+            .options(selectinload(Vendor.city), selectinload(Vendor.owner))
+            .order_by(Vendor.created_at.desc())
+            .limit(1)
+        )
+        return result.scalar_one_or_none()
+
+    async def get_application(self, vendor_id: uuid.UUID) -> Vendor | None:
+        result = await self._db.execute(
+            select(Vendor)
+            .where(Vendor.id == vendor_id)
+            .options(selectinload(Vendor.city), selectinload(Vendor.owner))
+        )
+        return result.scalar_one_or_none()
+
+    async def list_applications(self, approval_status: str | None = None) -> builtins.list[Vendor]:
+        """Shops that came through an application (they have an owner), newest first."""
+        q = (
+            select(Vendor)
+            .where(Vendor.owner_user_id.is_not(None))
+            .options(selectinload(Vendor.city), selectinload(Vendor.owner))
+        )
+        if approval_status:
+            q = q.where(Vendor.approval_status == approval_status)
+        result = await self._db.execute(q.order_by(Vendor.created_at.desc()))
+        return list(result.scalars().all())
+
     async def create(self, **kwargs: Any) -> Vendor:
         vendor = Vendor(**kwargs)
         self._db.add(vendor)
@@ -175,6 +206,14 @@ class OccasionRepository:
 class ProductRepository:
     def __init__(self, db: AsyncSession) -> None:
         self._db = db
+
+    async def list_for_admin(self, is_active: bool | None = None, limit: int = 200) -> builtins.list[Product]:
+        """Every product with its vendor, hidden ones included, newest first."""
+        q = select(Product).options(selectinload(Product.vendor))
+        if is_active is not None:
+            q = q.where(Product.is_active.is_(is_active))
+        result = await self._db.execute(q.order_by(Product.created_at.desc()).limit(limit))
+        return list(result.scalars().all())
 
     def _with_relations(self) -> Any:
         return select(Product).options(

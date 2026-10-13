@@ -36,6 +36,14 @@ class CustomizationFieldType(enum.StrEnum):
     select = "select"
 
 
+class VendorApprovalStatus(enum.StrEnum):
+    """A shop someone applied to open is hidden (is_active False) until staff approve it."""
+
+    pending = "pending"
+    approved = "approved"
+    rejected = "rejected"
+
+
 class FxRateSource(enum.StrEnum):
     auto = "auto"
     manual = "manual"
@@ -81,6 +89,14 @@ class Vendor(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     logo_url: Mapped[str | None] = mapped_column(Text, nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    # Stored as text: staff-created shops are born approved, applications pending.
+    approval_status: Mapped[str] = mapped_column(
+        String(20), default=VendorApprovalStatus.approved.value, server_default="approved", nullable=False, index=True
+    )
+    contact_phone: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    # Staff's reason when rejecting; shown to the applicant.
+    review_note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     city: Mapped["City"] = relationship(back_populates="vendors")
     owner: Mapped["User | None"] = relationship()

@@ -306,13 +306,15 @@ async def test_create_category_duplicate(
 # ── Product endpoints ─────────────────────────────────────────────────────────
 
 @pytest.mark.asyncio
-async def test_create_and_get_product(
-    client: AsyncClient, db: AsyncSession, vendor_user: User, city: City
+async def test_staff_create_and_get_product(
+    client: AsyncClient, db: AsyncSession, staff_user: User, city: City
 ) -> None:
-    vendor_email = vendor_user.email
-    owned_vendor = await _make_vendor(db, city, owner=vendor_user)
+    # Staff listings go live at once; a vendor's own wait for approval
+    # (test_vendor_applications.py).
+    staff_email = staff_user.email
+    owned_vendor = await _make_vendor(db, city)
     owned_vendor_id = str(owned_vendor.id)
-    token = await _login(client, vendor_email)
+    token = await _login(client, staff_email)
     slug = f"choc-cake-{uuid.uuid4().hex[:4]}"
 
     with patch("app.services.catalog_service.meilisearch_client.index_product", new_callable=AsyncMock):
