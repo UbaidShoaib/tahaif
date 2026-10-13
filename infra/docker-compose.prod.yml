@@ -40,6 +40,9 @@ services:
       dockerfile: infra/Dockerfile.web
       secrets:
         - web_env
+      # Rebuilds the web app when a NEXT_PUBLIC_* value changes (see Dockerfile.web).
+      args:
+        WEB_ENV_HASH: ${WEB_ENV_HASH:-}
     restart: unless-stopped
     environment:
       # Server components call the API over the Docker network.

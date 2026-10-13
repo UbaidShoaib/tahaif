@@ -11,7 +11,7 @@ Everything runs on one VPS with Docker Compose (ADR 0007).
 | Service | Where | Notes |
 |---|---|---|
 | VPS | DigitalOcean droplet `139.59.80.229` — Ubuntu 24.04, 2 vCPU / 2 GB RAM (+2 GB swap) / 58 GB | SSH as `root`; firewall (ufw) allows only 22, 80, 443 |
-| Site | `https://139-59-80-229.sslip.io` | **Temporary hostname** until `bouquetbar.pk` resolves — see §1 "Changing the domain" |
+| Site (brand: Bouquet Bar, set in `.env.prod`) | `https://139-59-80-229.sslip.io` | **Temporary hostname** until `bouquetbar.pk` resolves — see §1 "Changing the domain" |
 | Caddy | container `caddy` | TLS (Let's Encrypt), routes `/api/*` → api, `/tahaif-media/*` → minio, rest → web |
 | Web | container `web` | Next.js standalone |
 | API + worker | container `api` | migrations run on start; arq worker runs inside (`RUN_WORKER_IN_API=1`) |
@@ -53,14 +53,20 @@ dc restart api                 # restart without rebuilding
 dc up -d                       # apply .env.prod changes to the API
 ```
 
-`NEXT_PUBLIC_*` values are baked into the web image: after changing them, redeploy
-(or `dc up -d --build web`).
+`NEXT_PUBLIC_*` values (brand name, site URL, ...) are baked into the web image.
+After changing them, re-run `infra/deploy.sh`, or on the server:
+
+```bash
+WEB_ENV_HASH=$(grep '^NEXT_PUBLIC_' .env.prod | sha256sum | cut -c1-16) dc up -d --build
+```
+
+A plain `dc up -d --build` reuses the cached web build and keeps the old values.
 
 ### Changing the domain
 
 1. Point the new domain's A record at the server and wait until it resolves.
 2. In `.env.prod` set `DOMAIN`, `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_SITE_URL` (and `EMAIL_FROM`).
-3. `dc up -d --build` — Caddy fetches the new certificate on start.
+3. Rebuild with the `WEB_ENV_HASH=… dc up -d --build` command above — Caddy fetches the new certificate on start.
 
 Links already stored for uploaded proofs keep working: they are re-signed from the object key.
 

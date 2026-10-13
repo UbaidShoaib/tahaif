@@ -22,6 +22,9 @@ ENV NEXT_TELEMETRY_DISABLED=1
 # NEXT_PUBLIC_* are inlined at build time. docker-compose.prod.yml passes the
 # server's .env.prod as a secret; only its public lines are kept, because Next
 # copies .env.production into the standalone output.
+# A secret's content is not part of the build cache key, so WEB_ENV_HASH (a
+# hash of those lines, set by infra/deploy.sh) is what triggers a rebuild.
+ARG WEB_ENV_HASH=
 RUN --mount=type=secret,id=web_env \
     if [ -f /run/secrets/web_env ]; then \
       grep -E '^NEXT_PUBLIC_[A-Z0-9_]+=' /run/secrets/web_env > apps/web/.env.production || true; \

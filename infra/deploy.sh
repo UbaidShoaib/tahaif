@@ -22,6 +22,7 @@ rsync -az --delete --exclude='/.env.prod' "$tmp"/ "$HOST:$APP_DIR/"
 echo "==> Building and starting"
 ssh "$HOST" "set -e; cd '$APP_DIR'
   test -f .env.prod || { echo 'Missing $APP_DIR/.env.prod (see infra/env.prod.example)' >&2; exit 1; }
+  export WEB_ENV_HASH=\$(grep '^NEXT_PUBLIC_' .env.prod | sha256sum | cut -c1-16)
   $COMPOSE up -d --build --remove-orphans
   docker image prune -f >/dev/null
   $COMPOSE ps"
