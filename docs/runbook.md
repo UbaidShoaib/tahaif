@@ -267,7 +267,31 @@ rate-limit bucket (too low) or let clients spoof their IP (too high).
 
 ---
 
-## 9. Running the E2E suite locally
+## 9. Loading or updating the catalog
+
+Products come from a `catalog.json` (format and rules: `docs/catalog-template.md`).
+The loader validates the whole file first, matches everything by slug and updates in
+place, so re-running it is safe. It never deletes: to retire a product, deactivate it.
+
+```bash
+docker cp catalog.json tahaif-api-1:/tmp/catalog.json
+dc exec api python scripts/load_catalog.py /tmp/catalog.json --check   # validate only
+dc exec api python scripts/load_catalog.py /tmp/catalog.json
+dc exec api python scripts/reindex_search.py
+```
+
+Listing pages are cached for about a minute, so new products appear shortly after.
+To create the admin named in the file, add `-e ADMIN_PASSWORD=...` to the `exec`;
+an existing account with that email is promoted and keeps its password.
+
+The live shop currently holds the **sample** catalog
+(`apps/api/scripts/examples/catalog.sample.json`, 65 products named "SAMPLE …").
+Before launch, deactivate them: `update products set is_active = false where slug like 'sample-%';`
+then reindex.
+
+---
+
+## 10. Running the E2E suite locally
 
 The Playwright specs in `apps/web/tests/` need the real stack; they don't mock the API.
 
