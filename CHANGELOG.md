@@ -8,6 +8,12 @@ pre-production-cutover).
 ## [Unreleased]
 
 ### Added
+- Catalog loader: `apps/api/scripts/load_catalog.py` fills the shop from a `catalog.json`
+  (vendors, categories, products with options, photos, occasions, personalisation and
+  per-city delivery; format in `docs/catalog-template.md`). It validates the whole file
+  and lists every problem before writing anything, takes prices in whole rupees, and is
+  safe to re-run: rows are matched by slug and options are never deleted. The admin
+  account is created only when `ADMIN_PASSWORD` is set.
 - Single-VPS deployment (ADR 0007): `infra/docker-compose.prod.yml` runs web, API +
   worker, Postgres, Redis, Meilisearch and MinIO behind Caddy with automatic HTTPS, all
   on one origin (`/api/*` to the API, `/<bucket>/*` to private media). `infra/vps-setup.sh`

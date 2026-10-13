@@ -1,0 +1,1777 @@
+{
+  "admin": {
+    "full_name": "SAMPLE Owner",
+    "email": "sample.owner@example.com"
+  },
+  "new_cities": [],
+  "new_occasions": [],
+  "vendors": [
+    {
+      "slug": "bouquet-bar",
+      "name": "Bouquet Bar (SAMPLE)",
+      "city": "lahore",
+      "description": "SAMPLE vendor description. Replace before launch.",
+      "logo": null
+    }
+  ],
+  "categories": [
+    {
+      "slug": "cakes",
+      "name": "Cakes"
+    },
+    {
+      "slug": "flowers",
+      "name": "Flowers"
+    },
+    {
+      "slug": "chocolates",
+      "name": "Chocolates"
+    },
+    {
+      "slug": "perfumes",
+      "name": "Perfumes"
+    },
+    {
+      "slug": "mithai",
+      "name": "Mithai"
+    },
+    {
+      "slug": "fruit-baskets",
+      "name": "Fruit Baskets"
+    },
+    {
+      "slug": "dry-fruits",
+      "name": "Dry Fruits"
+    },
+    {
+      "slug": "combo-gifts",
+      "name": "Combo Gifts"
+    },
+    {
+      "slug": "customized-gifts",
+      "name": "Customized Gifts"
+    },
+    {
+      "slug": "kids-corner",
+      "name": "Kids Corner"
+    },
+    {
+      "slug": "meal-deals",
+      "name": "Meal Deals"
+    },
+    {
+      "slug": "sadqa-aqiqa",
+      "name": "Sadqa & Aqiqa"
+    },
+    {
+      "slug": "gift-cards",
+      "name": "Gift Cards"
+    }
+  ],
+  "delivery_defaults": [
+    {
+      "city": "lahore",
+      "fee": 250,
+      "notice_hours": 3,
+      "same_day_cutoff": "17:00"
+    },
+    {
+      "city": "islamabad",
+      "fee": 400,
+      "notice_hours": 24,
+      "same_day_cutoff": null
+    }
+  ],
+  "products": [
+    {
+      "slug": "sample-chocolate-cake",
+      "name": "SAMPLE Chocolate Cake",
+      "vendor": "bouquet-bar",
+      "category": "cakes",
+      "description": "SAMPLE product for testing the catalog format.",
+      "base_price": 3500,
+      "options": [
+        {
+          "name": "2 lb",
+          "extra_price": 0,
+          "stock": 20,
+          "details": {
+            "weight_lbs": 2
+          }
+        }
+      ],
+      "images": [],
+      "occasions": [
+        "birthday"
+      ],
+      "personalisation": [],
+      "delivery": [
+        {
+          "city": "lahore",
+          "fee": 300,
+          "notice_hours": 24,
+          "same_day_cutoff": null
+        }
+      ]
+    },
+    {
+      "slug": "sample-vanilla-cake",
+      "name": "SAMPLE Vanilla Cake",
+      "vendor": "bouquet-bar",
+      "category": "cakes",
+      "description": "SAMPLE product for testing the catalog format.",
+      "base_price": 3000,
+      "options": [
+        {
+          "name": "2 lb",
+          "extra_price": 0,
+          "stock": 20,
+          "details": {
+            "weight_lbs": 2
+          }
+        },
+        {
+          "name": "3 lb",
+          "extra_price": 1000,
+          "stock": 10,
+          "details": {
+            "weight_lbs": 3
+          }
+        }
+      ],
+      "images": [],
+      "occasions": [
+        "birthday",
+        "anniversary"
+      ],
+      "personalisation": [],
+      "delivery": "default"
+    },
+    {
+      "slug": "sample-red-velvet-cake",
+      "name": "SAMPLE Red Velvet Cake",
+      "vendor": "bouquet-bar",
+      "category": "cakes",
+      "description": "SAMPLE product for testing the catalog format.",
+      "base_price": 3800,
+      "options": [
+        {
+          "name": "2 lb",
+          "extra_price": 0,
+          "stock": 15,
+          "details": {
+            "weight_lbs": 2
+          }
+        }
+      ],
+      "images": [],
+      "occasions": [
+        "birthday",
+        "anniversary"
+      ],
+      "personalisation": [],
+      "delivery": "default"
+    },
+    {
+      "slug": "sample-black-forest-cake",
+      "name": "SAMPLE Black Forest Cake",
+      "vendor": "bouquet-bar",
+      "category": "cakes",
+      "description": "SAMPLE product for testing the catalog format.",
+      "base_price": 3300,
+      "options": [
+        {
+          "name": "2 lb",
+          "extra_price": 0,
+          "stock": 15,
+          "details": {
+            "weight_lbs": 2
+          }
+        }
+      ],
+      "images": [],
+      "occasions": [
+        "birthday"
+      ],
+      "personalisation": [],
+      "delivery": "default"
+    },
+    {
+      "slug": "sample-cheesecake",
+      "name": "SAMPLE Cheesecake",
+      "vendor": "bouquet-bar",
+      "category": "cakes",
+      "description": "SAMPLE product for testing the catalog format.",
+      "base_price": 2800,
+      "options": [
+        {
+          "name": "1 lb",
+          "extra_price": 0,
+          "stock": 12,
+          "details": {
+            "weight_lbs": 1
+          }
+        }
+      ],
+      "images": [],
+      "occasions": [
+        "anniversary"
+      ],
+      "personalisation": [],
+      "delivery": "default"
+    },
+    {
+      "slug": "sample-red-roses-bouquet",
+      "name": "SAMPLE Red Roses Bouquet",
+      "vendor": "bouquet-bar",
+      "category": "flowers",
+      "description": "SAMPLE product for testing the catalog format.",
+      "base_price": 2500,
+      "options": [
+        {
+          "name": "12 stems",
+          "extra_price": 0,
+          "stock": 50,
+          "details": {
+            "stem_count": 12
+          }
+        },
+        {
+          "name": "24 stems",
+          "extra_price": 2000,
+          "stock": 30,
+          "details": {
+            "stem_count": 24
+          }
+        }
+      ],
+      "images": [],
+      "occasions": [
+        "birthday",
+        "anniversary"
+      ],
+      "personalisation": [
+        {
+          "label": "Message on the card",
+          "type": "text",
+          "required": false,
+          "max_length": 200
+        }
+      ],
+      "delivery": "default"
+    },
+    {
+      "slug": "sample-white-lilies",
+      "name": "SAMPLE White Lilies",
+      "vendor": "bouquet-bar",
+      "category": "flowers",
+      "description": "SAMPLE product for testing the catalog format.",
+      "base_price": 2200,
+      "options": [
+        {
+          "name": "6 stems",
+          "extra_price": 0,
+          "stock": 25,
+          "details": {
+            "stem_count": 6
+          }
+        },
+        {
+          "name": "12 stems",
+          "extra_price": 1800,
+          "stock": 15,
+          "details": {
+            "stem_count": 12
+          }
+        }
+      ],
+      "images": [],
+      "occasions": [
+        "wedding",
+        "mothers-day"
+      ],
+      "personalisation": [],
+      "delivery": "default"
+    },
+    {
+      "slug": "sample-mixed-tulips",
+      "name": "SAMPLE Mixed Tulips",
+      "vendor": "bouquet-bar",
+      "category": "flowers",
+      "description": "SAMPLE product for testing the catalog format.",
+      "base_price": 2000,
+      "options": [
+        {
+          "name": "10 stems",
+          "extra_price": 0,
+          "stock": 30,
+          "details": {
+            "stem_count": 10
+          }
+        }
+      ],
+      "images": [],
+      "occasions": [
+        "mothers-day",
+        "birthday"
+      ],
+      "personalisation": [],
+      "delivery": "default"
+    },
+    {
+      "slug": "sample-orchid-arrangement",
+      "name": "SAMPLE Orchid Arrangement",
+      "vendor": "bouquet-bar",
+      "category": "flowers",
+      "description": "SAMPLE product for testing the catalog format.",
+      "base_price": 4500,
+      "options": [
+        {
+          "name": "Standard",
+          "extra_price": 0,
+          "stock": 10,
+          "details": {}
+        }
+      ],
+      "images": [],
+      "occasions": [
+        "anniversary",
+        "wedding"
+      ],
+      "personalisation": [],
+      "delivery": "default"
+    },
+    {
+      "slug": "sample-sunflower-box",
+      "name": "SAMPLE Sunflower Box",
+      "vendor": "bouquet-bar",
+      "category": "flowers",
+      "description": "SAMPLE product for testing the catalog format.",
+      "base_price": 1800,
+      "options": [
+        {
+          "name": "5 stems",
+          "extra_price": 0,
+          "stock": 20,
+          "details": {
+            "stem_count": 5
+          }
+        }
+      ],
+      "images": [],
+      "occasions": [
+        "birthday"
+      ],
+      "personalisation": [],
+      "delivery": "default"
+    },
+    {
+      "slug": "sample-dark-chocolate-box",
+      "name": "SAMPLE Dark Chocolate Box",
+      "vendor": "bouquet-bar",
+      "category": "chocolates",
+      "description": "SAMPLE product for testing the catalog format.",
+      "base_price": 1500,
+      "options": [
+        {
+          "name": "Standard",
+          "extra_price": 0,
+          "stock": 40,
+          "details": {}
+        }
+      ],
+      "images": [],
+      "occasions": [
+        "birthday",
+        "eid-ul-fitr"
+      ],
+      "personalisation": [],
+      "delivery": "default"
+    },
+    {
+      "slug": "sample-milk-chocolate-hamper",
+      "name": "SAMPLE Milk Chocolate Hamper",
+      "vendor": "bouquet-bar",
+      "category": "chocolates",
+      "description": "SAMPLE product for testing the catalog format.",
+      "base_price": 2000,
+      "options": [
+        {
+          "name": "Small",
+          "extra_price": 0,
+          "stock": 25,
+          "details": {}
+        },
+        {
+          "name": "Large",
+          "extra_price": 1000,
+          "stock": 10,
+          "details": {}
+        }
+      ],
+      "images": [],
+      "occasions": [
+        "eid-ul-azha",
+        "eid-ul-fitr"
+      ],
+      "personalisation": [],
+      "delivery": "default"
+    },
+    {
+      "slug": "sample-truffle-box",
+      "name": "SAMPLE Truffle Box",
+      "vendor": "bouquet-bar",
+      "category": "chocolates",
+      "description": "SAMPLE product for testing the catalog format.",
+      "base_price": 1700,
+      "options": [
+        {
+          "name": "12 pieces",
+          "extra_price": 0,
+          "stock": 30,
+          "details": {
+            "piece_count": 12
+          }
+        }
+      ],
+      "images": [],
+      "occasions": [
+        "anniversary",
+        "birthday"
+      ],
+      "personalisation": [],
+      "delivery": "default"
+    },
+    {
+      "slug": "sample-hazelnut-bar-pack",
+      "name": "SAMPLE Hazelnut Bar Pack",
+      "vendor": "bouquet-bar",
+      "category": "chocolates",
+      "description": "SAMPLE product for testing the catalog format.",
+      "base_price": 900,
+      "options": [
+        {
+          "name": "4 bars",
+          "extra_price": 0,
+          "stock": 50,
+          "details": {
+            "bar_count": 4
+          }
+        }
+      ],
+      "images": [],
+      "occasions": [],
+      "personalisation": [],
+      "delivery": "default"
+    },
+    {
+      "slug": "sample-chocolate-bouquet",
+      "name": "SAMPLE Chocolate Bouquet",
+      "vendor": "bouquet-bar",
+      "category": "chocolates",
+      "description": "SAMPLE product for testing the catalog format.",
+      "base_price": 2600,
+      "options": [
+        {
+          "name": "Standard",
+          "extra_price": 0,
+          "stock": 15,
+          "details": {}
+        }
+      ],
+      "images": [],
+      "occasions": [
+        "birthday",
+        "anniversary"
+      ],
+      "personalisation": [],
+      "delivery": "default"
+    },
+    {
+      "slug": "sample-oud-perfume",
+      "name": "SAMPLE Oud Perfume",
+      "vendor": "bouquet-bar",
+      "category": "perfumes",
+      "description": "SAMPLE product for testing the catalog format.",
+      "base_price": 4000,
+      "options": [
+        {
+          "name": "50 ml",
+          "extra_price": 0,
+          "stock": 25,
+          "details": {
+            "volume_ml": 50
+          }
+        },
+        {
+          "name": "100 ml",
+          "extra_price": 2000,
+          "stock": 15,
+          "details": {
+            "volume_ml": 100
+          }
+        }
+      ],
+      "images": [],
+      "occasions": [
+        "eid-ul-azha",
+        "wedding"
+      ],
+      "personalisation": [],
+      "delivery": "default"
+    },
+    {
+      "slug": "sample-rose-attar",
+      "name": "SAMPLE Rose Attar",
+      "vendor": "bouquet-bar",
+      "category": "perfumes",
+      "description": "SAMPLE product for testing the catalog format.",
+      "base_price": 1500,
+      "options": [
+        {
+          "name": "10 ml",
+          "extra_price": 0,
+          "stock": 40,
+          "details": {
+            "volume_ml": 10
+          }
+        }
+      ],
+      "images": [],
+      "occasions": [
+        "eid-ul-fitr",
+        "ramadan"
+      ],
+      "personalisation": [],
+      "delivery": "default"
+    },
+    {
+      "slug": "sample-musk-perfume",
+      "name": "SAMPLE Musk Perfume",
+      "vendor": "bouquet-bar",
+      "category": "perfumes",
+      "description": "SAMPLE product for testing the catalog format.",
+      "base_price": 3000,
+      "options": [
+        {
+          "name": "50 ml",
+          "extra_price": 0,
+          "stock": 20,
+          "details": {
+            "volume_ml": 50
+          }
+        }
+      ],
+      "images": [],
+      "occasions": [
+        "birthday"
+      ],
+      "personalisation": [],
+      "delivery": "default"
+    },
+    {
+      "slug": "sample-citrus-cologne",
+      "name": "SAMPLE Citrus Cologne",
+      "vendor": "bouquet-bar",
+      "category": "perfumes",
+      "description": "SAMPLE product for testing the catalog format.",
+      "base_price": 2200,
+      "options": [
+        {
+          "name": "100 ml",
+          "extra_price": 0,
+          "stock": 20,
+          "details": {
+            "volume_ml": 100
+          }
+        }
+      ],
+      "images": [],
+      "occasions": [],
+      "personalisation": [],
+      "delivery": "default"
+    },
+    {
+      "slug": "sample-perfume-gift-set",
+      "name": "SAMPLE Perfume Gift Set",
+      "vendor": "bouquet-bar",
+      "category": "perfumes",
+      "description": "SAMPLE product for testing the catalog format.",
+      "base_price": 5500,
+      "options": [
+        {
+          "name": "Standard",
+          "extra_price": 0,
+          "stock": 10,
+          "details": {}
+        }
+      ],
+      "images": [],
+      "occasions": [
+        "anniversary",
+        "wedding"
+      ],
+      "personalisation": [],
+      "delivery": "default"
+    },
+    {
+      "slug": "sample-mithai-box",
+      "name": "SAMPLE Mithai Box",
+      "vendor": "bouquet-bar",
+      "category": "mithai",
+      "description": "SAMPLE product for testing the catalog format.",
+      "base_price": 1200,
+      "options": [
+        {
+          "name": "1 kg",
+          "extra_price": 0,
+          "stock": 30,
+          "details": {
+            "weight_kg": 1
+          }
+        }
+      ],
+      "images": [],
+      "occasions": [
+        "eid-ul-fitr",
+        "eid-ul-azha"
+      ],
+      "personalisation": [],
+      "delivery": "default"
+    },
+    {
+      "slug": "sample-gulab-jamun-box",
+      "name": "SAMPLE Gulab Jamun Box",
+      "vendor": "bouquet-bar",
+      "category": "mithai",
+      "description": "SAMPLE product for testing the catalog format.",
+      "base_price": 900,
+      "options": [
+        {
+          "name": "500 g",
+          "extra_price": 0,
+          "stock": 30,
+          "details": {
+            "weight_g": 500
+          }
+        }
+      ],
+      "images": [],
+      "occasions": [
+        "eid-ul-fitr",
+        "ramadan"
+      ],
+      "personalisation": [],
+      "delivery": "default"
+    },
+    {
+      "slug": "sample-barfi-tray",
+      "name": "SAMPLE Barfi Tray",
+      "vendor": "bouquet-bar",
+      "category": "mithai",
+      "description": "SAMPLE product for testing the catalog format.",
+      "base_price": 1000,
+      "options": [
+        {
+          "name": "500 g",
+          "extra_price": 0,
+          "stock": 25,
+          "details": {
+            "weight_g": 500
+          }
+        },
+        {
+          "name": "1 kg",
+          "extra_price": 900,
+          "stock": 15,
+          "details": {
+            "weight_kg": 1
+          }
+        }
+      ],
+      "images": [],
+      "occasions": [
+        "eid-ul-azha"
+      ],
+      "personalisation": [],
+      "delivery": "default"
+    },
+    {
+      "slug": "sample-ladoo-box",
+      "name": "SAMPLE Ladoo Box",
+      "vendor": "bouquet-bar",
+      "category": "mithai",
+      "description": "SAMPLE product for testing the catalog format.",
+      "base_price": 800,
+      "options": [
+        {
+          "name": "500 g",
+          "extra_price": 0,
+          "stock": 30,
+          "details": {
+            "weight_g": 500
+          }
+        }
+      ],
+      "images": [],
+      "occasions": [
+        "aqiqa"
+      ],
+      "personalisation": [],
+      "delivery": "default"
+    },
+    {
+      "slug": "sample-jalebi-pack",
+      "name": "SAMPLE Jalebi Pack",
+      "vendor": "bouquet-bar",
+      "category": "mithai",
+      "description": "SAMPLE product for testing the catalog format.",
+      "base_price": 700,
+      "options": [
+        {
+          "name": "500 g",
+          "extra_price": 0,
+          "stock": 20,
+          "details": {
+            "weight_g": 500
+          }
+        }
+      ],
+      "images": [],
+      "occasions": [
+        "ramadan"
+      ],
+      "personalisation": [],
+      "delivery": "default"
+    },
+    {
+      "slug": "sample-fruit-basket",
+      "name": "SAMPLE Fruit Basket",
+      "vendor": "bouquet-bar",
+      "category": "fruit-baskets",
+      "description": "SAMPLE product for testing the catalog format.",
+      "base_price": 3000,
+      "options": [
+        {
+          "name": "Small",
+          "extra_price": 0,
+          "stock": 20,
+          "details": {}
+        },
+        {
+          "name": "Large",
+          "extra_price": 1500,
+          "stock": 10,
+          "details": {}
+        }
+      ],
+      "images": [],
+      "occasions": [
+        "ramadan",
+        "aqiqa"
+      ],
+      "personalisation": [],
+      "delivery": "default"
+    },
+    {
+      "slug": "sample-tropical-fruit-basket",
+      "name": "SAMPLE Tropical Fruit Basket",
+      "vendor": "bouquet-bar",
+      "category": "fruit-baskets",
+      "description": "SAMPLE product for testing the catalog format.",
+      "base_price": 3500,
+      "options": [
+        {
+          "name": "Standard",
+          "extra_price": 0,
+          "stock": 15,
+          "details": {}
+        }
+      ],
+      "images": [],
+      "occasions": [
+        "birthday"
+      ],
+      "personalisation": [],
+      "delivery": "default"
+    },
+    {
+      "slug": "sample-premium-fruit-hamper",
+      "name": "SAMPLE Premium Fruit Hamper",
+      "vendor": "bouquet-bar",
+      "category": "fruit-baskets",
+      "description": "SAMPLE product for testing the catalog format.",
+      "base_price": 6000,
+      "options": [
+        {
+          "name": "Standard",
+          "extra_price": 0,
+          "stock": 8,
+          "details": {}
+        }
+      ],
+      "images": [],
+      "occasions": [
+        "eid-ul-fitr",
+        "eid-ul-azha",
+        "wedding"
+      ],
+      "personalisation": [],
+      "delivery": "default"
+    },
+    {
+      "slug": "sample-mango-basket",
+      "name": "SAMPLE Mango Basket",
+      "vendor": "bouquet-bar",
+      "category": "fruit-baskets",
+      "description": "SAMPLE product for testing the catalog format.",
+      "base_price": 2500,
+      "options": [
+        {
+          "name": "1 dozen",
+          "extra_price": 0,
+          "stock": 20,
+          "details": {
+            "count": 12
+          }
+        }
+      ],
+      "images": [],
+      "occasions": [],
+      "personalisation": [],
+      "delivery": "default"
+    },
+    {
+      "slug": "sample-apple-basket",
+      "name": "SAMPLE Apple Basket",
+      "vendor": "bouquet-bar",
+      "category": "fruit-baskets",
+      "description": "SAMPLE product for testing the catalog format.",
+      "base_price": 2000,
+      "options": [
+        {
+          "name": "1 kg",
+          "extra_price": 0,
+          "stock": 25,
+          "details": {
+            "weight_kg": 1
+          }
+        }
+      ],
+      "images": [],
+      "occasions": [
+        "birthday",
+        "mothers-day"
+      ],
+      "personalisation": [],
+      "delivery": "default"
+    },
+    {
+      "slug": "sample-dry-fruit-tray",
+      "name": "SAMPLE Dry Fruit Tray",
+      "vendor": "bouquet-bar",
+      "category": "dry-fruits",
+      "description": "SAMPLE product for testing the catalog format.",
+      "base_price": 2800,
+      "options": [
+        {
+          "name": "500 g",
+          "extra_price": 0,
+          "stock": 30,
+          "details": {
+            "weight_g": 500
+          }
+        }
+      ],
+      "images": [],
+      "occasions": [
+        "ramadan",
+        "eid-ul-fitr"
+      ],
+      "personalisation": [],
+      "delivery": "default"
+    },
+    {
+      "slug": "sample-almond-pack",
+      "name": "SAMPLE Almond Pack",
+      "vendor": "bouquet-bar",
+      "category": "dry-fruits",
+      "description": "SAMPLE product for testing the catalog format.",
+      "base_price": 1600,
+      "options": [
+        {
+          "name": "250 g",
+          "extra_price": 0,
+          "stock": 40,
+          "details": {
+            "weight_g": 250
+          }
+        },
+        {
+          "name": "500 g",
+          "extra_price": 1400,
+          "stock": 20,
+          "details": {
+            "weight_g": 500
+          }
+        }
+      ],
+      "images": [],
+      "occasions": [
+        "ramadan"
+      ],
+      "personalisation": [],
+      "delivery": "default"
+    },
+    {
+      "slug": "sample-mixed-nut-box",
+      "name": "SAMPLE Mixed Nut Box",
+      "vendor": "bouquet-bar",
+      "category": "dry-fruits",
+      "description": "SAMPLE product for testing the catalog format.",
+      "base_price": 2200,
+      "options": [
+        {
+          "name": "500 g",
+          "extra_price": 0,
+          "stock": 25,
+          "details": {
+            "weight_g": 500
+          }
+        }
+      ],
+      "images": [],
+      "occasions": [
+        "eid-ul-azha",
+        "wedding"
+      ],
+      "personalisation": [],
+      "delivery": "default"
+    },
+    {
+      "slug": "sample-dates-box",
+      "name": "SAMPLE Dates Box",
+      "vendor": "bouquet-bar",
+      "category": "dry-fruits",
+      "description": "SAMPLE product for testing the catalog format.",
+      "base_price": 1100,
+      "options": [
+        {
+          "name": "1 kg",
+          "extra_price": 0,
+          "stock": 35,
+          "details": {
+            "weight_kg": 1
+          }
+        }
+      ],
+      "images": [],
+      "occasions": [
+        "ramadan"
+      ],
+      "personalisation": [],
+      "delivery": "default"
+    },
+    {
+      "slug": "sample-pistachio-gift",
+      "name": "SAMPLE Pistachio Gift",
+      "vendor": "bouquet-bar",
+      "category": "dry-fruits",
+      "description": "SAMPLE product for testing the catalog format.",
+      "base_price": 3200,
+      "options": [
+        {
+          "name": "500 g",
+          "extra_price": 0,
+          "stock": 15,
+          "details": {
+            "weight_g": 500
+          }
+        }
+      ],
+      "images": [],
+      "occasions": [
+        "eid-ul-fitr",
+        "anniversary"
+      ],
+      "personalisation": [],
+      "delivery": "default"
+    },
+    {
+      "slug": "sample-combo-gift",
+      "name": "SAMPLE Combo Gift",
+      "vendor": "bouquet-bar",
+      "category": "combo-gifts",
+      "description": "SAMPLE product for testing the catalog format.",
+      "base_price": 5000,
+      "options": [
+        {
+          "name": "Standard",
+          "extra_price": 0,
+          "stock": 15,
+          "details": {}
+        }
+      ],
+      "images": [],
+      "occasions": [
+        "birthday",
+        "anniversary"
+      ],
+      "personalisation": [],
+      "delivery": "default"
+    },
+    {
+      "slug": "sample-birthday-combo",
+      "name": "SAMPLE Birthday Combo",
+      "vendor": "bouquet-bar",
+      "category": "combo-gifts",
+      "description": "SAMPLE product for testing the catalog format.",
+      "base_price": 4200,
+      "options": [
+        {
+          "name": "Standard",
+          "extra_price": 0,
+          "stock": 15,
+          "details": {}
+        }
+      ],
+      "images": [],
+      "occasions": [
+        "birthday"
+      ],
+      "personalisation": [],
+      "delivery": "default"
+    },
+    {
+      "slug": "sample-anniversary-combo",
+      "name": "SAMPLE Anniversary Combo",
+      "vendor": "bouquet-bar",
+      "category": "combo-gifts",
+      "description": "SAMPLE product for testing the catalog format.",
+      "base_price": 6500,
+      "options": [
+        {
+          "name": "Standard",
+          "extra_price": 0,
+          "stock": 10,
+          "details": {}
+        }
+      ],
+      "images": [],
+      "occasions": [
+        "anniversary"
+      ],
+      "personalisation": [],
+      "delivery": "default"
+    },
+    {
+      "slug": "sample-eid-combo",
+      "name": "SAMPLE Eid Combo",
+      "vendor": "bouquet-bar",
+      "category": "combo-gifts",
+      "description": "SAMPLE product for testing the catalog format.",
+      "base_price": 4800,
+      "options": [
+        {
+          "name": "Standard",
+          "extra_price": 0,
+          "stock": 12,
+          "details": {}
+        }
+      ],
+      "images": [],
+      "occasions": [
+        "eid-ul-fitr",
+        "eid-ul-azha"
+      ],
+      "personalisation": [],
+      "delivery": "default"
+    },
+    {
+      "slug": "sample-spa-combo",
+      "name": "SAMPLE Spa Combo",
+      "vendor": "bouquet-bar",
+      "category": "combo-gifts",
+      "description": "SAMPLE product for testing the catalog format.",
+      "base_price": 7000,
+      "options": [
+        {
+          "name": "Standard",
+          "extra_price": 0,
+          "stock": 6,
+          "details": {}
+        }
+      ],
+      "images": [],
+      "occasions": [
+        "mothers-day",
+        "wedding"
+      ],
+      "personalisation": [],
+      "delivery": "default"
+    },
+    {
+      "slug": "sample-custom-photo-mug",
+      "name": "SAMPLE Custom Photo Mug",
+      "vendor": "bouquet-bar",
+      "category": "customized-gifts",
+      "description": "SAMPLE product for testing the catalog format.",
+      "base_price": 1000,
+      "options": [
+        {
+          "name": "Standard",
+          "extra_price": 0,
+          "stock": 50,
+          "details": {}
+        }
+      ],
+      "images": [],
+      "occasions": [
+        "birthday"
+      ],
+      "personalisation": [
+        {
+          "label": "Photo to print",
+          "type": "image",
+          "required": true
+        },
+        {
+          "label": "Name on mug",
+          "type": "text",
+          "required": false,
+          "max_length": 30
+        }
+      ],
+      "delivery": "default"
+    },
+    {
+      "slug": "sample-name-cushion",
+      "name": "SAMPLE Name Cushion",
+      "vendor": "bouquet-bar",
+      "category": "customized-gifts",
+      "description": "SAMPLE product for testing the catalog format.",
+      "base_price": 1800,
+      "options": [
+        {
+          "name": "Standard",
+          "extra_price": 0,
+          "stock": 20,
+          "details": {}
+        }
+      ],
+      "images": [],
+      "occasions": [
+        "birthday",
+        "anniversary"
+      ],
+      "personalisation": [
+        {
+          "label": "Name on cushion",
+          "type": "text",
+          "required": true,
+          "max_length": 25
+        }
+      ],
+      "delivery": "default"
+    },
+    {
+      "slug": "sample-photo-frame",
+      "name": "SAMPLE Photo Frame",
+      "vendor": "bouquet-bar",
+      "category": "customized-gifts",
+      "description": "SAMPLE product for testing the catalog format.",
+      "base_price": 1400,
+      "options": [
+        {
+          "name": "A4",
+          "extra_price": 0,
+          "stock": 20,
+          "details": {
+            "size": "A4"
+          }
+        },
+        {
+          "name": "A3",
+          "extra_price": 800,
+          "stock": 10,
+          "details": {
+            "size": "A3"
+          }
+        }
+      ],
+      "images": [],
+      "occasions": [
+        "mothers-day",
+        "anniversary"
+      ],
+      "personalisation": [
+        {
+          "label": "Photo to print",
+          "type": "image",
+          "required": true
+        }
+      ],
+      "delivery": "default"
+    },
+    {
+      "slug": "sample-engraved-keychain",
+      "name": "SAMPLE Engraved Keychain",
+      "vendor": "bouquet-bar",
+      "category": "customized-gifts",
+      "description": "SAMPLE product for testing the catalog format.",
+      "base_price": 500,
+      "options": [
+        {
+          "name": "Standard",
+          "extra_price": 0,
+          "stock": 60,
+          "details": {}
+        }
+      ],
+      "images": [],
+      "occasions": [],
+      "personalisation": [
+        {
+          "label": "Text to engrave",
+          "type": "text",
+          "required": true,
+          "max_length": 20
+        }
+      ],
+      "delivery": "default"
+    },
+    {
+      "slug": "sample-personalised-tote",
+      "name": "SAMPLE Personalised Tote",
+      "vendor": "bouquet-bar",
+      "category": "customized-gifts",
+      "description": "SAMPLE product for testing the catalog format.",
+      "base_price": 1200,
+      "options": [
+        {
+          "name": "Standard",
+          "extra_price": 0,
+          "stock": 30,
+          "details": {}
+        }
+      ],
+      "images": [],
+      "occasions": [
+        "birthday"
+      ],
+      "personalisation": [
+        {
+          "label": "Colour",
+          "type": "select",
+          "required": true,
+          "choices": [
+            "Black",
+            "White",
+            "Pink"
+          ]
+        }
+      ],
+      "delivery": "default"
+    },
+    {
+      "slug": "sample-kids-party-box",
+      "name": "SAMPLE Kids Party Box",
+      "vendor": "bouquet-bar",
+      "category": "kids-corner",
+      "description": "SAMPLE product for testing the catalog format.",
+      "base_price": 1800,
+      "options": [
+        {
+          "name": "Standard",
+          "extra_price": 0,
+          "stock": 20,
+          "details": {}
+        }
+      ],
+      "images": [],
+      "occasions": [
+        "birthday"
+      ],
+      "personalisation": [],
+      "delivery": "default"
+    },
+    {
+      "slug": "sample-kids-toy-hamper",
+      "name": "SAMPLE Kids Toy Hamper",
+      "vendor": "bouquet-bar",
+      "category": "kids-corner",
+      "description": "SAMPLE product for testing the catalog format.",
+      "base_price": 3000,
+      "options": [
+        {
+          "name": "Standard",
+          "extra_price": 0,
+          "stock": 12,
+          "details": {}
+        }
+      ],
+      "images": [],
+      "occasions": [
+        "eid-ul-fitr",
+        "birthday"
+      ],
+      "personalisation": [],
+      "delivery": "default"
+    },
+    {
+      "slug": "sample-kids-chocolate-pack",
+      "name": "SAMPLE Kids Chocolate Pack",
+      "vendor": "bouquet-bar",
+      "category": "kids-corner",
+      "description": "SAMPLE product for testing the catalog format.",
+      "base_price": 800,
+      "options": [
+        {
+          "name": "10 pieces",
+          "extra_price": 0,
+          "stock": 40,
+          "details": {
+            "piece_count": 10
+          }
+        }
+      ],
+      "images": [],
+      "occasions": [
+        "eid-ul-azha",
+        "birthday"
+      ],
+      "personalisation": [],
+      "delivery": "default"
+    },
+    {
+      "slug": "sample-kids-activity-box",
+      "name": "SAMPLE Kids Activity Box",
+      "vendor": "bouquet-bar",
+      "category": "kids-corner",
+      "description": "SAMPLE product for testing the catalog format.",
+      "base_price": 1500,
+      "options": [
+        {
+          "name": "Standard",
+          "extra_price": 0,
+          "stock": 15,
+          "details": {}
+        }
+      ],
+      "images": [],
+      "occasions": [
+        "birthday"
+      ],
+      "personalisation": [],
+      "delivery": "default"
+    },
+    {
+      "slug": "sample-kids-cupcake-box",
+      "name": "SAMPLE Kids Cupcake Box",
+      "vendor": "bouquet-bar",
+      "category": "kids-corner",
+      "description": "SAMPLE product for testing the catalog format.",
+      "base_price": 1300,
+      "options": [
+        {
+          "name": "6 cupcakes",
+          "extra_price": 0,
+          "stock": 18,
+          "details": {
+            "count": 6
+          }
+        }
+      ],
+      "images": [],
+      "occasions": [
+        "birthday"
+      ],
+      "personalisation": [],
+      "delivery": "default"
+    },
+    {
+      "slug": "sample-lunch-meal-deal",
+      "name": "SAMPLE Lunch Meal Deal",
+      "vendor": "bouquet-bar",
+      "category": "meal-deals",
+      "description": "SAMPLE product for testing the catalog format.",
+      "base_price": 2200,
+      "options": [
+        {
+          "name": "For 2 people",
+          "extra_price": 0,
+          "stock": 25,
+          "details": {
+            "servings": 2
+          }
+        }
+      ],
+      "images": [],
+      "occasions": [],
+      "personalisation": [],
+      "delivery": "default"
+    },
+    {
+      "slug": "sample-dinner-meal-deal",
+      "name": "SAMPLE Dinner Meal Deal",
+      "vendor": "bouquet-bar",
+      "category": "meal-deals",
+      "description": "SAMPLE product for testing the catalog format.",
+      "base_price": 3500,
+      "options": [
+        {
+          "name": "For 4 people",
+          "extra_price": 0,
+          "stock": 20,
+          "details": {
+            "servings": 4
+          }
+        }
+      ],
+      "images": [],
+      "occasions": [],
+      "personalisation": [],
+      "delivery": "default"
+    },
+    {
+      "slug": "sample-family-meal-deal",
+      "name": "SAMPLE Family Meal Deal",
+      "vendor": "bouquet-bar",
+      "category": "meal-deals",
+      "description": "SAMPLE product for testing the catalog format.",
+      "base_price": 5500,
+      "options": [
+        {
+          "name": "For 6 people",
+          "extra_price": 0,
+          "stock": 12,
+          "details": {
+            "servings": 6
+          }
+        }
+      ],
+      "images": [],
+      "occasions": [
+        "eid-ul-azha"
+      ],
+      "personalisation": [],
+      "delivery": "default"
+    },
+    {
+      "slug": "sample-iftar-meal-deal",
+      "name": "SAMPLE Iftar Meal Deal",
+      "vendor": "bouquet-bar",
+      "category": "meal-deals",
+      "description": "SAMPLE product for testing the catalog format.",
+      "base_price": 2800,
+      "options": [
+        {
+          "name": "For 3 people",
+          "extra_price": 0,
+          "stock": 30,
+          "details": {
+            "servings": 3
+          }
+        }
+      ],
+      "images": [],
+      "occasions": [
+        "ramadan"
+      ],
+      "personalisation": [],
+      "delivery": "default"
+    },
+    {
+      "slug": "sample-breakfast-deal",
+      "name": "SAMPLE Breakfast Deal",
+      "vendor": "bouquet-bar",
+      "category": "meal-deals",
+      "description": "SAMPLE product for testing the catalog format.",
+      "base_price": 1800,
+      "options": [
+        {
+          "name": "For 2 people",
+          "extra_price": 0,
+          "stock": 20,
+          "details": {
+            "servings": 2
+          }
+        }
+      ],
+      "images": [],
+      "occasions": [],
+      "personalisation": [],
+      "delivery": "default"
+    },
+    {
+      "slug": "sample-aqiqa-basic",
+      "name": "SAMPLE Aqiqa Basic Package",
+      "vendor": "bouquet-bar",
+      "category": "sadqa-aqiqa",
+      "description": "SAMPLE product for testing the catalog format.",
+      "base_price": 9000,
+      "options": [
+        {
+          "name": "Standard",
+          "extra_price": 0,
+          "stock": 10,
+          "details": {}
+        }
+      ],
+      "images": [],
+      "occasions": [
+        "aqiqa"
+      ],
+      "personalisation": [
+        {
+          "label": "Child's name",
+          "type": "text",
+          "required": true,
+          "max_length": 60
+        }
+      ],
+      "delivery": "default"
+    },
+    {
+      "slug": "sample-aqiqa-premium",
+      "name": "SAMPLE Aqiqa Premium Package",
+      "vendor": "bouquet-bar",
+      "category": "sadqa-aqiqa",
+      "description": "SAMPLE product for testing the catalog format.",
+      "base_price": 14000,
+      "options": [
+        {
+          "name": "Standard",
+          "extra_price": 0,
+          "stock": 6,
+          "details": {}
+        }
+      ],
+      "images": [],
+      "occasions": [
+        "aqiqa"
+      ],
+      "personalisation": [
+        {
+          "label": "Child's name",
+          "type": "text",
+          "required": true,
+          "max_length": 60
+        }
+      ],
+      "delivery": "default"
+    },
+    {
+      "slug": "sample-sadqa-food-pack",
+      "name": "SAMPLE Sadqa Food Pack",
+      "vendor": "bouquet-bar",
+      "category": "sadqa-aqiqa",
+      "description": "SAMPLE product for testing the catalog format.",
+      "base_price": 1000,
+      "options": [
+        {
+          "name": "1 pack",
+          "extra_price": 0,
+          "stock": 50,
+          "details": {}
+        },
+        {
+          "name": "5 packs",
+          "extra_price": 4000,
+          "stock": 20,
+          "details": {
+            "count": 5
+          }
+        }
+      ],
+      "images": [],
+      "occasions": [],
+      "personalisation": [],
+      "delivery": "default"
+    },
+    {
+      "slug": "sample-sadqa-ration-box",
+      "name": "SAMPLE Sadqa Ration Box",
+      "vendor": "bouquet-bar",
+      "category": "sadqa-aqiqa",
+      "description": "SAMPLE product for testing the catalog format.",
+      "base_price": 2500,
+      "options": [
+        {
+          "name": "Standard",
+          "extra_price": 0,
+          "stock": 30,
+          "details": {}
+        }
+      ],
+      "images": [],
+      "occasions": [
+        "ramadan"
+      ],
+      "personalisation": [],
+      "delivery": "default"
+    },
+    {
+      "slug": "sample-aqiqa-deluxe",
+      "name": "SAMPLE Aqiqa Deluxe Hamper",
+      "vendor": "bouquet-bar",
+      "category": "sadqa-aqiqa",
+      "description": "SAMPLE product for testing the catalog format.",
+      "base_price": 11000,
+      "options": [
+        {
+          "name": "Standard",
+          "extra_price": 0,
+          "stock": 8,
+          "details": {}
+        }
+      ],
+      "images": [],
+      "occasions": [
+        "aqiqa"
+      ],
+      "personalisation": [],
+      "delivery": "default"
+    },
+    {
+      "slug": "sample-gift-card",
+      "name": "SAMPLE Gift Card",
+      "vendor": "bouquet-bar",
+      "category": "gift-cards",
+      "description": "SAMPLE product for testing the catalog format.",
+      "base_price": 1000,
+      "options": [
+        {
+          "name": "Rs 1000",
+          "extra_price": 0,
+          "stock": 100,
+          "details": {
+            "value": 1000
+          }
+        },
+        {
+          "name": "Rs 5000",
+          "extra_price": 4000,
+          "stock": 100,
+          "details": {
+            "value": 5000
+          }
+        }
+      ],
+      "images": [],
+      "occasions": [],
+      "personalisation": [
+        {
+          "label": "Recipient name",
+          "type": "text",
+          "required": false,
+          "max_length": 60
+        }
+      ],
+      "delivery": "default"
+    },
+    {
+      "slug": "sample-eid-gift-card",
+      "name": "SAMPLE Eid Gift Card",
+      "vendor": "bouquet-bar",
+      "category": "gift-cards",
+      "description": "SAMPLE product for testing the catalog format.",
+      "base_price": 2000,
+      "options": [
+        {
+          "name": "Rs 2000",
+          "extra_price": 0,
+          "stock": 100,
+          "details": {
+            "value": 2000
+          }
+        }
+      ],
+      "images": [],
+      "occasions": [
+        "eid-ul-fitr",
+        "eid-ul-azha"
+      ],
+      "personalisation": [],
+      "delivery": "default"
+    },
+    {
+      "slug": "sample-digital-gift-card",
+      "name": "SAMPLE Digital Gift Card",
+      "vendor": "bouquet-bar",
+      "category": "gift-cards",
+      "description": "SAMPLE product for testing the catalog format.",
+      "base_price": 1500,
+      "options": [
+        {
+          "name": "Rs 1500",
+          "extra_price": 0,
+          "stock": 200,
+          "details": {
+            "value": 1500,
+            "delivery_type": "digital"
+          }
+        }
+      ],
+      "images": [],
+      "occasions": [],
+      "personalisation": [
+        {
+          "label": "Recipient email",
+          "type": "text",
+          "required": true,
+          "max_length": 120
+        }
+      ],
+      "delivery": "default"
+    },
+    {
+      "slug": "sample-anniversary-gift-card",
+      "name": "SAMPLE Anniversary Gift Card",
+      "vendor": "bouquet-bar",
+      "category": "gift-cards",
+      "description": "SAMPLE product for testing the catalog format.",
+      "base_price": 3000,
+      "options": [
+        {
+          "name": "Rs 3000",
+          "extra_price": 0,
+          "stock": 50,
+          "details": {
+            "value": 3000
+          }
+        }
+      ],
+      "images": [],
+      "occasions": [
+        "anniversary"
+      ],
+      "personalisation": [],
+      "delivery": "default"
+    },
+    {
+      "slug": "sample-mothers-day-gift-card",
+      "name": "SAMPLE Mother's Day Gift Card",
+      "vendor": "bouquet-bar",
+      "category": "gift-cards",
+      "description": "SAMPLE product for testing the catalog format.",
+      "base_price": 2500,
+      "options": [
+        {
+          "name": "Rs 2500",
+          "extra_price": 0,
+          "stock": 50,
+          "details": {
+            "value": 2500
+          }
+        }
+      ],
+      "images": [],
+      "occasions": [
+        "mothers-day"
+      ],
+      "personalisation": [],
+      "delivery": "default"
+    }
+  ]
+}
