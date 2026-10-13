@@ -185,13 +185,11 @@ async def test_list_vendors_filter_by_city(
 
 
 @pytest.mark.asyncio
-async def test_create_vendor(
-    client: AsyncClient, db: AsyncSession, vendor_user: User, city: City
+async def test_staff_creates_vendor_without_becoming_its_owner(
+    client: AsyncClient, db: AsyncSession, staff_user: User, city: City
 ) -> None:
-    vendor_email = vendor_user.email
-    vendor_user_id = str(vendor_user.id)
     city_id = str(city.id)
-    token = await _login(client, vendor_email)
+    token = await _login(client, staff_user.email)
     slug = f"my-vendor-{uuid.uuid4().hex[:4]}"
 
     resp = await client.post(
@@ -201,7 +199,27 @@ async def test_create_vendor(
     )
     assert resp.status_code == 201
     assert resp.json()["slug"] == slug
-    assert resp.json()["owner_user_id"] == vendor_user_id
+    assert resp.json()["owner_user_id"] is None
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("role", [UserRole.customer, UserRole.vendor])
+async def test_only_staff_can_create_a_vendor(
+    client: AsyncClient, db: AsyncSession, city: City, role: UserRole
+) -> None:
+    user = await _make_user(db, role=role)
+    city_id = str(city.id)
+    token = await _login(client, user.email)
+    slug = f"self-made-{uuid.uuid4().hex[:4]}"
+
+    resp = await client.post(
+        "/api/v1/vendors",
+        json={"city_id": city_id, "name": "Self Made", "slug": slug},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert resp.status_code == 403
+    assert (await client.get(f"/api/v1/vendors/{slug}")).status_code == 404
 
 
 @pytest.mark.asyncio

@@ -100,6 +100,9 @@ async def get_vendor(db: AsyncSession, slug: str) -> Vendor:
 
 
 async def create_vendor(db: AsyncSession, data: VendorCreate, user: User) -> Vendor:
+    # Staff only: a shop opened by anyone else goes through the application
+    # flow (vendor_application_service), where an admin approves it first.
+    _require_staff(user)
     repo = VendorRepository(db)
     city_repo = CityRepository(db)
 
@@ -108,7 +111,7 @@ async def create_vendor(db: AsyncSession, data: VendorCreate, user: User) -> Ven
     if await repo.get_by_slug(data.slug):
         raise _CONFLICT("Vendor")
 
-    return await repo.create(owner_user_id=user.id, **data.model_dump())
+    return await repo.create(**data.model_dump())
 
 
 async def update_vendor(

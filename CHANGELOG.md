@@ -90,6 +90,9 @@ pre-production-cutover).
   once. Migration `0013`.
 
 ### Fixed
+- Security: `POST /vendors` was open to any signed-in user, who became the owner of the new
+  shop and could then list products with no review. It is now staff/admin only, and a
+  staff-created shop has no owner until one is assigned.
 - The GDPR data export listed addresses with only id and street lines (and a
   non-existent `label`); it now includes every saved field, including recipient
   name, phone, city, relationship and occasions.

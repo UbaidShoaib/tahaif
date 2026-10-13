@@ -125,14 +125,14 @@ async def test_list_cities(db: AsyncSession) -> None:
 
 @pytest.mark.asyncio
 async def test_create_vendor_success(db: AsyncSession) -> None:
-    user = await _user(db, UserRole.vendor)
+    user = await _user(db, UserRole.staff)
     city = await CityRepository(db).create(name="C0", slug=f"c0-{uuid.uuid4().hex[:4]}", timezone="UTC")
     slug = f"v0-{uuid.uuid4().hex[:4]}"
     vendor = await catalog_service.create_vendor(
         db, VendorCreate(city_id=city.id, name="V0", slug=slug), user
     )
     assert vendor.slug == slug
-    assert vendor.owner_user_id == user.id
+    assert vendor.owner_user_id is None
 
 
 @pytest.mark.asyncio
@@ -156,7 +156,7 @@ async def test_update_vendor_with_changes(db: AsyncSession) -> None:
 
 @pytest.mark.asyncio
 async def test_create_vendor_city_not_found(db: AsyncSession) -> None:
-    user = await _user(db, UserRole.vendor)
+    user = await _user(db, UserRole.staff)
     from fastapi import HTTPException
     with pytest.raises(HTTPException) as exc_info:
         await catalog_service.create_vendor(
@@ -171,7 +171,7 @@ async def test_create_vendor_city_not_found(db: AsyncSession) -> None:
 
 @pytest.mark.asyncio
 async def test_create_vendor_slug_conflict(db: AsyncSession) -> None:
-    user = await _user(db, UserRole.vendor)
+    user = await _user(db, UserRole.staff)
     city = await CityRepository(db).create(name="C", slug=f"c-{uuid.uuid4().hex[:4]}", timezone="UTC")
     slug = f"dup-{uuid.uuid4().hex[:4]}"
     await VendorRepository(db).create(city_id=city.id, name="First", slug=slug)
