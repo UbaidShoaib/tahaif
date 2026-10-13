@@ -1,0 +1,28 @@
+# Reverse proxy for the VPS stack (infra/docker-compose.prod.yml).
+# ACME_EMAIL is the Let's Encrypt contact; set it to "internal" for a
+# self-signed certificate when trying the stack without public DNS.
+{$DOMAIN} {
+	tls {$ACME_EMAIL}
+	encode zstd gzip
+
+	@api path /api/*
+	handle @api {
+		reverse_proxy api:8000
+	}
+
+	# Private bucket: only links signed by the API are readable.
+	@media path /{$S3_BUCKET_NAME}/*
+	handle @media {
+		reverse_proxy minio:9000
+	}
+
+	handle {
+		reverse_proxy web:3000
+	}
+}
+
+# Uncomment once www.$DOMAIN also points at this server.
+# www.{$DOMAIN} {
+# 	tls {$ACME_EMAIL}
+# 	redir https://{$DOMAIN}{uri} permanent
+# }

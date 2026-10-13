@@ -19,7 +19,14 @@ COPY --from=deps /app/apps/web/node_modules ./apps/web/node_modules
 COPY pnpm-workspace.yaml pnpm-lock.yaml ./
 COPY apps/web apps/web
 ENV NEXT_TELEMETRY_DISABLED=1
-RUN pnpm --filter=tahaif-web build
+# NEXT_PUBLIC_* are inlined at build time. docker-compose.prod.yml passes the
+# server's .env.prod as a secret; only its public lines are kept, because Next
+# copies .env.production into the standalone output.
+RUN --mount=type=secret,id=web_env \
+    if [ -f /run/secrets/web_env ]; then \
+      grep -E '^NEXT_PUBLIC_[A-Z0-9_]+=' /run/secrets/web_env > apps/web/.env.production || true; \
+    fi; \
+    pnpm --filter=tahaif-web build
 
 # ---- runner ----
 FROM node:22-alpine AS runner

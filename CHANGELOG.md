@@ -8,6 +8,12 @@ pre-production-cutover).
 ## [Unreleased]
 
 ### Added
+- Single-VPS deployment (ADR 0007): `infra/docker-compose.prod.yml` runs web, API +
+  worker, Postgres, Redis, Meilisearch and MinIO behind Caddy with automatic HTTPS, all
+  on one origin (`/api/*` to the API, `/<bucket>/*` to private media). `infra/vps-setup.sh`
+  prepares a fresh server, `infra/deploy.sh user@host` ships a git ref and rebuilds;
+  settings live in the server's `.env.prod` (`infra/env.prod.example`). Adds a
+  `.dockerignore` so local `.env` files and `node_modules` stay out of image builds.
 - Delivery-status notifications for buyers (diaspora Release A, `docs/diaspora-experience.md`):
   when a vendor moves a fulfillment to preparing, dispatched, out for delivery, delivered
   or failed, the buyer gets a warm, recipient-named email plus a WhatsApp message (when a
