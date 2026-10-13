@@ -119,6 +119,10 @@ pre-production-cutover).
   of Pakistan time.
 
 ### Changed
+- After signing in with no page to return to, admins and staff land on `/admin` and vendors on
+  `/vendor/dashboard` instead of the home page; signed-in admins, staff and vendors also get
+  an "Admin" / "Vendor portal" link in the header and mobile menu. `callbackUrl` is now only
+  followed when it is a path on this site.
 - A product created by a vendor now starts hidden until staff publish it, and a shop owner
   can no longer change their shop's `is_active` or re-publish a hidden product (ADR 0008,
   `docs/questions.md` Q26). A pending or rejected shop has no public page.

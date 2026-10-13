@@ -8,9 +8,10 @@ import type * as ApiModule from "@/lib/api";
 import { useAuthStore } from "@/stores/auth.store";
 
 const push = vi.fn();
+let searchParams = new URLSearchParams();
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push }),
-  useSearchParams: () => new URLSearchParams(),
+  useSearchParams: () => searchParams,
 }));
 
 vi.mock("@/lib/api", async () => {
@@ -43,6 +44,7 @@ describe("LoginForm", () => {
 
   beforeEach(() => {
     push.mockReset();
+    searchParams = new URLSearchParams();
     setSession.mockReset();
     vi.mocked(apiFetch).mockReset();
     vi.mocked(useAuthStore).mockReturnValue({ setSession });
@@ -81,6 +83,29 @@ describe("LoginForm", () => {
     // eslint-disable-next-line @typescript-eslint/unbound-method -- Cookies.set is a vi.fn() mock, not a `this`-bound method
     expect(Cookies.set).toHaveBeenCalledWith("tahaif_session", "customer", expect.objectContaining({ sameSite: "lax" }));
     expect(push).toHaveBeenCalledWith("/");
+  });
+
+  it.each([
+    ["admin", null, "/admin"],
+    ["staff", null, "/admin"],
+    ["vendor", null, "/vendor/dashboard"],
+    ["customer", null, "/"],
+    // The page they were sent from wins over the role's workspace.
+    ["admin", "/account/orders", "/account/orders"],
+    ["customer", "/checkout", "/checkout"],
+    // Another site's address is never followed.
+    ["customer", "https://evil.example/phish", "/"],
+    ["vendor", "//evil.example", "/vendor/dashboard"],
+  ])("sends a %s with callbackUrl %s to %s", async (role, callbackUrl, expected) => {
+    searchParams = new URLSearchParams(callbackUrl ? { callbackUrl } : {});
+    vi.mocked(apiFetch).mockResolvedValue({ access_token: "tok-1", user: { ...mockUser, role } });
+
+    render(<LoginForm />);
+    await userEvent.type(screen.getByLabelText("Email"), "buyer@example.com");
+    await userEvent.type(screen.getByLabelText("Password"), "secret123");
+    await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
+
+    await waitFor(() => expect(push).toHaveBeenCalledWith(expected));
   });
 
   it("shows the server error message on a failed login", async () => {

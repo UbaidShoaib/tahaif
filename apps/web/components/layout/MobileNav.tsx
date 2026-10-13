@@ -7,6 +7,7 @@ import { useTranslations } from "next-intl";
 import { Gift, LogOut, Menu, User } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useAuthStore } from "@/stores/auth.store";
+import { workspaceFor } from "@/lib/session";
 import { CurrencySelect } from "@/components/layout/CurrencySelect";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { LanguageSwitcher } from "@/components/layout/LanguageSwitcher";
@@ -22,6 +23,7 @@ export function MobileNav() {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
   const { user, logout } = useAuthStore();
+  const workspace = workspaceFor(user?.role);
   const t = useTranslations();
 
   // Close after navigating.
@@ -72,6 +74,7 @@ export function MobileNav() {
                       </Link>
                     </li>
                     {link("/account/orders", t("menu.myOrders"))}
+                    {workspace && link(workspace.href, t(`header.${workspace.key}`))}
                     <li>
                       <button type="button" onClick={() => { void logout(); setOpen(false); }} className={cn(itemClass, "w-full")}>
                         <LogOut aria-hidden className="h-4 w-4" /> {t("header.logOut")}

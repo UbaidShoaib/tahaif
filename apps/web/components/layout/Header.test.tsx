@@ -54,4 +54,23 @@ describe("Header", () => {
     expect(login).toHaveAttribute("href", "/login");
     expect(login.querySelector("button")).toBeNull();
   });
+
+  it.each([
+    ["admin", "Admin", "/admin"],
+    ["staff", "Admin", "/admin"],
+    ["vendor", "Vendor portal", "/vendor/dashboard"],
+  ])("gives a signed-in %s a link to their workspace", (role, label, href) => {
+    vi.mocked(useAuthStore).mockReturnValue({ user: { id: "u1", role }, logout: vi.fn() });
+    render(<Header />);
+
+    expect(screen.getByRole("link", { name: label })).toHaveAttribute("href", href);
+  });
+
+  it("shows buyers no workspace link", () => {
+    vi.mocked(useAuthStore).mockReturnValue({ user: { id: "u1", role: "customer" }, logout: vi.fn() });
+    render(<Header />);
+
+    expect(screen.queryByRole("link", { name: "Admin" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Vendor portal" })).not.toBeInTheDocument();
+  });
 });

@@ -5,6 +5,7 @@ import { useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useAuthStore } from "@/stores/auth.store";
+import { workspaceFor } from "@/lib/session";
 import { useCartStore } from "@/stores/cart.store";
 import { Button } from "@/components/ui/button";
 import { CartDrawer } from "@/components/cart/CartDrawer";
@@ -19,6 +20,7 @@ import { ShoppingBag, User, LogOut, Search } from "lucide-react";
 
 export function Header() {
   const { user, logout } = useAuthStore();
+  const workspace = workspaceFor(user?.role);
   const { cart, fetchCart, openDrawer } = useCartStore();
 
   // Load the cart for guests too (ADR 0004). When a guest signs in, the next fetch
@@ -93,6 +95,11 @@ export function Header() {
 
             {user ? (
               <div className="flex items-center gap-1">
+                {workspace && (
+                  <Button variant="outline" size="sm" className="hidden sm:inline-flex" asChild>
+                    <Link href={workspace.href}>{t(`header.${workspace.key}`)}</Link>
+                  </Button>
+                )}
                 <Button variant="ghost" size="icon" className="h-11 w-11" asChild>
                   <Link href="/account" aria-label={t("header.account")}>
                     <User className="h-5 w-5" aria-hidden />

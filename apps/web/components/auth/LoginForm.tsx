@@ -5,7 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
-import { setSessionMarker } from "@/lib/session";
+import { afterLoginPath, setSessionMarker } from "@/lib/session";
 import { apiFetch, ApiError } from "@/lib/api";
 import { useAuthStore } from "@/stores/auth.store";
 import { Button } from "@/components/ui/button";
@@ -43,8 +43,7 @@ export function LoginForm() {
       setSession(res.user, res.access_token);
       // Session marker cookie lets middleware know user is authenticated
       setSessionMarker(res.user.role);
-      const callbackUrl = params.get("callbackUrl") ?? "/";
-      router.push(callbackUrl);
+      router.push(afterLoginPath(res.user.role, params.get("callbackUrl")));
     } catch (e) {
       setError(e instanceof ApiError ? e.detail : "Login failed. Please try again.");
     }

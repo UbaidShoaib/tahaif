@@ -19,6 +19,8 @@
     "account": "Account",
     "logIn": "Log in",
     "logOut": "Log out",
+    "admin": "Admin",
+    "vendorPortal": "Vendor portal",
     "signUp": "Sign up",
     "deliverTo": "Deliver to",
     "anyCity": "Any city",
