@@ -314,3 +314,26 @@ unless the seed has a pending fulfilment and a vendor login (`E2E_VENDOR_EMAIL` 
 `E2E_VENDOR_PASSWORD`).
 
 Never run the API with `TESTING=1` outside local testing.
+
+## Email (Resend)
+
+Signup verification codes, password resets and order emails go through Resend.
+Without `RESEND_API_KEY` the API only logs codes (`email_verification_code`) — fine
+locally, but in production nobody can verify, and signed-in checkout is blocked
+while `REQUIRE_VERIFIED_EMAIL_FOR_CHECKOUT=true`.
+
+1. Create an account at resend.com.
+2. **Domains → Add domain** — use a domain you own (e.g. `mail.bouquetbar.pk`). Resend
+   cannot send from `*.sslip.io`.
+3. Add the DNS records Resend shows (SPF `TXT`, DKIM `TXT`/`CNAME`, MX for bounces;
+   DMARC `TXT` recommended) at your DNS host / Cloudflare (DNS only, not proxied),
+   then click **Verify**.
+4. **API Keys → Create** with *Sending access*, limited to that domain.
+5. On the server, edit `/opt/tahaif/.env.prod`:
+   `RESEND_API_KEY=re_…` and `EMAIL_FROM="Bouquet Bar <noreply@mail.bouquetbar.pk>"`.
+6. Recreate the API container so it re-reads env (`infra/deploy.sh`, or
+   `docker compose -f infra/docker-compose.prod.yml up -d api worker`).
+7. Test: register a throwaway address, confirm the code arrives, check Resend → Logs.
+
+Until a domain is verified, `REQUIRE_VERIFIED_EMAIL_FOR_CHECKOUT=false` keeps
+signed-in checkout open.
