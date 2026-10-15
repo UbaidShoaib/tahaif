@@ -10,7 +10,8 @@ import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatMoney } from "@/lib/money";
-import { orderNumber } from "@/lib/orders";
+import { isOrderLive, orderNumber } from "@/lib/orders";
+import { usePolling } from "@/hooks/use-polling";
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("en-GB", {
@@ -38,6 +39,14 @@ export default function OrdersPage() {
       .catch(() => setError("Failed to load orders. Please try again."))
       .finally(() => setLoading(false));
   }, [accessToken, authLoading]);
+
+  // Keep statuses current while any order is still moving; errors keep the last good list.
+  usePolling(
+    () => {
+      if (accessToken) cartApi.myOrders(accessToken).then(setOrders).catch(() => {});
+    },
+    !!accessToken && orders.some((o) => isOrderLive(o.status)),
+  );
 
   if (authLoading || loading) {
     return (

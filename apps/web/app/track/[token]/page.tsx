@@ -17,7 +17,8 @@ import { Button } from "@/components/ui/button";
 import { OrderStatusBadge } from "@/components/orders/OrderStatusBadge";
 import { OrderTimeline } from "@/components/orders/OrderTimeline";
 import { ShareTracking } from "@/components/orders/ShareTracking";
-import { orderNumber } from "@/lib/orders";
+import { isOrderLive, orderNumber } from "@/lib/orders";
+import { LiveOrderRefresh } from "@/components/orders/LiveOrderRefresh";
 import { formatCalendarDate } from "@/lib/datetime";
 import { DualTime } from "@/components/time/DualTime";
 import { SupportWhatsApp } from "@/components/support/SupportWhatsApp";
@@ -54,6 +55,7 @@ export default async function TrackPage({
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-2xl">
+      <LiveOrderRefresh active={isOrderLive(order.status)} />
       <div className="mb-6">
         <h1 className="text-h1">Track your order</h1>
         <p className="mt-1 text-sm text-muted-foreground">
