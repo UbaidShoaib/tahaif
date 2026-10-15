@@ -21,8 +21,8 @@
 	}
 }
 
-# Uncomment once www.$DOMAIN also points at this server.
-# www.{$DOMAIN} {
-# 	tls {$ACME_EMAIL}
-# 	redir https://{$DOMAIN}{uri} permanent
-# }
+# www.$DOMAIN must also point at this server (it does for bouquetbar.pk).
+www.{$DOMAIN} {
+	tls {$ACME_EMAIL}
+	redir https://{$DOMAIN}{uri} permanent
+}
