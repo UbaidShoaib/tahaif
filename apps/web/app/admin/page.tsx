@@ -8,6 +8,7 @@ import { VendorApplications } from "@/components/admin/VendorApplications";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { useAuthStore } from "@/stores/auth.store";
+import { usePolling } from "@/hooks/use-polling";
 import { formatPrice } from "@/lib/utils";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api/v1";
@@ -67,9 +68,18 @@ export default function AdminDashboard() {
     void fetchOrders();
   }, [authLoading, user, filterStatus]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  async function fetchOrders() {
-    setLoading(true);
-    setError(null);
+  // New orders and payment proofs appear without a manual refresh; paused mid-action.
+  usePolling(
+    () => void fetchOrders(true),
+    section === "orders" && !!token && actionInProgress === null,
+    30_000,
+  );
+
+  async function fetchOrders(silent = false) {
+    if (!silent) {
+      setLoading(true);
+      setError(null);
+    }
     try {
       const qs = filterStatus ? `?status=${filterStatus}` : "";
       const resp = await fetch(`${API_URL}/admin/orders${qs}`, {
@@ -78,9 +88,9 @@ export default function AdminDashboard() {
       if (!resp.ok) throw new Error("Failed to fetch orders");
       setOrders((await resp.json()) as OrderSummary[]);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Error");
+      if (!silent) setError(e instanceof Error ? e.message : "Error");
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }
 

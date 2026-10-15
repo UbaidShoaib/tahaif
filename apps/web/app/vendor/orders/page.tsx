@@ -11,6 +11,7 @@ import {
 import { OrderStatusBadge, statusLabel } from "@/components/orders/OrderStatusBadge";
 import { DeliveryPhotoForm } from "@/components/vendor/DeliveryPhotoForm";
 import { formatCalendarDate } from "@/lib/datetime";
+import { usePolling } from "@/hooks/use-polling";
 
 const FULFILLMENT_STATUSES: FulfillmentStatus[] = [
   "pending",
@@ -81,6 +82,17 @@ export default function VendorOrdersPage() {
     }
     load(accessToken);
   }, [accessToken, authLoading, load]);
+
+  // New and newly paid orders appear without a manual refresh; paused mid-update.
+  usePolling(
+    () => {
+      if (accessToken) {
+        vendorApi.listFulfillments(accessToken, filterStatus || undefined).then(setFulfillments).catch(() => {});
+      }
+    },
+    !!accessToken && updating === null,
+    30_000,
+  );
 
   const advance = async (f: VendorFulfillmentRead) => {
     if (!accessToken) return;
