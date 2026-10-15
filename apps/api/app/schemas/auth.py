@@ -44,6 +44,10 @@ class AuthResponse(BaseModel):
     user: UserRead
 
 
+class VerifyEmailRequest(BaseModel):
+    code: str = Field(pattern=r"^\d{6}$", examples=["482913"])
+
+
 class ForgotPasswordRequest(BaseModel):
     email: EmailStr
 

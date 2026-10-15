@@ -16,6 +16,9 @@ os.environ.setdefault("DATABASE_URL", "postgresql+asyncpg://tahaif_user:tahaif_d
 os.environ.setdefault("SECRET_KEY", "test-secret-key-at-least-32-chars-long!!")
 os.environ.setdefault("RESEND_API_KEY", "")
 os.environ["TESTING"] = "1"  # disables rate limiting
+# Most suites check out as freshly made (unverified) users; test_email_verification
+# turns the gate back on where it is under test.
+os.environ.setdefault("REQUIRE_VERIFIED_EMAIL_FOR_CHECKOUT", "false")
 
 import asyncio  # noqa: E402
 from collections.abc import AsyncIterator  # noqa: E402

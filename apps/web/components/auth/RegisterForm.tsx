@@ -54,7 +54,7 @@ export function RegisterForm() {
       );
       setSession(res.user, res.access_token);
       setSessionMarker(res.user.role);
-      router.push("/");
+      router.push("/verify-email");
     } catch (e) {
       setError(e instanceof ApiError ? e.detail : "Registration failed. Please try again.");
     }

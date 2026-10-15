@@ -71,6 +71,9 @@ class Settings(BaseSettings):
     # Email
     resend_api_key: str = ""
     email_from: str = "noreply@example.com"
+    # Signed-in buyers must confirm their email (6-digit code) before checkout.
+    # Guest checkout is unaffected.
+    require_verified_email_for_checkout: bool = True
 
     # Messaging (Twilio)
     twilio_account_sid: str = ""

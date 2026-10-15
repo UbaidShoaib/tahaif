@@ -103,3 +103,19 @@ async def send_newsletter_confirmation_email(
             """,
         }
     )
+
+
+async def send_verification_code_email(to_email: str, code: str) -> None:  # pragma: no cover
+    resend.api_key = settings.resend_api_key
+    resend.Emails.send(
+        {
+            "from": settings.email_from,
+            "to": to_email,
+            "subject": f"{code} is your {settings.brand_name} verification code",
+            "html": f"""
+                <p>Use this code to verify your email address:</p>
+                <p style="font-size:28px;font-weight:bold;letter-spacing:6px">{code}</p>
+                <p>The code expires in 10 minutes. If you did not create an account, ignore this email.</p>
+            """,
+        }
+    )

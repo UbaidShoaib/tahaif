@@ -8,6 +8,7 @@ import structlog
 from fastapi import HTTPException, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import get_settings
 from app.integrations.s3_client import upload_proof
 from app.models.loyalty import Coupon, CouponType
 from app.models.order import (
@@ -42,6 +43,7 @@ from app.services import (
 from app.services.cart_service import CartOwner, _unit_price
 
 logger = structlog.get_logger()
+settings = get_settings()
 
 if TYPE_CHECKING:
     from app.models.catalog import Product, ProductCity, ProductVariant
@@ -224,6 +226,12 @@ async def place_order(
         existing = await order_repo.get_by_idempotency_key(idempotency_key)
         if existing:
             return _order_to_read(existing)
+
+    if user is not None and not user.is_verified and settings.require_verified_email_for_checkout:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Please verify your email before placing an order",
+        )
 
     if user is None and (not body.contact_email or not body.contact_phone):
         raise HTTPException(

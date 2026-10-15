@@ -68,7 +68,7 @@ describe("RegisterForm", () => {
     expect(await screen.findByText("Must contain an uppercase letter")).toBeInTheDocument();
   });
 
-  it("registers successfully and redirects home", async () => {
+  it("registers successfully and asks for the email code", async () => {
     vi.mocked(apiFetch).mockResolvedValue({ access_token: "tok-1", user: mockUser });
 
     render(<RegisterForm />);
@@ -78,7 +78,7 @@ describe("RegisterForm", () => {
     await userEvent.click(screen.getByRole("button", { name: "Create account" }));
 
     await vi.waitFor(() => expect(setSession).toHaveBeenCalledWith(mockUser, "tok-1"));
-    expect(push).toHaveBeenCalledWith("/");
+    expect(push).toHaveBeenCalledWith("/verify-email");
   });
 
   it("shows the server error on a failed registration (e.g. duplicate email)", async () => {

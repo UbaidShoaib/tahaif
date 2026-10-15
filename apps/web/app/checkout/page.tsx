@@ -298,6 +298,17 @@ export default function CheckoutPage() {
         </span>
       </div>
 
+      {user && !user.is_verified && (
+        <Alert variant="warning" className="mb-6">
+          <AlertDescription>
+            Verify your email to place this order.{" "}
+            <Link href="/verify-email?next=/checkout" className="font-medium underline underline-offset-2">
+              Enter your code
+            </Link>
+          </AlertDescription>
+        </Alert>
+      )}
+
       {/* Phones: collapsible item list with the running total, above the form. */}
       {cart && (
         <details className="group mb-6 rounded-xl border bg-card lg:hidden">

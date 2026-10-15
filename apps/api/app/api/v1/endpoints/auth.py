@@ -7,7 +7,7 @@ from redis.exceptions import RedisError
 
 from app.core.client_ip import client_ip
 from app.core.config import get_settings
-from app.core.deps import DB
+from app.core.deps import DB, CurrentUser
 from app.core.rate_limit import limiter
 from app.core.redis_client import get_redis
 from app.integrations import google_oauth
@@ -20,9 +20,10 @@ from app.schemas.auth import (
     RegisterRequest,
     ResetPasswordRequest,
     TokenPair,
+    VerifyEmailRequest,
 )
 from app.schemas.user import UserRead
-from app.services import auth_service
+from app.services import auth_service, email_verification_service
 
 logger = structlog.get_logger()
 settings = get_settings()
@@ -108,6 +109,13 @@ async def register(
 ) -> AuthResponse:
     user, pair = await auth_service.register(db, body)
     _set_refresh_cookie(response, pair.refresh_token)
+    try:
+        await email_verification_service.send_code(user)
+    except HTTPException:
+        # The account exists either way; the verify screen offers "resend code".
+        await logger.awarning("signup_verification_code_not_sent", user_id=str(user.id))
+    except (RedisError, OSError) as exc:
+        await logger.awarning("signup_verification_code_not_sent", user_id=str(user.id), error=str(exc))
     return AuthResponse(
         access_token=pair.access_token,
         expires_in=pair.expires_in,
@@ -171,6 +179,29 @@ async def logout(
     if raw:
         await auth_service.logout(db, raw)
     _clear_refresh_cookie(response)
+
+
+@router.post("/verify-email/send", status_code=status.HTTP_204_NO_CONTENT)
+@limiter.limit("5/hour")
+async def send_verification_code(
+    request: Request,  # noqa: ARG001 — required by slowapi
+    user: CurrentUser,
+) -> None:
+    """Email a fresh 6-digit code to the signed-in user (once a minute at most)."""
+    await email_verification_service.send_code(user)
+
+
+@router.post("/verify-email", response_model=UserRead)
+@limiter.limit("10/hour")
+async def verify_email(
+    request: Request,  # noqa: ARG001 — required by slowapi
+    body: VerifyEmailRequest,
+    user: CurrentUser,
+    db: DB,
+) -> UserRead:
+    """Confirm the code from the email; marks the account verified."""
+    verified = await email_verification_service.verify_code(db, user, body.code)
+    return UserRead.model_validate(verified)
 
 
 @router.post("/forgot-password", status_code=status.HTTP_200_OK)
