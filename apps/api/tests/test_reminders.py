@@ -167,3 +167,29 @@ async def test_buyer_sets_country_and_can_turn_reminders_off(client: AsyncClient
     assert updated.json()["country"] == "GB"
     assert updated.json()["occasion_reminders"] is False
     assert (await client.patch("/api/v1/me", json={"country": "gb"}, headers=headers)).status_code == 422
+
+
+def test_upcoming_occasions_are_soonest_first_and_country_aware() -> None:
+    from app.services.occasion_calendar import upcoming_occasions
+
+    uk = upcoming_occasions("GB", date(2026, 9, 28))
+    assert [(slug, when) for slug, _, when in uk] == [
+        ("mothers-day", date(2027, 3, 7)),
+        ("eid-ul-fitr", date(2027, 3, 9)),
+        ("eid-ul-azha", date(2027, 5, 16)),
+    ]
+    us = upcoming_occasions("US", date(2026, 9, 28), limit=2)
+    # US Mother's Day (9 May 2027) comes before Eid ul-Adha (16 May).
+    assert [slug for slug, _, _ in us] == ["eid-ul-fitr", "mothers-day"]
+
+
+@pytest.mark.asyncio
+async def test_calendar_endpoint(client: AsyncClient) -> None:
+    resp = await client.get("/api/v1/calendar/upcoming", params={"country": "AE", "limit": 6})
+
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body and all({"slug", "name", "date", "days_away"} <= set(o) for o in body)
+    assert [o["date"] for o in body] == sorted(o["date"] for o in body)
+    assert all(o["days_away"] >= 0 for o in body)
+    assert (await client.get("/api/v1/calendar/upcoming", params={"country": "uk"})).status_code == 422

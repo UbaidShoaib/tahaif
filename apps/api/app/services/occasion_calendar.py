@@ -61,3 +61,14 @@ def cultural_occasions(country: str | None, year: int) -> list[tuple[str, str, d
     if md:
         found.append(("mothers-day", "Mother's Day", md))
     return found
+
+
+def upcoming_occasions(country: str | None, today: date, limit: int = 3) -> list[tuple[str, str, date]]:
+    """The next cultural occasions from today (inclusive), soonest first."""
+    found = [
+        o
+        for year in (today.year, today.year + 1)
+        for o in cultural_occasions(country, year)
+        if o[2] >= today
+    ]
+    return sorted(found, key=lambda o: o[2])[:limit]

@@ -1,3 +1,5 @@
+from datetime import date
+
 from pydantic import BaseModel, Field
 
 
@@ -9,3 +11,10 @@ class OnTimeStats(BaseModel):
     delivered_count: int = Field(description="Deliveries in the window", examples=[312])
     window_days: int = Field(examples=[90])
     min_sample: int = Field(description="Deliveries needed before a rate is published", examples=[20])
+
+
+class UpcomingOccasion(BaseModel):
+    slug: str = Field(description="Matches the occasion page, /occasion/{slug}", examples=["mothers-day"])
+    name: str = Field(examples=["Mother's Day"])
+    date: date
+    days_away: int = Field(examples=[12])
