@@ -24,6 +24,14 @@ const application: VendorApplication = {
   review_note: null,
   created_at: "2026-10-14T10:00:00Z",
   reviewed_at: null,
+  bank_account_title: "Ayesha Khan",
+  bank_name: "Meezan Bank",
+  bank_iban: "PK36SCBL0000001123456702",
+  documents: [
+    { id: "d1", kind: "cnic_front", filename: "front.jpg", content_type: "image/jpeg", created_at: "2026-10-14T10:00:00Z", url: "https://signed.example/front" },
+    { id: "d2", kind: "cnic_back", filename: "back.jpg", content_type: "image/jpeg", created_at: "2026-10-14T10:00:00Z", url: "https://signed.example/back" },
+  ],
+  missing_documents: [],
 };
 
 const refresh = vi.fn();
@@ -77,6 +85,7 @@ describe("SellApplication", () => {
     expect(await screen.findByText("Enter your shop's name")).toBeInTheDocument();
     expect(screen.getByText("Choose the city your shop is in")).toBeInTheDocument();
     expect(screen.getByText(/Use digits only/)).toBeInTheDocument();
+    expect(screen.getByText(/24-character Pakistani IBAN/)).toBeInTheDocument();
     expect(apiFetch).not.toHaveBeenCalledWith("/vendor/application", expect.objectContaining({ method: "POST" }));
   });
 
@@ -88,13 +97,24 @@ describe("SellApplication", () => {
     await userEvent.type(await screen.findByLabelText(/Shop name/), "Rose Corner");
     await userEvent.selectOptions(screen.getByLabelText(/City/), "c1");
     await userEvent.type(screen.getByLabelText(/Contact phone/), "+92 300 1234567");
+    await userEvent.type(screen.getByLabelText(/Account title/), "Ayesha Khan");
+    await userEvent.type(screen.getByLabelText(/^Bank/), "Meezan Bank");
+    await userEvent.type(screen.getByLabelText(/IBAN/), "pk36 scbl 0000 0011 2345 6702");
     await userEvent.click(screen.getByRole("button", { name: "Send application" }));
 
     expect(await screen.findByText(/We.re reviewing Rose Corner/)).toBeInTheDocument();
     expect(apiFetch).toHaveBeenCalledWith("/vendor/application", {
       method: "POST",
       token: "tok",
-      body: { name: "Rose Corner", city_id: "c1", contact_phone: "+92 300 1234567", description: null },
+      body: {
+        name: "Rose Corner",
+        city_id: "c1",
+        contact_phone: "+92 300 1234567",
+        description: null,
+        bank_account_title: "Ayesha Khan",
+        bank_name: "Meezan Bank",
+        bank_iban: "PK36SCBL0000001123456702",
+      },
     });
   });
 
@@ -105,6 +125,9 @@ describe("SellApplication", () => {
     await userEvent.type(await screen.findByLabelText(/Shop name/), "Rose Corner");
     await userEvent.selectOptions(screen.getByLabelText(/City/), "c1");
     await userEvent.type(screen.getByLabelText(/Contact phone/), "+92 300 1234567");
+    await userEvent.type(screen.getByLabelText(/Account title/), "Ayesha Khan");
+    await userEvent.type(screen.getByLabelText(/^Bank/), "Meezan Bank");
+    await userEvent.type(screen.getByLabelText(/IBAN/), "pk36 scbl 0000 0011 2345 6702");
     vi.mocked(apiFetch).mockRejectedValueOnce(new ApiError(409, "Your application is already being reviewed"));
 
     await userEvent.click(screen.getByRole("button", { name: "Send application" }));
@@ -138,5 +161,34 @@ describe("SellApplication", () => {
 
     await screen.findByRole("link", { name: "Open the vendor portal" });
     expect(refresh).not.toHaveBeenCalled();
+  });
+
+  it("asks for the CNIC after applying and uploads each file as it is picked", async () => {
+    signIn();
+    const waiting = { ...application, documents: [], missing_documents: ["cnic_front", "cnic_back"] as VendorApplication["missing_documents"] };
+    serve(waiting);
+    render(<SellApplication />);
+
+    expect(await screen.findByText(/One more step/)).toBeInTheDocument();
+    vi.mocked(apiFetch).mockResolvedValueOnce({ ...waiting, missing_documents: ["cnic_back"] });
+    const file = new File(["img"], "front.jpg", { type: "image/jpeg" });
+    await userEvent.upload(screen.getByLabelText("Upload CNIC (front)"), file);
+
+    await waitFor(() =>
+      expect(apiFetch).toHaveBeenCalledWith(
+        "/vendor/application/documents",
+        expect.objectContaining({ method: "POST", token: "tok", body: expect.any(FormData) as unknown }),
+      ),
+    );
+    expect(await screen.findByText(/upload: CNIC \(back\)\./)).toBeInTheDocument();
+  });
+
+  it("shows an application with all documents as under review", async () => {
+    signIn();
+    serve(application);
+    render(<SellApplication />);
+
+    expect(await screen.findByText(/We.re reviewing Gulberg Florist/)).toBeInTheDocument();
+    expect(screen.getByText("front.jpg")).toBeInTheDocument();
   });
 });

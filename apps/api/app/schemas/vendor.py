@@ -1,9 +1,10 @@
+import re
 import uuid
 from datetime import date, datetime
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
-from app.models.catalog import VendorApprovalStatus
+from app.models.catalog import VendorApprovalStatus, VendorDocumentKind
 from app.models.order import FulfillmentStatus, OrderStatus, PaymentMethod
 
 
@@ -59,6 +60,8 @@ class VendorFulfillmentRead(BaseModel):
 
 # ── Vendor applications ───────────────────────────────────────────────────────
 
+_PK_IBAN = re.compile(r"PK\d{2}[A-Z]{4}\d{16}")
+
 class VendorApplicationCreate(BaseModel):
     name: str = Field(min_length=2, max_length=255, examples=["Gulberg Florist"])
     city_id: uuid.UUID
@@ -68,6 +71,28 @@ class VendorApplicationCreate(BaseModel):
     description: str | None = Field(
         default=None, max_length=2000, examples=["Hand-tied bouquets, delivered same day in Lahore."]
     )
+    bank_account_title: str = Field(min_length=2, max_length=255, examples=["Gulberg Florist"])
+    bank_name: str = Field(min_length=2, max_length=100, examples=["Meezan Bank"])
+    bank_iban: str = Field(
+        description="Pakistani IBAN, 24 characters; spaces are ignored", examples=["PK36SCBL0000001123456702"]
+    )
+
+    @field_validator("bank_iban")
+    @classmethod
+    def _normalise_iban(cls, v: str) -> str:
+        iban = re.sub(r"\s+", "", v).upper()
+        if not _PK_IBAN.fullmatch(iban):
+            raise ValueError("Enter a Pakistani IBAN: PK, 2 digits, 4-letter bank code, then 16 digits")
+        return iban
+
+
+class VendorDocumentRead(BaseModel):
+    id: uuid.UUID
+    kind: VendorDocumentKind = Field(examples=["cnic_front"])
+    filename: str = Field(examples=["cnic-front.jpg"])
+    content_type: str = Field(examples=["image/jpeg"])
+    created_at: datetime
+    url: str | None = Field(default=None, description="Short-lived link; staff only")
 
 
 class VendorApplicationRead(BaseModel):
@@ -83,6 +108,13 @@ class VendorApplicationRead(BaseModel):
     review_note: str | None = Field(default=None, description="Staff's reason when rejected")
     created_at: datetime
     reviewed_at: datetime | None
+    bank_account_title: str | None = None
+    bank_name: str | None = None
+    bank_iban: str | None = None
+    documents: list[VendorDocumentRead] = Field(default_factory=list)
+    missing_documents: list[VendorDocumentKind] = Field(
+        default_factory=list, description="Required documents not yet uploaded; staff cannot approve until empty"
+    )
 
 
 class AdminVendorApplicationRead(VendorApplicationRead):

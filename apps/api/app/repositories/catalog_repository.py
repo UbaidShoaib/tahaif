@@ -14,6 +14,7 @@ from app.models.catalog import (
     ProductCity,
     ProductImage,
     Vendor,
+    VendorDocument,
     product_occasions_table,
 )
 
@@ -85,7 +86,8 @@ class VendorRepository:
         result = await self._db.execute(
             select(Vendor)
             .where(Vendor.owner_user_id == user_id)
-            .options(selectinload(Vendor.city), selectinload(Vendor.owner))
+            .options(selectinload(Vendor.city), selectinload(Vendor.owner), selectinload(Vendor.documents))
+            .execution_options(populate_existing=True)
             .order_by(Vendor.created_at.desc())
             .limit(1)
         )
@@ -95,16 +97,34 @@ class VendorRepository:
         result = await self._db.execute(
             select(Vendor)
             .where(Vendor.id == vendor_id)
-            .options(selectinload(Vendor.city), selectinload(Vendor.owner))
+            .options(selectinload(Vendor.city), selectinload(Vendor.owner), selectinload(Vendor.documents))
+            .execution_options(populate_existing=True)
         )
         return result.scalar_one_or_none()
+
+    async def add_document(self, **kwargs: Any) -> VendorDocument:
+        doc = VendorDocument(**kwargs)
+        self._db.add(doc)
+        await self._db.flush()
+        return doc
+
+    async def get_document(self, vendor_id: uuid.UUID, document_id: uuid.UUID) -> VendorDocument | None:
+        result = await self._db.execute(
+            select(VendorDocument).where(VendorDocument.id == document_id, VendorDocument.vendor_id == vendor_id)
+        )
+        return result.scalar_one_or_none()
+
+    async def delete_document(self, doc: VendorDocument) -> None:
+        await self._db.delete(doc)
+        await self._db.flush()
 
     async def list_applications(self, approval_status: str | None = None) -> builtins.list[Vendor]:
         """Shops that came through an application (they have an owner), newest first."""
         q = (
             select(Vendor)
             .where(Vendor.owner_user_id.is_not(None))
-            .options(selectinload(Vendor.city), selectinload(Vendor.owner))
+            .options(selectinload(Vendor.city), selectinload(Vendor.owner), selectinload(Vendor.documents))
+            .execution_options(populate_existing=True)
         )
         if approval_status:
             q = q.where(Vendor.approval_status == approval_status)

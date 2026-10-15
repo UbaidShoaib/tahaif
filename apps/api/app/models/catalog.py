@@ -44,6 +44,18 @@ class VendorApprovalStatus(enum.StrEnum):
     rejected = "rejected"
 
 
+class VendorDocumentKind(enum.StrEnum):
+    """What an applicant uploads for verification. Both CNIC sides are required to approve."""
+
+    cnic_front = "cnic_front"
+    cnic_back = "cnic_back"
+    business_registration = "business_registration"
+    shop_photo = "shop_photo"
+
+
+REQUIRED_VENDOR_DOCUMENTS = (VendorDocumentKind.cnic_front, VendorDocumentKind.cnic_back)
+
+
 class FxRateSource(enum.StrEnum):
     auto = "auto"
     manual = "manual"
@@ -97,10 +109,32 @@ class Vendor(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     # Staff's reason when rejecting; shown to the applicant.
     review_note: Mapped[str | None] = mapped_column(Text, nullable=True)
     reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Where the shop is paid out. Seen only by the owner and staff.
+    bank_account_title: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    bank_name: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    bank_iban: Mapped[str | None] = mapped_column(String(34), nullable=True)
 
     city: Mapped["City"] = relationship(back_populates="vendors")
     owner: Mapped["User | None"] = relationship()
     products: Mapped[list["Product"]] = relationship(back_populates="vendor")
+    documents: Mapped[list["VendorDocument"]] = relationship(
+        back_populates="vendor", cascade="all, delete-orphan", order_by="VendorDocument.created_at"
+    )
+
+
+class VendorDocument(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    """A verification file (CNIC, registration, shop photo) in the private bucket."""
+
+    __tablename__ = "vendor_documents"
+
+    vendor_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("vendors.id", ondelete="CASCADE"), nullable=False, index=True)
+    # Text, not a Postgres enum, like approval_status.
+    kind: Mapped[str] = mapped_column(String(30), nullable=False)
+    object_key: Mapped[str] = mapped_column(Text, nullable=False)
+    content_type: Mapped[str] = mapped_column(String(100), nullable=False)
+    filename: Mapped[str] = mapped_column(String(255), nullable=False)
+
+    vendor: Mapped["Vendor"] = relationship(back_populates="documents")
 
 
 # ── Category ───────────────────────────────────────────────────────────────────

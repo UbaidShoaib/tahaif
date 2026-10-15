@@ -37,6 +37,29 @@ async def _headers(client: AsyncClient, user: User) -> dict[str, str]:
     return {"Authorization": f"Bearer {resp.json()['access_token']}"}
 
 
+@pytest.fixture(autouse=True)
+def fake_storage(monkeypatch: pytest.MonkeyPatch) -> list[str]:
+    """Documents go to a private bucket; record keys instead of calling S3."""
+    from app.integrations import s3_client
+
+    deleted: list[str] = []
+
+    async def _upload(vendor_id: str, document_id: str, data: bytes, content_type: str) -> str:
+        if content_type not in s3_client.VENDOR_DOC_MIME_TYPES:
+            from fastapi import HTTPException
+
+            raise HTTPException(status_code=415, detail="Upload a photo (JPEG, PNG, WebP) or a PDF")
+        return f"vendor-docs/{vendor_id}/{document_id}"
+
+    async def _delete(key: str) -> None:
+        deleted.append(key)
+
+    monkeypatch.setattr(s3_client, "upload_vendor_document", _upload)
+    monkeypatch.setattr(s3_client, "delete_object", _delete)
+    monkeypatch.setattr(s3_client, "presign_get", lambda key, **_: f"https://signed.example/{key}")
+    return deleted
+
+
 @pytest_asyncio.fixture
 async def city(db: AsyncSession) -> City:
     slug = f"city-{uuid.uuid4().hex[:6]}"
@@ -56,7 +79,19 @@ def _form(city: City, name: str | None = None) -> dict[str, str]:
         "city_id": str(city.id),
         "contact_phone": "+92 300 1234567",
         "description": "Hand-tied bouquets.",
+        "bank_account_title": "Ayesha Khan",
+        "bank_name": "Meezan Bank",
+        "bank_iban": "pk36 scbl 0000 0011 2345 6702",
     }
+
+
+async def _upload(client: AsyncClient, headers: dict[str, str], kind: str, content_type: str = "image/jpeg"):
+    return await client.post(
+        f"{API}/vendor/application/documents",
+        data={"kind": kind},
+        files={"file": (f"{kind}.jpg", b"fake-bytes", content_type)},
+        headers=headers,
+    )
 
 
 async def _apply(client: AsyncClient, db: AsyncSession, city: City) -> tuple[User, dict[str, str], dict]:
@@ -64,7 +99,9 @@ async def _apply(client: AsyncClient, db: AsyncSession, city: City) -> tuple[Use
     headers = await _headers(client, user)
     resp = await client.post(f"{API}/vendor/application", json=_form(city), headers=headers)
     assert resp.status_code == 201, resp.text
-    return user, headers, resp.json()
+    for kind in ("cnic_front", "cnic_back"):
+        assert (await _upload(client, headers, kind)).status_code == 201
+    return user, headers, (await client.get(f"{API}/vendor/application", headers=headers)).json()
 
 
 async def test_application_is_pending_and_hidden_everywhere(
@@ -110,6 +147,8 @@ async def test_same_shop_name_gets_its_own_slug(client: AsyncClient, db: AsyncSe
         ("contact_phone", "call me", 422),
         ("name", "x", 422),
         ("city_id", str(uuid.uuid4()), 404),
+        ("bank_iban", "GB29NWBK60161331926819", 422),
+        ("bank_iban", "PK36SCBL00000011234", 422),
     ],
 )
 async def test_application_is_validated(
@@ -263,3 +302,68 @@ async def test_vendor_product_waits_for_staff_to_publish_it(
     # Once published, the vendor may hide it again but still not re-publish it.
     assert (await client.patch(f"{API}/products/{slug}", json={"is_active": False}, headers=headers)).status_code == 200
     assert (await client.patch(f"{API}/products/{slug}", json={"is_active": True}, headers=headers)).status_code == 403
+
+
+async def test_bank_details_and_documents_are_kept_private_to_owner_and_staff(
+    client: AsyncClient, db: AsyncSession, city: City, admin: User
+) -> None:
+    _, headers, app = await _apply(client, db, city)
+
+    assert app["bank_iban"] == "PK36SCBL0000001123456702"
+    assert [d["kind"] for d in app["documents"]] == ["cnic_front", "cnic_back"]
+    assert app["missing_documents"] == []
+    assert all(d["url"] is None for d in app["documents"])  # owners get no links
+
+    queue = await client.get(
+        f"{API}/admin/vendor-applications", params={"status": "pending"}, headers=await _headers(client, admin)
+    )
+    row = next(a for a in queue.json() if a["id"] == app["id"])
+    assert row["bank_name"] == "Meezan Bank"
+    assert all(d["url"].startswith("https://signed.example/vendor-docs/") for d in row["documents"])
+
+
+async def test_cannot_approve_without_cnic(client: AsyncClient, db: AsyncSession, city: City, admin: User) -> None:
+    headers = await _headers(client, await _make_user(db))
+    app = (await client.post(f"{API}/vendor/application", json=_form(city), headers=headers)).json()
+    assert app["missing_documents"] == ["cnic_front", "cnic_back"]
+    await _upload(client, headers, "cnic_front")
+
+    resp = await client.post(
+        f"{API}/admin/vendor-applications/{app['id']}/approve", headers=await _headers(client, admin)
+    )
+
+    assert resp.status_code == 409
+    assert "cnic back" in resp.json()["detail"]
+
+
+async def test_reupload_replaces_and_delete_removes(
+    client: AsyncClient, db: AsyncSession, city: City, fake_storage: list[str]
+) -> None:
+    _, headers, app = await _apply(client, db, city)
+    first = next(d for d in app["documents"] if d["kind"] == "cnic_front")
+
+    again = await _upload(client, headers, "cnic_front")
+    docs = again.json()["documents"]
+    assert [d["kind"] for d in docs].count("cnic_front") == 1
+    assert first["id"] not in [d["id"] for d in docs]
+    assert len(fake_storage) == 1
+
+    back = next(d for d in docs if d["kind"] == "cnic_back")
+    resp = await client.delete(f"{API}/vendor/application/documents/{back['id']}", headers=headers)
+    assert resp.json()["missing_documents"] == ["cnic_back"]
+    gone = await client.delete(f"{API}/vendor/application/documents/{back['id']}", headers=headers)
+    assert gone.status_code == 404
+
+
+async def test_document_rules(client: AsyncClient, db: AsyncSession, city: City, admin: User) -> None:
+    # Applying comes first.
+    stranger = await _headers(client, await _make_user(db))
+    assert (await _upload(client, stranger, "cnic_front")).status_code == 404
+
+    _, headers, app = await _apply(client, db, city)
+    assert (await _upload(client, headers, "cnic_front", "text/plain")).status_code == 415
+    assert (await _upload(client, headers, "selfie")).status_code == 422
+
+    await client.post(f"{API}/admin/vendor-applications/{app['id']}/approve", headers=await _headers(client, admin))
+    # Decided applications are frozen.
+    assert (await _upload(client, headers, "shop_photo")).status_code == 409

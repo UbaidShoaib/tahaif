@@ -48,3 +48,12 @@ def signed_proof_url(stored_url: str | None) -> str | None:
     except Exception as exc:  # noqa: BLE001 — a bad credential must not break the order list
         logger.warning("proof_presign_failed", key=key, error=str(exc))
         return None
+
+
+def signed_vendor_document_url(key: str) -> str | None:
+    """Short-lived link to a shop's verification document, for staff review."""
+    try:
+        return s3_client.presign_get(key)
+    except Exception as exc:  # noqa: BLE001 — a bad credential must not break the review queue
+        logger.warning("vendor_document_presign_failed", key=key, error=str(exc))
+        return None

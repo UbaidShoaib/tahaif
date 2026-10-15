@@ -199,3 +199,43 @@ def presign_get(key: str, expires_in: int = SIGNED_URL_TTL_SECS) -> str:
             ExpiresIn=expires_in,
         )
     )
+
+
+VENDOR_DOC_MIME_TYPES = {**_PHOTO_MIME_TYPES, "application/pdf": ".pdf"}
+
+
+async def upload_vendor_document(vendor_id: str, document_id: str, data: bytes, content_type: str) -> str:
+    """Upload a shop's verification document; returns the object key (private bucket)."""
+    ext = VENDOR_DOC_MIME_TYPES.get(content_type)
+    if ext is None:
+        raise HTTPException(
+            status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+            detail="Upload a photo (JPEG, PNG, WebP) or a PDF",
+        )
+    if len(data) > _MAX_FILE_SIZE:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail="File exceeds 10 MB limit",
+        )
+    key = f"vendor-docs/{vendor_id}/{document_id}{ext}"
+    try:
+        await asyncio.to_thread(_upload_sync, key, data, content_type)
+    except (BotoCoreError, ClientError) as exc:
+        await logger.aexception("s3_vendor_doc_upload_failed", vendor_id=vendor_id, key=key, error=str(exc))
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Document storage is unavailable right now. Please try again shortly.",
+        ) from exc
+    await logger.ainfo("s3_vendor_doc_uploaded", vendor_id=vendor_id, key=key)
+    return key
+
+
+async def delete_object(key: str) -> None:
+    """Best-effort removal of a private object (a replaced or withdrawn upload)."""
+    def _delete() -> None:
+        _get_client().delete_object(Bucket=get_settings().s3_bucket_name, Key=key)
+
+    try:
+        await asyncio.to_thread(_delete)
+    except (BotoCoreError, ClientError) as exc:
+        await logger.awarning("s3_delete_failed", key=key, error=str(exc))

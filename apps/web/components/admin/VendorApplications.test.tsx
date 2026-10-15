@@ -22,6 +22,14 @@ const row = {
   review_note: null,
   created_at: "2026-10-14T10:00:00Z",
   reviewed_at: null,
+  bank_account_title: "Ayesha Khan",
+  bank_name: "Meezan Bank",
+  bank_iban: "PK36SCBL0000001123456702",
+  documents: [
+    { id: "d1", kind: "cnic_front", filename: "front.jpg", content_type: "image/jpeg", created_at: "2026-10-14T10:00:00Z", url: "https://signed.example/front" },
+    { id: "d2", kind: "cnic_back", filename: "back.jpg", content_type: "image/jpeg", created_at: "2026-10-14T10:00:00Z", url: null },
+  ],
+  missing_documents: [] as string[],
   applicant_email: "ayesha@example.com",
   applicant_name: "Ayesha Khan",
 };
@@ -89,5 +97,23 @@ describe("VendorApplications", () => {
 
     expect(await screen.findByRole("alert")).toHaveTextContent("Application is already approved");
     expect(screen.getByText("Gulberg Florist")).toBeInTheDocument();
+  });
+
+  it("shows payout details and opens documents through their signed links", async () => {
+    vi.mocked(apiFetch).mockResolvedValue([row]);
+    render(<VendorApplications token="tok" />);
+
+    expect(await screen.findByText("PK36SCBL0000001123456702")).toBeInTheDocument();
+    expect(screen.getByText("Meezan Bank")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /CNIC \(front\)/ })).toHaveAttribute("href", "https://signed.example/front");
+    expect(screen.getByText(/CNIC \(back\) \(link unavailable\)/)).toBeInTheDocument();
+  });
+
+  it("keeps Approve locked until the CNIC is uploaded", async () => {
+    vi.mocked(apiFetch).mockResolvedValue([{ ...row, documents: [], missing_documents: ["cnic_front", "cnic_back"] }]);
+    render(<VendorApplications token="tok" />);
+
+    expect(await screen.findByText(/Missing: CNIC \(front\), CNIC \(back\)/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Approve shop/ })).toBeDisabled();
   });
 });

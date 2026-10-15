@@ -4,6 +4,7 @@ from typing import Annotated
 from fastapi import APIRouter, Form, Query, UploadFile, status
 
 from app.core.deps import DB, CurrentUser
+from app.models.catalog import VendorDocumentKind
 from app.models.order import FulfillmentStatus
 from app.schemas.catalog import ProductRead, VendorRead, VendorUpdate
 from app.schemas.vendor import (
@@ -28,6 +29,25 @@ async def apply_to_sell(body: VendorApplicationCreate, user: CurrentUser, db: DB
 async def my_application(user: CurrentUser, db: DB) -> VendorApplicationRead:
     """Your shop application and its status (404 if you have not applied)."""
     return await vendor_application_service.get_mine(db, user)
+
+
+@router.post("/application/documents", response_model=VendorApplicationRead, status_code=status.HTTP_201_CREATED)
+async def upload_application_document(
+    file: UploadFile,
+    user: CurrentUser,
+    db: DB,
+    kind: Annotated[VendorDocumentKind, Form(examples=["cnic_front"])],
+) -> VendorApplicationRead:
+    """Attach a verification document (JPEG/PNG/WebP/PDF, max 10 MB) to your open
+    application. Both CNIC sides are required before staff can approve; sending a
+    kind again replaces it. Files are private: only staff can open them."""
+    return await vendor_application_service.upload_document(db, user, kind, file)
+
+
+@router.delete("/application/documents/{document_id}", response_model=VendorApplicationRead)
+async def delete_application_document(document_id: uuid.UUID, user: CurrentUser, db: DB) -> VendorApplicationRead:
+    """Remove a document from your open application."""
+    return await vendor_application_service.delete_document(db, user, document_id)
 
 
 @router.get("/me", response_model=VendorRead)

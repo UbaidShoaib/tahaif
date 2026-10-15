@@ -46,3 +46,20 @@ A shop joins by applying, and nothing an applicant does alone becomes public.
   distinguished. Add a product approval status if that becomes confusing.
 - Vendors still have no screen to add products; they use the API until one is
   built.
+
+## Amendment (2026-10-16): verification before approval
+
+- An application must carry **payout bank details** (account title, bank,
+  Pakistani IBAN, validated as `PK` + 2 digits + 4-letter bank code + 16
+  digits and stored without spaces) — required by the form and the API.
+- Applicants upload **documents** after applying (`POST /vendor/application/documents`,
+  multipart `kind` + `file`; JPEG/PNG/WebP/PDF ≤ 10 MB). Kinds: `cnic_front`,
+  `cnic_back` (both **required**), `business_registration`, `shop_photo`
+  (optional). Sending a kind again replaces it; documents can change only
+  while the application is pending or rejected.
+- **Approve returns 409** until bank details and both CNIC sides exist; the
+  admin queue disables the button and lists what is missing.
+- Files live in the private bucket under `vendor-docs/{vendor_id}/`, rows in
+  `vendor_documents`. Only staff get signed links (15 min); the owner sees
+  file names only. Bank details are never on public vendor endpoints.
+- Phone OTP is still not done (needs Twilio).
