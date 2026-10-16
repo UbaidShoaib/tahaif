@@ -26,7 +26,9 @@ const EXCEPTIONS: Record<string, string> = {
  */
 export function OrderTimeline({ status }: { status: string }) {
   const exception = EXCEPTIONS[status];
-  const current = status === "completed" ? STEPS.length - 1 : STEPS.findIndex((s) => s.key === status);
+  // Delivered is the last step, so it shows as done (a tick), not as "current".
+  const finished = status === "delivered" || status === "completed";
+  const current = finished ? STEPS.length - 1 : STEPS.findIndex((s) => s.key === status);
 
   if (exception) {
     return (
@@ -42,7 +44,7 @@ export function OrderTimeline({ status }: { status: string }) {
   return (
     <ol className="relative space-y-6" aria-label="Order progress">
       {STEPS.map((step, i) => {
-        const state = i < current || status === "completed" ? "done" : i === current ? "current" : "upcoming";
+        const state = i < current || finished ? "done" : i === current ? "current" : "upcoming";
         const Icon = state === "done" ? Check : step.icon;
         return (
           <li key={step.key} aria-current={state === "current" ? "step" : undefined} className="relative flex items-center gap-4">

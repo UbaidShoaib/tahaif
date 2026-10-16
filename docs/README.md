@@ -4,6 +4,7 @@
 |---|---|
 | [dependencies-and-credentials.md](dependencies-and-credentials.md) | Every service, credential, and env var — cost, account creation, and setup instructions |
 | [runbook.md](runbook.md) | Production operations: deployments, rollbacks, incident response, email (Resend) setup |
+| [api/openapi.json](api/openapi.json) | API contract snapshot (generated from FastAPI's `/openapi.json`) |
 | [catalog-template.md](catalog-template.md) | Template for the opening catalog (`catalog.json`): structure and rules for vendors, products, options, photos and per-city delivery |
 | [decisions/](decisions/) | Architecture Decision Records (ADRs) |
 | [decisions/0009-social-orders-manual-whatsapp.md](decisions/0009-social-orders-manual-whatsapp.md) | Instagram/WhatsApp orders entered by staff through checkout; buyer confirms on the order link; WhatsApp sent by hand via `wa.me` + admin queue |

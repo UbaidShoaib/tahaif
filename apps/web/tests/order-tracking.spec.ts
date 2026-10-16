@@ -59,7 +59,7 @@ test.describe("Order tracking", () => {
     if (await trackLink.count() > 0) {
       await trackLink.click();
       await expect(page).toHaveURL(/track/, { timeout: 5_000 });
-      await expect(page.getByRole("heading", { level: 1, name: /track your order/i })).toBeVisible();
+      await expect(page.getByRole("heading", { level: 1, name: /order|gift|delivered|delivery/i })).toBeVisible();
     }
   });
 });

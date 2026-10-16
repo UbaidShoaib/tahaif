@@ -434,11 +434,19 @@ async def get_my_orders(db: AsyncSession, user_id: uuid.UUID) -> list[OrderRead]
     return [_order_to_read(o) for o in orders]
 
 
+def _primary_image_url(product: "Product") -> str | None:
+    """The product's primary photo, else its first; None when it has none."""
+    primary = next((img for img in product.images if img.is_primary), None)
+    chosen = primary or (product.images[0] if product.images else None)
+    return chosen.url if chosen else None
+
+
 def _order_to_read(order: Order) -> OrderRead:
     items = [
         OrderItemRead(
             id=i.id,
             product_name=i.product.name,
+            product_image_url=_primary_image_url(i.product),
             variant_name=i.variant.name if i.variant else None,
             qty=i.qty,
             unit_price_pkr=i.unit_price_pkr,

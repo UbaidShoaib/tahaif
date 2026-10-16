@@ -25,6 +25,13 @@ describe("OrderTimeline", () => {
     expect(document.querySelector('[aria-current="step"]')).toBeNull();
   });
 
+  it("ticks the delivered step instead of leaving it as the current one", () => {
+    render(<OrderTimeline status="delivered" />);
+    expect(steps()[5]).toHaveTextContent("DeliveredCompleted");
+    expect(document.querySelector('[aria-current="step"]')).toBeNull();
+    expect(screen.queryByText("Order completed")).not.toBeInTheDocument();
+  });
+
   it("explains cancelled and on-hold orders instead of an empty progress bar", () => {
     const { rerender } = render(<OrderTimeline status="cancelled" />);
     expect(screen.queryByRole("list", { name: "Order progress" })).not.toBeInTheDocument();

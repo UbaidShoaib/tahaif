@@ -136,6 +136,8 @@ export interface ThanksRead {
 export interface OrderItemRead {
   id: string;
   product_name: string;
+  /** The product's primary photo; null when it has none. */
+  product_image_url?: string | null;
   variant_name: string | null;
   qty: number;
   unit_price_pkr: number;

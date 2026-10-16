@@ -108,6 +108,9 @@ class FulfillmentRead(BaseModel):
 class OrderItemRead(BaseModel):
     id: uuid.UUID
     product_name: str
+    product_image_url: str | None = Field(
+        default=None, description="The product's primary photo", examples=["https://cdn.example.com/cake.jpg"]
+    )
     variant_name: str | None
     qty: int
     unit_price_pkr: int

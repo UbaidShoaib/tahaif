@@ -9,7 +9,14 @@ import pytest_asyncio
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.catalog import City, Product, ProductCity, ProductVariant, Vendor
+from app.models.catalog import (
+    City,
+    Product,
+    ProductCity,
+    ProductImage,
+    ProductVariant,
+    Vendor,
+)
 from app.models.loyalty import Coupon, CouponType
 from app.models.user import User, UserRole
 from app.repositories.catalog_repository import (
@@ -488,6 +495,39 @@ async def test_track_order_happy_path(
     assert len(data["items"]) == 1
     assert len(data["fulfillments"]) == 1
     assert data["fulfillments"][0]["recipient_name"] == "Ammi"
+    assert data["items"][0]["product_image_url"] is None  # the fixture product has no photos
+
+
+@pytest.mark.asyncio
+async def test_track_order_shows_the_primary_product_photo(
+    client: AsyncClient, db: AsyncSession, customer: User, product: Product, city: City
+) -> None:
+    db.add_all(
+        [
+            ProductImage(product_id=product.id, url="https://cdn.test/side.jpg", sort_order=0, is_primary=False),
+            ProductImage(product_id=product.id, url="https://cdn.test/main.jpg", sort_order=1, is_primary=True),
+        ]
+    )
+    await db.commit()
+    email, product_id, city_id = customer.email, str(product.id), str(city.id)
+
+    token = await _login(client, email)
+    await _add_item(client, token, product_id)
+    place_resp = await client.post(
+        "/api/v1/checkout/place",
+        json={
+            "payment_method": "cod",
+            "delivery_city_id": city_id,
+            "delivery_date": _TOMORROW,
+            "recipient_name": "Ammi",
+            "recipient_phone": "+923001234567",
+            "address_line1": "House 5 Street 10",
+        },
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    resp = await client.get(f"/api/v1/orders/{place_resp.json()['public_token']}")
+    assert resp.json()["items"][0]["product_image_url"] == "https://cdn.test/main.jpg"
 
 
 @pytest.mark.asyncio

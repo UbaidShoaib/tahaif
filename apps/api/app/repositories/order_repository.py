@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from sqlalchemy.sql import Select
 
-from app.models.catalog import City
+from app.models.catalog import City, Product
 from app.models.order import (
     CardNoteReport,
     Fulfillment,
@@ -51,7 +51,7 @@ class OrderRepository:
     def _with_relations(self) -> Select[tuple[Order]]:
         return select(Order).options(
             selectinload(Order.items).options(
-                selectinload(OrderItem.product),
+                selectinload(OrderItem.product).selectinload(Product.images),
                 selectinload(OrderItem.variant),
             ),
             selectinload(Order.fulfillments).options(
