@@ -41,6 +41,11 @@ pre-production-cutover).
   SOP, compliance note and integration options in `docs/`.
 
 ### Changed
+- Homepage and product cards redesigned. Cards are image-led and borderless (4:5 photo, serif
+  name, price in ink). Homepage: hero with a photo collage instead of the gradient and crosshair
+  graphic, photo category tiles taken from each category's products (tinted tile when none), text
+  occasion pills without emoji, open "How it works" with gold numerals, trust row in brand colours
+  (no green), and a thin gold "zari" rule under section headings.
 - "My orders" redesigned to match the tracking page: each order is a row with the gift photo,
   "<gift> for <recipient>", and its status in words ("Arriving Mon 19 Oct", "Delivered Sat 17 Oct",
   on the delivery city's calendar); hairline rows instead of bordered boxes, whole row clickable.
