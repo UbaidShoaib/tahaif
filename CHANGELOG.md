@@ -10,6 +10,8 @@ pre-production-cutover).
 ### Added
 - Urdu versions of all hand-sent WhatsApp messages (buyer and recipient), with an
   English/اردو toggle in "Messages to send" and on each order; API adds `text_ur`/`url_ur`.
+- Order tracking items include `product_image_url` (the product's primary photo); the tracking
+  page shows a thumbnail per line. API contract snapshot at `docs/api/openapi.json`.
 - Card voice notes can be recorded in the browser ("Record a voice note", up to 2 minutes);
   uploading a file still works.
 - Card-note safety (ADR 0010): buyers tick the content rules (`/terms#card-notes`) before adding
@@ -39,6 +41,13 @@ pre-production-cutover).
   SOP, compliance note and integration options in `docs/`.
 
 ### Changed
+- Order tracking page redesigned: one status hero that answers "where is my gift?" in a sentence
+  ("Layers Bakeshop is preparing your gift for Ammi", "Delivered to Ammi") with the delivery photo
+  on top once delivered; the greeting card styled like the printed card; progress, delivery and
+  summary as open sections instead of a stack of bordered boxes. The summary now lists the
+  delivery fee and discount so lines add up to the total; the no-op "Refresh Status" button is gone.
+- Backend tests refuse to run against a database whose name doesn't end in `_test` (they drop all tables).
+- Order progress shows "Delivered" as done (ticked) rather than as the current step.
 - Automatic WhatsApp is off unless `WHATSAPP_API_ENABLED=true` (the Twilio sandbox
   sender can't reach real customers); email and the tracking page are unaffected.
 - Shops join by application (ADR 0008): a signed-in user applies at `/sell`

@@ -42,6 +42,11 @@ from app.models.base import Base  # noqa: E402
 
 TEST_DB_URL = os.environ["DATABASE_URL"]
 
+# The suite drops every table. Refuse any database not named *_test, so a
+# DATABASE_URL loaded from .env can never wipe the dev (or any real) database.
+if not TEST_DB_URL.rsplit("/", 1)[-1].split("?", 1)[0].endswith("_test"):
+    raise RuntimeError(f"Tests drop all tables; refusing to run against non-test database {TEST_DB_URL.rsplit('@', 1)[-1]!r}")
+
 
 # ── Table setup (sync, no pytest-asyncio event loop involved) ─────────────────
 
