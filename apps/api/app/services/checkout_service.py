@@ -69,6 +69,13 @@ class _Pricing:
         return self.coupon_discount_pkr + self.loyalty_discount_pkr
 
 
+def normalize_campaign(raw: str | None) -> str | None:
+    """One spelling per campaign ("Eid Reel " → "eid-reel") so the report groups them."""
+    if not raw:
+        return None
+    return "-".join(raw.strip().lower().split())[:100] or None
+
+
 def _bad_request(detail: str) -> HTTPException:
     return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=detail)
 
@@ -316,6 +323,7 @@ async def place_order(
         status=OrderStatus.pending_payment,
         coupon_code=applied_coupon.code if applied_coupon else None,
         notes=body.notes,
+        campaign=normalize_campaign(body.campaign),
     )
 
     # ── Fulfillments ───────────────────────────────────────────────────────────

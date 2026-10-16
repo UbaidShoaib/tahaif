@@ -1,3 +1,4 @@
+import { currentCampaign } from "@/lib/campaign";
 import { guestCartHeaders, syncGuestCartToken } from "@/lib/guest-cart";
 import { apiFetch } from "@/lib/api";
 
@@ -65,6 +66,8 @@ export interface CheckoutPlace {
   /** Required for guest checkout (ADR 0004). */
   contact_email?: string | null;
   contact_phone?: string | null;
+  /** utm_campaign the visitor arrived with; added by cartApi.place. */
+  campaign?: string | null;
 }
 
 export interface QuoteLineItem {
@@ -210,7 +213,8 @@ export const cartApi = {
   place: (body: CheckoutPlace, token: string | null, idempotencyKey: string) =>
     apiFetch<OrderRead>("/checkout/place", {
       method: "POST",
-      body,
+      // Attribute website orders to the reel/story link the buyer came from.
+      body: { ...body, campaign: body.campaign ?? currentCampaign() },
       token: token ?? undefined,
       idempotencyKey,
       headers: guestCartHeaders(),

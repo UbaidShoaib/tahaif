@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { currentCampaign, orderMessage } from "@/lib/order-on-whatsapp";
+import { currentCampaign } from "@/lib/campaign";
+import { orderMessage } from "@/lib/order-on-whatsapp";
 
 describe("orderMessage", () => {
   it("lists product, option, price, city, card message, link and campaign", () => {

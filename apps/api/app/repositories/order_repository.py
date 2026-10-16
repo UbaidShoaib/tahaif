@@ -9,6 +9,7 @@ from sqlalchemy.sql import Select
 
 from app.models.catalog import City
 from app.models.order import (
+    CardNoteReport,
     Fulfillment,
     FulfillmentStatus,
     Order,
@@ -149,6 +150,26 @@ class OrderRepository:
         )
         return list(result.scalars().unique().all())
 
+    async def campaign_sales(self, since: datetime) -> list[tuple[str, str | None, int, int, int]]:
+        """Per (source, campaign) since ``since``, cancelled/refunded excluded:
+        orders, orders past payment, and their total in paisa."""
+        progressed = Order.status != OrderStatus.pending_payment
+        result = await self._db.execute(
+            select(
+                Order.source,
+                Order.campaign,
+                func.count(),
+                func.count().filter(progressed),
+                func.coalesce(func.sum(Order.total_pkr).filter(progressed), 0),
+            )
+            .where(
+                Order.placed_at >= since,
+                Order.status.not_in([OrderStatus.cancelled, OrderStatus.refunded]),
+            )
+            .group_by(Order.source, Order.campaign)
+        )
+        return [(src, camp, int(n), int(paid), int(rev)) for src, camp, n, paid, rev in result.all()]
+
     async def get_message(self, order_id: uuid.UUID, kind: str) -> OrderMessage | None:
         result = await self._db.execute(
             select(OrderMessage).where(OrderMessage.order_id == order_id, OrderMessage.kind == kind)
@@ -164,10 +185,28 @@ class OrderRepository:
     async def get_item_by_note_token(self, token: uuid.UUID) -> OrderItem | None:
         result = await self._db.execute(
             select(OrderItem)
-            .options(selectinload(OrderItem.product), selectinload(OrderItem.order))
+            .options(
+                selectinload(OrderItem.product),
+                selectinload(OrderItem.order),
+                selectinload(OrderItem.fulfillment),
+            )
             .where(OrderItem.note_token == token)
         )
         return result.scalar_one_or_none()
+
+    async def get_note_report(self, item_id: uuid.UUID, reporter_ip: str) -> CardNoteReport | None:
+        result = await self._db.execute(
+            select(CardNoteReport).where(
+                CardNoteReport.order_item_id == item_id, CardNoteReport.reporter_ip == reporter_ip
+            )
+        )
+        return result.scalar_one_or_none()
+
+    async def add_note_report(self, **kwargs: object) -> CardNoteReport:
+        report = CardNoteReport(**kwargs)
+        self._db.add(report)
+        await self._db.flush()
+        return report
 
     async def get_fulfillment_by_thanks_token(self, token: uuid.UUID) -> Fulfillment | None:
         result = await self._db.execute(

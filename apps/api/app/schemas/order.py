@@ -1,6 +1,7 @@
 import uuid
 from datetime import date, datetime
 from decimal import Decimal
+from typing import Literal
 
 from pydantic import BaseModel, EmailStr, Field
 
@@ -31,6 +32,12 @@ class CheckoutPlace(BaseModel):
         max_length=80,
         description="Sender name used in messages to the recipient; defaults to the account's name",
         examples=["Ali (London)"],
+    )
+    campaign: str | None = Field(
+        default=None,
+        max_length=100,
+        description="utm_campaign the buyer arrived with (Instagram bio/story link), for sales-by-campaign",
+        examples=["eid-reel"],
     )
 
 
@@ -120,6 +127,16 @@ class CardNoteRead(BaseModel):
     content_type: str = Field(examples=["video/mp4"])
     greeting_message: str | None
     product_name: str
+
+
+NoteReportReason = Literal["abusive", "threatening", "sexual", "hateful", "unwanted", "other"]
+
+
+class CardNoteReportCreate(BaseModel):
+    """A report from someone who opened a card note."""
+
+    reason: NoteReportReason = Field(examples=["abusive"])
+    details: str | None = Field(default=None, max_length=1000, examples=["I don't know the sender"])
 
 
 class OrderRead(BaseModel):

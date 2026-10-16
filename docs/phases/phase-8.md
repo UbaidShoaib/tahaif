@@ -13,8 +13,9 @@ compliance `docs/compliance-social-orders.md`
 
 ## P1 (next)
 - [x] "Order on WhatsApp" button on product pages (prefilled product, option, price, city, card message, link; `utm_campaign` remembered for the visit and sent as `(ref: …)`; PostHog event `order_on_whatsapp`). Hidden unless `NEXT_PUBLIC_SUPPORT_WHATSAPP` is set
-- [ ] UTM capture (`utm_source/utm_campaign`) on web cart → order `source`/`campaign`
-- [ ] Admin report: orders and revenue by source/campaign; summary-sent → paid conversion
+- [x] `utm_campaign` captured on website checkout → `orders.campaign` (normalised: "Eid Reel" → `eid-reel`)
+- [x] Admin "Sales by campaign" (`GET /admin/reports/campaigns?days=`): orders, paid, revenue, average per channel × campaign
+- [ ] Summary-sent → paid conversion per staff member
 - [ ] Recipient messages (on the way / surprise reveal) in the manual queue
 - [ ] Admin toggle for a customer's marketing opt-in; auto-cancel unconfirmed orders after 24 h
 - [ ] Urdu versions of message texts

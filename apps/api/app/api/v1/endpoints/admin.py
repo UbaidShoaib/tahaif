@@ -5,7 +5,7 @@ from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Header, HTTPException, status
+from fastapi import APIRouter, Header, HTTPException, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 
@@ -17,6 +17,7 @@ from app.models.user import User, UserRole
 from app.repositories.loyalty_repository import CouponRepository
 from app.repositories.order_repository import OrderRepository
 from app.repositories.user_repository import UserRepository
+from app.schemas.report import CampaignSalesReport
 from app.schemas.social_order import (
     AssistedOrderCreate,
     AssistedOrderRead,
@@ -32,6 +33,7 @@ from app.schemas.vendor import (
 from app.services import (
     catalog_service,
     proof_service,
+    report_service,
     social_order_service,
     vendor_application_service,
 )
@@ -190,6 +192,15 @@ async def whatsapp_queue(
 ) -> list[WhatsAppQueueEntry]:
     """Messages to send: every WhatsApp message due on open orders from the last 30 days, oldest first."""
     return await social_order_service.queue(db, source)
+
+
+@router.get("/reports/campaigns", response_model=CampaignSalesReport)
+async def campaign_sales_report(
+    _admin: AdminUser, db: DB, days: Annotated[int, Query(ge=1, le=365)] = 30
+) -> CampaignSalesReport:
+    """Sales by channel and reel/campaign over the last `days` days. "Paid" means the
+    order moved past payment; revenue counts only those. Cancelled/refunded excluded."""
+    return await report_service.campaign_sales(db, days)
 
 
 # ── Vendor applications ───────────────────────────────────────────────────────

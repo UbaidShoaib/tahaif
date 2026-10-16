@@ -7,6 +7,7 @@ import { HiddenProducts } from "@/components/admin/HiddenProducts";
 import { VendorApplications } from "@/components/admin/VendorApplications";
 import { AssistedOrderForm } from "@/components/admin/AssistedOrderForm";
 import { MessageQueue } from "@/components/admin/MessageQueue";
+import { CampaignReport } from "@/components/admin/CampaignReport";
 import { WhatsAppMessages } from "@/components/admin/WhatsAppMessages";
 import { SOURCE_LABELS } from "@/lib/social-orders";
 import { Button } from "@/components/ui/button";
@@ -47,11 +48,12 @@ const ORDER_STATUSES = [
   "out_for_delivery", "delivered", "completed", "cancelled", "on_hold",
 ];
 
-type Section = "orders" | "new-order" | "messages" | "applications" | "products";
+type Section = "orders" | "new-order" | "messages" | "campaigns" | "applications" | "products";
 const SECTIONS: { key: Section; label: string }[] = [
   { key: "orders", label: "Orders" },
   { key: "new-order", label: "New DM order" },
   { key: "messages", label: "Messages to send" },
+  { key: "campaigns", label: "Sales by campaign" },
   { key: "applications", label: "Shop applications" },
   { key: "products", label: "Hidden products" },
 ];
@@ -165,6 +167,7 @@ export default function AdminDashboard() {
       {section === "products" && token && <HiddenProducts token={token} />}
       {section === "new-order" && token && <AssistedOrderForm token={token} />}
       {section === "messages" && token && <MessageQueue token={token} />}
+      {section === "campaigns" && token && <CampaignReport token={token} />}
 
       {section === "orders" && (
       <>

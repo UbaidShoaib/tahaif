@@ -100,3 +100,26 @@ export const socialOrdersApi = {
   confirm: (publicToken: string, body: OrderConfirm) =>
     apiFetch<OrderRead>(`/orders/by-token/${publicToken}/confirm`, { method: "POST", body }),
 };
+
+export interface CampaignSalesRow {
+  source: OrderSource | "web";
+  /** Reel/post tag; null = not attributed. */
+  campaign: string | null;
+  orders: number;
+  paid_orders: number;
+  revenue_pkr: number;
+  avg_order_pkr: number;
+}
+
+export interface CampaignSalesReport {
+  days: number;
+  rows: CampaignSalesRow[];
+  total_orders: number;
+  total_paid_orders: number;
+  total_revenue_pkr: number;
+}
+
+export const reportsApi = {
+  campaigns: (days: number, token: string) =>
+    apiFetch<CampaignSalesReport>(`/admin/reports/campaigns?days=${days}`, { token }),
+};

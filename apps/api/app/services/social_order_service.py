@@ -160,7 +160,7 @@ async def create_assisted_order(
     assert order is not None
     order.source = body.source
     order.source_ref = body.source_ref
-    order.campaign = body.campaign
+    order.campaign = checkout_service.normalize_campaign(body.campaign)
     order.created_by_staff_id = staff.id
     await db.flush()
     order = await repo.reload(order)

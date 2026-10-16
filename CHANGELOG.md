@@ -8,6 +8,9 @@ pre-production-cutover).
 ## [Unreleased]
 
 ### Added
+- Admin "Sales by campaign" report (`GET /admin/reports/campaigns?days=7|30|90`): orders,
+  paid orders, revenue and average order per channel and reel/campaign. Website checkout now
+  records the visit's `utm_campaign` on the order; campaign names are normalised.
 - "Order on WhatsApp" on product pages: opens the business chat with the product, option,
   price, city, card message and link filled in, plus `(ref: <utm_campaign>)` when the visitor
   came from a tagged Instagram link. Needs `NEXT_PUBLIC_SUPPORT_WHATSAPP`.

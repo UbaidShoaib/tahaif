@@ -2,7 +2,8 @@
 
 import { MessageCircle } from "lucide-react";
 import { captureEvent } from "@/components/providers";
-import { currentCampaign, orderMessage, type OrderOnWhatsAppInput } from "@/lib/order-on-whatsapp";
+import { currentCampaign } from "@/lib/campaign";
+import { orderMessage, type OrderOnWhatsAppInput } from "@/lib/order-on-whatsapp";
 import { support as defaultSupport, whatsappLink } from "@/lib/support";
 
 type Props = Omit<OrderOnWhatsAppInput, "productUrl" | "campaign"> & {

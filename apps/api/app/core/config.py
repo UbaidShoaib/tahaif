@@ -50,6 +50,8 @@ class Settings(BaseSettings):
     frontend_url: str = "http://localhost:3000"
     # Reverse proxies in front of the API that append to X-Forwarded-For:
     # 0 locally, 1 on Railway/Render/Fly, 2 with Cloudflare in front of those.
+    # Card voice/video notes stop playing this many days after delivery.
+    note_expiry_days: int = Field(default=90, ge=1)
     trusted_proxy_hops: int = Field(default=0, ge=0, le=5)
 
     # Meilisearch

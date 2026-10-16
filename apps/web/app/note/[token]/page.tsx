@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { CardPreview } from "@/components/greeting/CardPreview";
+import { ReportNote } from "@/components/greeting/ReportNote";
 import { brand } from "@/lib/brand";
 import { notesApi } from "@/lib/notes";
 
@@ -43,6 +44,8 @@ export default async function NotePage({ params }: { params: Promise<{ token: st
       )}
 
       {note.greeting_message && <CardPreview message={note.greeting_message} />}
+
+      <ReportNote noteToken={token} />
     </div>
   );
 }
