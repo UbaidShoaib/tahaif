@@ -11,6 +11,7 @@ import { ProductGallery } from "@/components/catalog/ProductGallery";
 import { TrustList } from "@/components/catalog/TrustList";
 import { onTimePercent } from "@/lib/stats";
 import { VendorStory } from "@/components/catalog/VendorStory";
+import { ProductCard } from "@/components/catalog/ProductCard";
 
 type Props = { params: Promise<{ slug: string }> };
 
@@ -31,13 +32,20 @@ export default async function ProductPage({ params }: Props) {
   const product = await catalogApi.getProduct(slug).catch(() => null);
   if (!product) notFound();
 
-  const [categories, cities, reviews, vendorOnTime, vendor] = await Promise.all([
+  const [categories, cities, reviews, vendorOnTime, vendor, related] = await Promise.all([
     catalogApi.getCategories(),
     catalogApi.getCities(),
     loyaltyApi.listReviews(product.id).catch(() => []),
     onTimePercent(product.vendor_id),
     // Optional: the page still renders if the vendor lookup fails.
     product.vendor ? catalogApi.getVendor(product.vendor.slug).catch(() => null) : Promise.resolve(null),
+    // "You might also like": others from the same category; optional like the vendor.
+    product.category_id
+      ? catalogApi
+          .getProducts({ category_id: product.category_id, page_size: 5 })
+          .then((r) => r.items.filter((p) => p.id !== product.id).slice(0, 4))
+          .catch(() => [])
+      : Promise.resolve([]),
   ]);
 
   const flat = (cats: typeof categories): typeof categories =>
@@ -93,16 +101,19 @@ export default async function ProductPage({ params }: Props) {
         ]}
       />
 
-      <div className="grid gap-8 md:grid-cols-2 lg:gap-12">
-        <ProductGallery images={product.images} productName={product.name} />
+      <div className="mt-4 grid gap-8 md:grid-cols-2 md:gap-10 lg:gap-16">
+        {/* The photos stay in view while the buyer works through the buy box */}
+        <div className="md:sticky md:top-24 md:self-start">
+          <ProductGallery images={product.images} productName={product.name} />
+        </div>
 
         {/* Details */}
-        <div className="space-y-6">
-          <div className="space-y-2">
+        <div className="space-y-7">
+          <div className="space-y-3">
             {product.vendor && (
               <Link
                 href={`/vendor/${product.vendor.slug}`}
-                className="text-sm font-medium text-link hover:underline"
+                className="text-xs font-medium uppercase tracking-wider text-muted-foreground hover:text-link"
               >
                 {product.vendor.name}
               </Link>
@@ -116,15 +127,21 @@ export default async function ProductPage({ params }: Props) {
                 </span>
               </a>
             )}
+            <span aria-hidden className="block h-px w-12 bg-gold" />
           </div>
-
-          {product.description && (
-            <p className="leading-relaxed text-foreground-secondary">{product.description}</p>
-          )}
 
           <VariantPicker product={product} cities={cities} />
 
           <TrustList onTimePercent={vendorOnTime} />
+
+          {product.description && (
+            <section aria-labelledby="about-heading" className="border-t pt-6">
+              <h2 id="about-heading" className="font-display text-lg">
+                About this gift
+              </h2>
+              <p className="mt-2 whitespace-pre-line leading-relaxed text-foreground-secondary">{product.description}</p>
+            </section>
+          )}
 
           {vendor && <VendorStory vendor={vendor} city={cities.find((c) => c.id === vendor.city_id)} />}
         </div>
@@ -132,6 +149,22 @@ export default async function ProductPage({ params }: Props) {
 
       {/* Reviews */}
       <ReviewsSection productId={product.id} initialReviews={reviews} />
+
+      {related.length > 0 && (
+        <section aria-labelledby="related-heading" className="mt-16 border-t pt-12">
+          <h2 id="related-heading" className="text-h2">
+            You might also like
+          </h2>
+          <span aria-hidden className="mb-8 mt-3 block h-px w-12 bg-gold" />
+          <ul className="grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-4 lg:gap-x-6">
+            {related.map((p) => (
+              <li key={p.id}>
+                <ProductCard product={p} />
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
     </div>
     </>
   );

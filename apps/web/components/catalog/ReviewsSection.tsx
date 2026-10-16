@@ -76,9 +76,9 @@ export function ReviewsSection({ productId, initialReviews }: Props) {
       {reviews.length === 0 ? (
         <p className="text-muted-foreground text-sm mb-8">No reviews yet. Be the first!</p>
       ) : (
-        <ul className="space-y-4 mb-8">
+        <ul className="mb-8 divide-y border-y">
           {reviews.map((r) => (
-            <li key={r.id} className="border rounded-xl p-4">
+            <li key={r.id} className="py-5">
               <div className="flex items-center gap-3 mb-2">
                 <Rating value={r.rating} size="sm" />
                 {r.title && <span className="font-semibold text-sm">{r.title}</span>}
@@ -86,7 +86,7 @@ export function ReviewsSection({ productId, initialReviews }: Props) {
                   {formatDate(r.created_at)}
                 </span>
               </div>
-              {r.body && <p className="text-sm text-muted-foreground">{r.body}</p>}
+              {r.body && <p className="text-sm leading-relaxed text-foreground-secondary">{r.body}</p>}
             </li>
           ))}
         </ul>

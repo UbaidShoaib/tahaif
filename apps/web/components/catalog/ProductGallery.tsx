@@ -56,7 +56,7 @@ export function ProductGallery({ images, productName }: { images: ProductImage[]
         <div
           ref={trackRef}
           onScroll={onScroll}
-          className="flex aspect-square snap-x snap-mandatory overflow-x-auto overflow-y-hidden rounded-2xl bg-muted [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          className="flex aspect-square snap-x lg:aspect-[4/5] snap-mandatory overflow-x-auto overflow-y-hidden rounded-2xl bg-muted [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         >
           {slides.map((img, i) => (
             <div

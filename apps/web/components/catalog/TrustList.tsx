@@ -20,10 +20,10 @@ export function TrustList({ onTimePercent = null }: { onTimePercent?: number | n
       ? ITEMS
       : [{ icon: CalendarCheck, text: `${onTimePercent}% of this shop's gifts arrived on the chosen day (last 90 days)` }, ...ITEMS];
   return (
-    <ul className="grid grid-cols-1 gap-2 text-sm text-foreground-secondary sm:grid-cols-2">
+    <ul className="grid grid-cols-1 gap-x-6 gap-y-2.5 border-t pt-5 text-sm text-foreground-secondary sm:grid-cols-2">
       {items.map(({ icon: Icon, text }) => (
         <li key={text} className="flex items-start gap-2">
-          <Icon aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-success" />
+          <Icon aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-gold-ink" />
           {text}
         </li>
       ))}

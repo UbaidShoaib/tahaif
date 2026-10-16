@@ -14,7 +14,7 @@ type Props = { vendor: Vendor; city?: City };
 export function VendorStory({ vendor, city }: Props) {
   if (!vendor.description) return null;
   return (
-    <section aria-labelledby="vendor-story" className="flex items-start gap-4 rounded-2xl border bg-muted/30 p-5">
+    <section aria-labelledby="vendor-story" className="flex items-start gap-4 border-t pt-6">
       {vendor.logo_url ? (
         <Image
           src={vendor.logo_url}
@@ -33,7 +33,7 @@ export function VendorStory({ vendor, city }: Props) {
         </div>
       )}
       <div className="min-w-0 space-y-1">
-        <h2 id="vendor-story" className="text-base font-semibold">
+        <h2 id="vendor-story" className="font-display text-lg">
           Made by {vendor.name}
         </h2>
         {city && (

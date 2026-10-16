@@ -5,7 +5,7 @@ export default function Loading() {
     <div aria-busy="true" aria-label="Loading gift" className="container mx-auto px-4 py-8">
       <Skeleton className="mb-6 h-4 w-56" />
       <div className="grid gap-8 md:grid-cols-2 lg:gap-12">
-        <Skeleton className="aspect-square rounded-2xl" />
+        <Skeleton className="aspect-square rounded-2xl lg:aspect-[4/5]" />
         <div className="space-y-4">
           <Skeleton className="h-4 w-32" />
           <Skeleton className="h-9 w-3/4" />

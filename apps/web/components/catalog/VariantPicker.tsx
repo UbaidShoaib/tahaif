@@ -129,7 +129,7 @@ export function VariantPicker({ product, cities = [] }: Props) {
       {/* Price */}
       <div>
         <p className="flex flex-wrap items-baseline gap-x-2">
-          <span className="text-3xl font-bold text-link">
+          <span className="font-display text-3xl font-semibold tabular-nums text-foreground sm:text-4xl">
             <Price pkr={totalPrice} />
           </span>
           {selected && selected.price_delta_pkr > 0 && (
@@ -173,7 +173,7 @@ export function VariantPicker({ product, cities = [] }: Props) {
 
       {/* Where & when */}
       {available.length > 0 && (
-        <div className="space-y-3 rounded-xl border bg-card p-4">
+        <div className="space-y-3 rounded-xl bg-background-alt p-4 sm:p-5">
           <div className="space-y-1.5">
             <label htmlFor={cityFieldId} className="flex items-center gap-1.5 text-sm font-medium">
               <MapPin aria-hidden className="h-4 w-4 text-link" />
@@ -264,7 +264,7 @@ export function VariantPicker({ product, cities = [] }: Props) {
       */}
       <div className="fixed inset-x-0 bottom-0 z-40 border-t bg-background/95 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-lg backdrop-blur md:static md:z-auto md:border-0 md:bg-transparent md:p-0 md:shadow-none md:backdrop-blur-none">
         <div className="flex items-center gap-3">
-          <p aria-hidden className="font-semibold tabular-nums text-link md:hidden">
+          <p aria-hidden className="font-display text-lg font-semibold tabular-nums text-foreground md:hidden">
             <Price pkr={totalPrice} />
           </p>
           <Button

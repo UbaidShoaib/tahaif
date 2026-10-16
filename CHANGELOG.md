@@ -44,6 +44,10 @@ pre-production-cutover).
   SOP, compliance note and integration options in `docs/`.
 
 ### Changed
+- Product page redesigned to match: the gallery stays in view while scrolling on desktop (taller
+  4:5 on large screens), shop name in small caps above a serif title, serif price in ink, delivery
+  panel on a soft tint instead of a bordered box, trust icons in gold, and "About this gift", the
+  shop story and reviews as open sections with hairlines. New "You might also like" row (same category).
 - Homepage and product cards redesigned. Cards are image-led and borderless (4:5 photo, serif
   name, price in ink). Homepage: hero with a photo collage instead of the gradient and crosshair
   graphic, photo category tiles taken from each category's products (tinted tile when none), text
