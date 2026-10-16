@@ -8,6 +8,9 @@ pre-production-cutover).
 ## [Unreleased]
 
 ### Added
+- "Order on WhatsApp" on product pages: opens the business chat with the product, option,
+  price, city, card message and link filled in, plus `(ref: <utm_campaign>)` when the visitor
+  came from a tagged Instagram link. Needs `NEXT_PUBLIC_SUPPORT_WHATSAPP`.
 - Instagram/WhatsApp orders (ADR 0009). Admin panel **New DM order** places an order for a
   chat customer through normal checkout (`POST /admin/orders/assisted`): email optional,
   phones normalised to E.164, duplicate guard (409 / `allow_duplicate`), no COD for

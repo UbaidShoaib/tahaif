@@ -17,6 +17,7 @@ import { useDeliveryStore } from "@/stores/delivery.store";
 import { captureEvent } from "@/components/providers";
 import { useHydrated } from "@/hooks/use-hydrated";
 import { GreetingComposer } from "@/components/greeting/GreetingComposer";
+import { OrderOnWhatsApp } from "@/components/catalog/OrderOnWhatsApp";
 
 type Props = {
   product: Product;
@@ -240,6 +241,16 @@ export function VariantPicker({ product, cities = [] }: Props) {
 
       {/* Greeting card */}
       <GreetingComposer id="greeting-message" value={greeting} onChange={setGreeting} />
+
+      <OrderOnWhatsApp
+        productId={product.id}
+        productPath={`/p/${product.slug}`}
+        productName={product.name}
+        variantName={selected?.name}
+        pricePkr={totalPrice}
+        cityName={chosen?.city.name}
+        greeting={greeting}
+      />
 
       {addError && (
         <Alert variant="destructive">

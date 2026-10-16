@@ -41,6 +41,10 @@ orders, no "I'll enter it later". If it isn't in the admin panel, it doesn't exi
 | 6. Customer confirms | The customer opens the link, checks the address, accepts the terms and (bank transfer) uploads the receipt. Until they confirm, the order is not final. |
 | 7. Not confirmed in 6 h? | The order appears in **Messages to send** as a reminder. Send it once. Still nothing after 24 h → cancel the order and note "no response". |
 
+Orders from the website's **Order on WhatsApp** button arrive with the product, option,
+city, card message and link already in the first message. If it ends with `(ref: …)`, copy
+that into **Reel / campaign**.
+
 From Instagram: take the order in the DM if the customer prefers, but **send the
 order link on WhatsApp**. If the customer won't use WhatsApp, paste the
 link into the DM. The link is the same.

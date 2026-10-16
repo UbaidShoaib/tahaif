@@ -12,7 +12,7 @@ compliance `docs/compliance-social-orders.md`
 - [x] Migration `0016_social_orders`
 
 ## P1 (next)
-- [ ] "Order on WhatsApp" button on product pages (prefilled product + city + campaign)
+- [x] "Order on WhatsApp" button on product pages (prefilled product, option, price, city, card message, link; `utm_campaign` remembered for the visit and sent as `(ref: …)`; PostHog event `order_on_whatsapp`). Hidden unless `NEXT_PUBLIC_SUPPORT_WHATSAPP` is set
 - [ ] UTM capture (`utm_source/utm_campaign`) on web cart → order `source`/`campaign`
 - [ ] Admin report: orders and revenue by source/campaign; summary-sent → paid conversion
 - [ ] Recipient messages (on the way / surprise reveal) in the manual queue
