@@ -5371,6 +5371,11 @@
             "title": "Text",
             "type": "string"
           },
+          "text_ur": {
+            "description": "The same message in Urdu",
+            "title": "Text Ur",
+            "type": "string"
+          },
           "to": {
             "description": "Who the message goes to",
             "enum": [
@@ -5381,8 +5386,13 @@
             "type": "string"
           },
           "url": {
-            "description": "wa.me link that opens the buyer's chat with the text filled in",
+            "description": "wa.me link that opens the chat with the text filled in",
             "title": "Url",
+            "type": "string"
+          },
+          "url_ur": {
+            "description": "wa.me link with the Urdu text",
+            "title": "Url Ur",
             "type": "string"
           }
         },
@@ -5393,6 +5403,8 @@
           "phone",
           "text",
           "url",
+          "text_ur",
+          "url_ur",
           "due",
           "sent_at"
         ],
