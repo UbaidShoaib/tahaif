@@ -5,6 +5,10 @@ import { useRouter } from "next/navigation";
 import { Package, CheckCircle, XCircle, Eye, RefreshCw } from "lucide-react";
 import { HiddenProducts } from "@/components/admin/HiddenProducts";
 import { VendorApplications } from "@/components/admin/VendorApplications";
+import { AssistedOrderForm } from "@/components/admin/AssistedOrderForm";
+import { MessageQueue } from "@/components/admin/MessageQueue";
+import { WhatsAppMessages } from "@/components/admin/WhatsAppMessages";
+import { SOURCE_LABELS } from "@/lib/social-orders";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { useAuthStore } from "@/stores/auth.store";
@@ -24,6 +28,9 @@ interface OrderSummary {
   payment_method: string | null;
   payment_status: string | null;
   proof_url: string | null;
+  source: string;
+  buyer_phone: string | null;
+  customer_confirmed_at: string | null;
 }
 
 const STATUS_BADGE: Record<string, string> = {
@@ -40,9 +47,11 @@ const ORDER_STATUSES = [
   "out_for_delivery", "delivered", "completed", "cancelled", "on_hold",
 ];
 
-type Section = "orders" | "applications" | "products";
+type Section = "orders" | "new-order" | "messages" | "applications" | "products";
 const SECTIONS: { key: Section; label: string }[] = [
   { key: "orders", label: "Orders" },
+  { key: "new-order", label: "New DM order" },
+  { key: "messages", label: "Messages to send" },
   { key: "applications", label: "Shop applications" },
   { key: "products", label: "Hidden products" },
 ];
@@ -56,6 +65,7 @@ export default function AdminDashboard() {
   const [filterStatus, setFilterStatus] = useState<string>("");
   const [actionInProgress, setActionInProgress] = useState<string | null>(null);
   const [section, setSection] = useState<Section>("orders");
+  const [openMessages, setOpenMessages] = useState<string | null>(null);
 
   useEffect(() => {
     // On a hard reload the session is restored from the refresh cookie after
@@ -153,6 +163,8 @@ export default function AdminDashboard() {
 
       {section === "applications" && token && <VendorApplications token={token} />}
       {section === "products" && token && <HiddenProducts token={token} />}
+      {section === "new-order" && token && <AssistedOrderForm token={token} />}
+      {section === "messages" && token && <MessageQueue token={token} />}
 
       {section === "orders" && (
       <>
@@ -204,6 +216,12 @@ export default function AdminDashboard() {
                   <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_BADGE[order.status] ?? "bg-muted"}`}>
                     {order.status.replace(/_/g, " ")}
                   </span>
+                  {order.source !== "web" && (
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-muted font-medium">
+                      {SOURCE_LABELS[order.source] ?? order.source}
+                      {order.customer_confirmed_at ? " · confirmed" : " · not confirmed"}
+                    </span>
+                  )}
                   {order.payment_status && (
                     <span className="text-xs px-2 py-0.5 rounded-full bg-muted font-medium">
                       {order.payment_status.replace(/_/g, " ")}
@@ -255,12 +273,24 @@ export default function AdminDashboard() {
                   </>
                 )}
 
+                {order.buyer_phone && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    aria-expanded={openMessages === order.id}
+                    onClick={() => setOpenMessages(openMessages === order.id ? null : order.id)}
+                  >
+                    WhatsApp
+                  </Button>
+                )}
+
                 <Button size="sm" variant="ghost" asChild>
                   <a href={`/track/${order.public_token}`} target="_blank" rel="noopener noreferrer">
                     Track
                   </a>
                 </Button>
               </div>
+              {openMessages === order.id && token && <WhatsAppMessages orderId={order.id} token={token} />}
             </div>
           ))}
         </div>

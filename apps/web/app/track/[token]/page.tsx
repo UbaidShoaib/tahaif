@@ -24,6 +24,8 @@ import { DualTime } from "@/components/time/DualTime";
 import { SupportWhatsApp } from "@/components/support/SupportWhatsApp";
 import { CardNoteControl } from "@/components/greeting/CardNoteControl";
 import { ThanksReceived } from "@/components/thanks/ThanksReceived";
+import { ConfirmOrderPanel } from "@/components/orders/ConfirmOrderPanel";
+import { BankTransferPanel } from "@/components/orders/BankTransferPanel";
 
 export const dynamic = "force-dynamic";
 
@@ -71,6 +73,26 @@ export default async function TrackPage({
           />
         </div>
       </div>
+
+      {/* Orders our team took from a chat: the buyer confirms them here (ADR 0009) */}
+      {order.needs_confirmation && order.fulfillments[0] && (
+        <ConfirmOrderPanel
+          publicToken={String(order.public_token)}
+          recipient={{
+            name: order.fulfillments[0].recipient_name,
+            phone: order.fulfillments[0].recipient_phone,
+            address: order.fulfillments[0].address_line1,
+          }}
+        />
+      )}
+      {order.source && order.source !== "web" && !order.needs_confirmation &&
+        order.payment_method === "bank_transfer" && order.status === "pending_payment" && (
+        <BankTransferPanel
+          orderId={String(order.id)}
+          publicToken={String(order.public_token)}
+          totalPkr={order.total_pkr}
+        />
+      )}
 
       {/* Status timeline */}
       <section aria-labelledby="progress-heading" className="mb-6 rounded-xl border bg-card p-5">

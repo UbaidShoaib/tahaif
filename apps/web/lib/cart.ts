@@ -164,6 +164,11 @@ export interface OrderRead {
   /** Sender name used in messages to the recipient. */
   gift_from?: string | null;
   payment_method: PaymentMethod | null;
+  /** Where the order came from: "web", or a chat staff took it from (ADR 0009). */
+  source?: "web" | "instagram" | "whatsapp" | "phone" | "walk_in";
+  customer_confirmed_at?: string | null;
+  /** Taken by staff from a chat; the buyer must check and confirm it here. */
+  needs_confirmation?: boolean;
 }
 
 /**

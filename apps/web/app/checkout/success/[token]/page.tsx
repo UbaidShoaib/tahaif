@@ -6,13 +6,11 @@ import { formatPrice } from "@/lib/utils";
 import { formatMoney } from "@/lib/money";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { ProofUpload } from "@/components/checkout/ProofUpload";
+import { BankTransferPanel } from "@/components/orders/BankTransferPanel";
 import { GuestOrderNote } from "@/components/checkout/GuestOrderNote";
 import { OrderStatusBadge } from "@/components/orders/OrderStatusBadge";
 import { ShareTracking } from "@/components/orders/ShareTracking";
-import { CopyButton } from "@/components/ui/copy-button";
 import { orderNumber } from "@/lib/orders";
-import { brand } from "@/lib/brand";
 import { PAKISTAN_TZ, formatCalendarDate } from "@/lib/datetime";
 
 export const dynamic = "force-dynamic";
@@ -37,8 +35,6 @@ export default async function SuccessPage({
   }
 
   const isBank = order.payment_method === "bank_transfer";
-  const bankAccount = brand.bankAccountName;
-  const bankIban = process.env.NEXT_PUBLIC_BANK_IBAN ?? null;
 
   const placedDate = new Date(order.placed_at).toLocaleDateString("en-PK", {
     day: "numeric",
@@ -68,34 +64,11 @@ export default async function SuccessPage({
 
       {/* Bank transfer: the next action, so it comes first */}
       {isBank && (
-        <section aria-labelledby="pay-heading" className="mb-6 space-y-4 rounded-xl border border-warning/40 bg-warning-soft p-5">
-          <h2 id="pay-heading" className="text-h3">
-            Pay by bank transfer
-          </h2>
-          <dl className="grid gap-3 text-sm sm:grid-cols-[auto_1fr_auto] sm:items-center">
-            <dt className="text-foreground-secondary">Amount</dt>
-            <dd className="font-semibold">{formatPrice(order.total_pkr)}</dd>
-            <dd className="hidden sm:block" />
-            <dt className="text-foreground-secondary">Account</dt>
-            <dd className="font-medium">{bankAccount}</dd>
-            <dd className="hidden sm:block" />
-            {bankIban && (
-              <>
-                <dt className="text-foreground-secondary">IBAN</dt>
-                <dd className="break-all font-mono">{bankIban}</dd>
-                <dd>
-                  <CopyButton value={bankIban} label="IBAN" />
-                </dd>
-              </>
-            )}
-            <dt className="text-foreground-secondary">Reference</dt>
-            <dd className="font-mono">{orderNumber(String(order.public_token))}</dd>
-            <dd>
-              <CopyButton value={orderNumber(String(order.public_token))} label="payment reference" />
-            </dd>
-          </dl>
-          <ProofUpload orderId={String(order.id)} publicToken={String(order.public_token)} />
-        </section>
+        <BankTransferPanel
+          orderId={String(order.id)}
+          publicToken={String(order.public_token)}
+          totalPkr={order.total_pkr}
+        />
       )}
 
       {/* What happens next */}
