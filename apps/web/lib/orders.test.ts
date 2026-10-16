@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { isOrderLive, statusHeadline } from "@/lib/orders";
+import { isOrderLive, orderRowStatus, statusHeadline } from "@/lib/orders";
 
 describe("statusHeadline", () => {
   it("speaks to the buyer about the recipient", () => {
@@ -25,5 +25,21 @@ describe("isOrderLive", () => {
   it("stops once the order settles", () => {
     expect(isOrderLive("preparing")).toBe(true);
     expect(isOrderLive("delivered")).toBe(false);
+  });
+});
+
+describe("orderRowStatus", () => {
+  it("says when a live order arrives", () => {
+    expect(orderRowStatus("preparing", "2026-10-19", null)).toBe("Arriving Mon 19 Oct");
+    expect(orderRowStatus("out_for_delivery", "2026-10-19", null)).toBe("Out for delivery today");
+    expect(orderRowStatus("paid", null, null)).toBe("In progress");
+  });
+
+  it("says what happened to a settled order", () => {
+    expect(orderRowStatus("delivered", "2026-10-17", "2026-10-17T10:00:00Z")).toBe("Delivered Sat 17 Oct");
+    expect(orderRowStatus("completed", null, null)).toBe("Delivered");
+    // 20:55 UTC on the 16th is already the 17th in Lahore
+    expect(orderRowStatus("delivered", null, "2026-10-16T20:55:00Z")).toBe("Delivered Sat 17 Oct");
+    expect(orderRowStatus("cancelled", "2026-10-19", null)).toBe("Cancelled");
   });
 });

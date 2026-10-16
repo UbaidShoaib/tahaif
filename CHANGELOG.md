@@ -41,6 +41,9 @@ pre-production-cutover).
   SOP, compliance note and integration options in `docs/`.
 
 ### Changed
+- "My orders" redesigned to match the tracking page: each order is a row with the gift photo,
+  "<gift> for <recipient>", and its status in words ("Arriving Mon 19 Oct", "Delivered Sat 17 Oct",
+  on the delivery city's calendar); hairline rows instead of bordered boxes, whole row clickable.
 - Order tracking page redesigned: one status hero that answers "where is my gift?" in a sentence
   ("Layers Bakeshop is preparing your gift for Ammi", "Delivered to Ammi") with the delivery photo
   on top once delivered; the greeting card styled like the printed card; progress, delivery and
