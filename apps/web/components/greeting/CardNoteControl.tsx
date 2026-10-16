@@ -1,10 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import Link from "next/link";
-import { CheckCircle, Mic, Square, Upload } from "lucide-react";
+import { useRef, useState } from "react";
+import { CheckCircle, Mic } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { MAX_RECORDING_SECONDS, canRecordVoice, useVoiceRecorder } from "@/hooks/useVoiceRecorder";
 import { MAX_NOTE_BYTES, notesApi } from "@/lib/notes";
 import type { OrderItemRead } from "@/lib/cart";
 
@@ -20,16 +18,6 @@ export function CardNoteControl({ publicToken, item }: Props) {
   const [hasNote, setHasNote] = useState(!!item.has_note);
   const [busy, setBusy] = useState<"upload" | "remove" | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [supportsRecording, setSupportsRecording] = useState(false);
-  const [accepted, setAccepted] = useState(false);
-  const recorder = useVoiceRecorder();
-
-  useEffect(() => setSupportsRecording(canRecordVoice()), []);
-
-  useEffect(() => {
-    if (recorder.recording && recorder.seconds >= MAX_RECORDING_SECONDS) void finishRecording();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [recorder.recording, recorder.seconds]);
 
   if (!item.can_edit_note) {
     return hasNote ? (
@@ -47,7 +35,7 @@ export function CardNoteControl({ publicToken, item }: Props) {
     if (file.size > MAX_NOTE_BYTES) return setError("The recording must be 25 MB or smaller (about 2 minutes of video).");
     setBusy("upload");
     try {
-      await notesApi.attach(publicToken, item.id, file, accepted);
+      await notesApi.attach(publicToken, item.id, file);
       setHasNote(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not upload the recording.");
@@ -56,20 +44,6 @@ export function CardNoteControl({ publicToken, item }: Props) {
       if (inputRef.current) inputRef.current.value = "";
     }
   };
-
-  const startRecording = async () => {
-    setError(null);
-    try {
-      await recorder.start();
-    } catch {
-      setError("We couldn't use your microphone. Allow microphone access, or upload a recording instead.");
-    }
-  };
-
-  async function finishRecording() {
-    const file = await recorder.stop();
-    if (file) await upload(file);
-  }
 
   const remove = async () => {
     setError(null);
@@ -103,75 +77,27 @@ export function CardNoteControl({ publicToken, item }: Props) {
           if (file) void upload(file);
         }}
       />
-      {!recorder.recording && (
-        <label className="flex items-start gap-2 text-sm">
-          <input
-            type="checkbox"
-            className="mt-0.5 h-4 w-4 accent-primary"
-            checked={accepted}
-            onChange={(e) => setAccepted(e.target.checked)}
-          />
-          <span>
-            My note is respectful and follows the{" "}
-            <Link href="/terms#card-notes" target="_blank" className="text-link underline underline-offset-4">
-              content rules
-            </Link>
-            . I&apos;m responsible for what I record.
-          </span>
-        </label>
-      )}
       <div className="flex flex-wrap gap-2">
-        {recorder.recording ? (
-          <Button type="button" size="sm" variant="destructive" className="gap-2" onClick={() => void finishRecording()}>
-            <Square aria-hidden className="h-4 w-4" />
-            Stop &amp; save ({formatSeconds(recorder.seconds)})
-          </Button>
-        ) : (
-          supportsRecording && (
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              className="gap-2"
-              disabled={busy !== null || !accepted}
-              onClick={() => void startRecording()}
-            >
-              <Mic aria-hidden className="h-4 w-4" />
-              {busy === "upload" ? "Uploading…" : hasNote ? "Record again" : "Record a voice note"}
-            </Button>
-          )
-        )}
         <Button
           type="button"
           size="sm"
           variant="outline"
           className="gap-2"
-          disabled={busy !== null || recorder.recording || !accepted}
+          disabled={busy !== null}
           onClick={() => inputRef.current?.click()}
         >
-          <Upload aria-hidden className="h-4 w-4" />
-          {busy === "upload" && !supportsRecording
-            ? "Uploading…"
-            : hasNote
-              ? "Replace note"
-              : supportsRecording
-                ? "Upload a recording"
-                : "Add a voice or video note"}
+          <Mic aria-hidden className="h-4 w-4" />
+          {busy === "upload" ? "Uploading…" : hasNote ? "Replace note" : "Add a voice or video note"}
         </Button>
-        {hasNote && !recorder.recording && (
+        {hasNote && (
           <Button type="button" size="sm" variant="ghost" disabled={busy !== null} onClick={() => void remove()}>
             {busy === "remove" ? "Removing…" : "Remove note"}
           </Button>
         )}
       </div>
-      {recorder.recording && (
-        <p role="status" className="text-xs text-destructive">
-          Recording… up to {MAX_RECORDING_SECONDS / 60} minutes. Tap stop when you&apos;re done.
-        </p>
-      )}
-      {!hasNote && !recorder.recording && (
+      {!hasNote && (
         <p className="text-xs text-muted-foreground">
-          Record a short message here, or upload one from your phone. They&apos;ll scan the card to hear or see you. Up to 25 MB.
+          Record a short message on your phone. They&apos;ll scan the card to hear or see you. Up to 25 MB.
         </p>
       )}
       {error && (
@@ -182,5 +108,3 @@ export function CardNoteControl({ publicToken, item }: Props) {
     </div>
   );
 }
-
-const formatSeconds = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;

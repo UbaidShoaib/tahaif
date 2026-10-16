@@ -1,7 +1,6 @@
 import uuid
 from datetime import date, datetime
 from decimal import Decimal
-from typing import Literal
 
 from pydantic import BaseModel, EmailStr, Field
 
@@ -127,16 +126,6 @@ class CardNoteRead(BaseModel):
     content_type: str = Field(examples=["video/mp4"])
     greeting_message: str | None
     product_name: str
-
-
-NoteReportReason = Literal["abusive", "threatening", "sexual", "hateful", "unwanted", "other"]
-
-
-class CardNoteReportCreate(BaseModel):
-    """A report from someone who opened a card note."""
-
-    reason: NoteReportReason = Field(examples=["abusive"])
-    details: str | None = Field(default=None, max_length=1000, examples=["I don't know the sender"])
 
 
 class OrderRead(BaseModel):

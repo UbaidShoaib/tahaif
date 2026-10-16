@@ -9,7 +9,6 @@ from sqlalchemy.sql import Select
 
 from app.models.catalog import City
 from app.models.order import (
-    CardNoteReport,
     Fulfillment,
     FulfillmentStatus,
     Order,
@@ -185,28 +184,10 @@ class OrderRepository:
     async def get_item_by_note_token(self, token: uuid.UUID) -> OrderItem | None:
         result = await self._db.execute(
             select(OrderItem)
-            .options(
-                selectinload(OrderItem.product),
-                selectinload(OrderItem.order),
-                selectinload(OrderItem.fulfillment),
-            )
+            .options(selectinload(OrderItem.product), selectinload(OrderItem.order))
             .where(OrderItem.note_token == token)
         )
         return result.scalar_one_or_none()
-
-    async def get_note_report(self, item_id: uuid.UUID, reporter_ip: str) -> CardNoteReport | None:
-        result = await self._db.execute(
-            select(CardNoteReport).where(
-                CardNoteReport.order_item_id == item_id, CardNoteReport.reporter_ip == reporter_ip
-            )
-        )
-        return result.scalar_one_or_none()
-
-    async def add_note_report(self, **kwargs: object) -> CardNoteReport:
-        report = CardNoteReport(**kwargs)
-        self._db.add(report)
-        await self._db.flush()
-        return report
 
     async def get_fulfillment_by_thanks_token(self, token: uuid.UUID) -> Fulfillment | None:
         result = await self._db.execute(

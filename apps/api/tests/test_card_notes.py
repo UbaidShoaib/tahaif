@@ -1,17 +1,14 @@
 """Voice/video notes on greeting cards: buyer attaches, vendor prints a QR, recipient plays."""
 
 import uuid
-from datetime import timedelta
 
 import pytest
 import pytest_asyncio
 from httpx import AsyncClient, Response
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.integrations import s3_client
-from app.models.base import utcnow
-from app.models.order import CardNoteReport, FulfillmentStatus, OrderItem
+from app.models.order import FulfillmentStatus
 from app.models.user import UserRole
 from tests.test_vendor import (
     _login,
@@ -60,24 +57,11 @@ async def gift(db: AsyncSession) -> dict[str, object]:
     return info
 
 
-async def _attach(
-    client: AsyncClient, gift: dict[str, object], content_type: str = "audio/mp4", accepted_terms: bool = True
-) -> Response:
+async def _attach(client: AsyncClient, gift: dict[str, object], content_type: str = "audio/mp4") -> Response:
     return await client.post(
         f"/api/v1/orders/by-token/{gift['token']}/items/{gift['item_id']}/note",
         files={"file": ("note.m4a", b"\x00" * 64, content_type)},
-        data={"accepted_terms": "true" if accepted_terms else "false"},
     )
-
-
-async def _note_token(client: AsyncClient, gift: dict[str, object]) -> str:
-    vendor_token = await _login(client, str(gift["vendor_email"]))
-    leg = (
-        await client.get(
-            f"/api/v1/vendor/fulfillments/{gift['fulfillment_id']}", headers={"Authorization": f"Bearer {vendor_token}"}
-        )
-    ).json()
-    return str(leg["items"][0]["note_token"])
 
 
 async def _item(client: AsyncClient, gift: dict[str, object]) -> dict[str, object]:
@@ -197,66 +181,3 @@ async def test_unknown_order_item_or_note_is_404(
     assert (await _attach(client, other_item)).status_code == 404
     assert (await _attach(client, other_order)).status_code == 404
     assert (await client.get(f"/api/v1/notes/{uuid.uuid4()}")).status_code == 404
-
-
-@pytest.mark.asyncio
-async def test_note_requires_consent_and_records_it(
-    client: AsyncClient, db: AsyncSession, gift: dict[str, object], fake_note_store: list[str]
-) -> None:
-    refused = await _attach(client, gift, accepted_terms=False)
-    assert refused.status_code == 422
-    assert "content rules" in refused.json()["detail"]
-    assert fake_note_store == []
-
-    assert (await _attach(client, gift)).status_code == 204
-    item = await db.get(OrderItem, gift["item_id"], populate_existing=True)
-    assert item is not None
-    assert item.note_consent_at is not None
-    assert item.note_consent_ip
-
-
-@pytest.mark.asyncio
-async def test_note_expires_after_delivery(
-    client: AsyncClient, db: AsyncSession, gift: dict[str, object], fake_note_store: list[str]
-) -> None:
-    await _attach(client, gift)
-    note_token = await _note_token(client, gift)
-    fulfillment = gift["fulfillment"]
-
-    fulfillment.status = FulfillmentStatus.delivered  # type: ignore[attr-defined]
-    fulfillment.delivered_at = utcnow() - timedelta(days=89)  # type: ignore[attr-defined]
-    await db.commit()
-    assert (await client.get(f"/api/v1/notes/{note_token}")).status_code == 200
-
-    fulfillment.delivered_at = utcnow() - timedelta(days=91)  # type: ignore[attr-defined]
-    await db.commit()
-    assert (await client.get(f"/api/v1/notes/{note_token}")).status_code == 404
-
-
-@pytest.mark.asyncio
-async def test_anyone_with_the_link_can_report_a_note_once(
-    client: AsyncClient, db: AsyncSession, gift: dict[str, object], fake_note_store: list[str]
-) -> None:
-    await _attach(client, gift)
-    note_token = await _note_token(client, gift)
-    url = f"/api/v1/notes/{note_token}/report"
-
-    assert (await client.post(url, json={"reason": "abusive", "details": "  Not from my son  "})).status_code == 204
-    assert (await client.post(url, json={"reason": "other"})).status_code == 204  # repeat: ignored
-
-    reports = (await db.execute(select(CardNoteReport))).scalars().all()
-    assert len(reports) == 1
-    assert reports[0].order_item_id == gift["item_id"]
-    assert reports[0].reason == "abusive"
-    assert reports[0].details == "Not from my son"
-
-
-@pytest.mark.asyncio
-async def test_report_validation_and_unknown_note(
-    client: AsyncClient, gift: dict[str, object], fake_note_store: list[str]
-) -> None:
-    await _attach(client, gift)
-    note_token = await _note_token(client, gift)
-
-    assert (await client.post(f"/api/v1/notes/{note_token}/report", json={"reason": "spam!"})).status_code == 422
-    assert (await client.post(f"/api/v1/notes/{uuid.uuid4()}/report", json={"reason": "abusive"})).status_code == 404

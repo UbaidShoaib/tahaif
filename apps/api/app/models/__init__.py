@@ -23,7 +23,6 @@ from app.models.loyalty import (
     Testimonial,
 )
 from app.models.order import (
-    CardNoteReport,
     Cart,
     CartItem,
     Fulfillment,
@@ -56,7 +55,6 @@ __all__ = [
     "OccasionReminderSent",
     "Order",
     "OrderItem",
-    "CardNoteReport",
     "OrderMessage",
     "PasswordResetToken",
     "Payment",
