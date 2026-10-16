@@ -16,7 +16,7 @@ compliance `docs/compliance-social-orders.md`
 - [x] `utm_campaign` captured on website checkout → `orders.campaign` (normalised: "Eid Reel" → `eid-reel`)
 - [x] Admin "Sales by campaign" (`GET /admin/reports/campaigns?days=`): orders, paid, revenue, average per channel × campaign
 - [ ] Summary-sent → paid conversion per staff member
-- [ ] Recipient messages (on the way / surprise reveal) in the manual queue
+- [x] Recipient messages in the manual queue while the API is off: "on its way" (not for surprises) and "delivered" / surprise reveal with the thank-you link; no prices or tracking
 - [ ] Admin toggle for a customer's marketing opt-in; auto-cancel unconfirmed orders after 24 h
 - [ ] Urdu versions of message texts
 - [ ] Meta catalog feed (`/feeds/meta-catalog.xml`) for Instagram Shopping tags

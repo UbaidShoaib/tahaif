@@ -46,6 +46,7 @@ is too expensive at the current stage.
 - Messages depend on staff working the queue (SOP §4: 10:00/14:00/18:00 PKT).
 - Moving to Meta's Cloud API later is one adapter: the queue's "due" logic and texts
   stay; a worker sends them instead of a person. See `docs/whatsapp-integration-options.md`.
-- Recipient messages (on-the-way / surprise reveal) are no longer sent automatically
-  while the API is off. Follow-up: add them to the queue, addressed to the recipient.
+- While the API is off, recipient messages (on its way / delivered / surprise reveal)
+  are in the same queue, addressed to the recipient, with the same text the API
+  would send: who it's from and their thank-you link, never prices or tracking.
 - Inbound messages still don't reach the system (needs the Cloud API webhook; P1).

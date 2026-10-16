@@ -62,7 +62,10 @@ link into the DM. The link is the same.
 Open **Messages to send** at least **3 times a day** (10:00, 14:00, 18:00 PKT).
 It lists every customer who should hear from us: order summary, payment
 reminder, payment received, dispatched, out for delivery, delivered (with the
-delivery photo link). Tap → WhatsApp opens → send. The system records that you sent it, so
+delivery photo link). It also lists messages **to the recipient** ("to the recipient"
+in the list): "on its way" when the rider leaves (never for surprises) and, after
+delivery, who the gift is from with their thank-you link. Never add prices or
+order details to a recipient message. Tap → WhatsApp opens → send. The system records that you sent it, so
 nobody sends it twice.
 
 ## 5. Changes and cancellations

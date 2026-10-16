@@ -13,11 +13,17 @@ export type MessageKind =
   | "payment_received"
   | "dispatched"
   | "out_for_delivery"
-  | "delivered";
+  | "delivered"
+  | "recipient_on_the_way"
+  | "recipient_delivered";
 
 export interface WhatsAppMessage {
   kind: MessageKind;
   label: string;
+  /** The buyer, or (while the WhatsApp API is off) the person receiving the gift. */
+  to: "buyer" | "recipient";
+  /** Their number, E.164. */
+  phone: string;
   text: string;
   /** wa.me link that opens the buyer's chat with the text filled in. */
   url: string;
@@ -29,6 +35,7 @@ export interface QueueEntry {
   order_id: string;
   order_ref: string;
   source: OrderSource | "web";
+  /** Number this message goes to (the recipient's, for recipient messages). */
   buyer_phone: string;
   placed_at: string;
   message: WhatsAppMessage;

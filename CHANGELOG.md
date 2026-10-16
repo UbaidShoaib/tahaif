@@ -8,6 +8,9 @@ pre-production-cutover).
 ## [Unreleased]
 
 ### Added
+- Recipient WhatsApp messages in the manual "Messages to send" queue while
+  `WHATSAPP_API_ENABLED=false`: "on its way" (skipped for surprises) and "delivered" /
+  surprise reveal with the thank-you link. Messages now say who they go to (`to`, `phone`).
 - Admin "Sales by campaign" report (`GET /admin/reports/campaigns?days=7|30|90`): orders,
   paid orders, revenue and average order per channel and reel/campaign. Website checkout now
   records the visit's `utm_campaign` on the order; campaign names are normalised.

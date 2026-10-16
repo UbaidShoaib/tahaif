@@ -17,6 +17,8 @@ MessageKind = Literal[
     "dispatched",
     "out_for_delivery",
     "delivered",
+    "recipient_on_the_way",
+    "recipient_delivered",
 ]
 
 
@@ -59,6 +61,8 @@ class AssistedOrderCreate(BaseModel):
 class WhatsAppMessageRead(BaseModel):
     kind: MessageKind
     label: str
+    to: Literal["buyer", "recipient"] = Field(description="Who the message goes to")
+    phone: str = Field(description="Their number, E.164", examples=["+923001234567"])
     text: str
     url: str = Field(description="wa.me link that opens the buyer's chat with the text filled in")
     due: bool = Field(description="Should be sent now")
@@ -74,7 +78,7 @@ class WhatsAppQueueEntry(BaseModel):
     order_id: uuid.UUID
     order_ref: str = Field(examples=["1A2B3C4D"])
     source: OrderSource
-    buyer_phone: str
+    buyer_phone: str = Field(description="Number this message goes to (the recipient's, for recipient messages)")
     placed_at: datetime
     message: WhatsAppMessageRead
 

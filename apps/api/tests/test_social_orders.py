@@ -397,3 +397,82 @@ async def test_whatsapp_rows_dropped_when_api_disabled(outbox: AsyncSession, mon
         )
     ).scalars().all()
     assert list(channels) == ["email"]  # …but only email is queued
+
+
+# ── Recipient messages by hand while the WhatsApp API is off ───────────────────
+
+
+@pytest.fixture
+def api_off(monkeypatch: pytest.MonkeyPatch) -> None:
+    from app.core.config import get_settings
+
+    monkeypatch.setattr(get_settings(), "whatsapp_api_enabled", False)
+
+
+async def _set_fulfillment(db: AsyncSession, order_id: str, status: FulfillmentStatus) -> None:
+    stored = await OrderRepository(db).get_by_id(order_id)  # type: ignore[arg-type]
+    assert stored is not None
+    stored.fulfillments[0].status = status
+    await db.flush()
+    db.expire(stored)
+
+
+async def _due(client: AsyncClient, headers: dict[str, str], order_id: str) -> dict[str, dict[str, Any]]:
+    resp = await client.get("/api/v1/admin/whatsapp/queue", headers=headers)
+    return {e["message"]["kind"]: e for e in resp.json() if e["order_id"] == order_id}
+
+
+@pytest.mark.asyncio
+@pytest.mark.usefixtures("api_off")
+async def test_recipient_messages_for_normal_gift(client: AsyncClient, db: AsyncSession) -> None:
+    headers = await _staff_headers(client, db)
+    product_id, city_id = await _catalog(db)
+    order = (await _place(client, headers, _body(product_id, city_id)))["order"]
+    oid = order["id"]
+
+    await _set_fulfillment(db, oid, FulfillmentStatus.out_for_delivery)
+    due = await _due(client, headers, oid)
+    on_way = due["recipient_on_the_way"]
+    assert on_way["buyer_phone"] == "+923001234567"  # goes to the recipient
+    assert on_way["message"]["to"] == "recipient"
+    assert on_way["message"]["url"].startswith("https://wa.me/923001234567?text=")
+    text = on_way["message"]["text"]
+    assert "Ammi Jaan" in text and "Sara (London)" in text
+    assert "PKR" not in text and "/track/" not in text  # no prices or tracking for the recipient
+
+    sent = await client.post(f"/api/v1/admin/orders/{oid}/whatsapp/recipient_on_the_way/sent", headers=headers)
+    assert sent.status_code == 200 and sent.json()["sent_at"]
+
+    await _set_fulfillment(db, oid, FulfillmentStatus.delivered)
+    delivered = (await _due(client, headers, oid))["recipient_delivered"]["message"]["text"]
+    assert "We hope you love your gift from Sara (London)" in delivered
+    assert "/thanks/" in delivered
+
+
+@pytest.mark.asyncio
+@pytest.mark.usefixtures("api_off")
+async def test_surprise_gets_no_heads_up_only_reveal(client: AsyncClient, db: AsyncSession) -> None:
+    headers = await _staff_headers(client, db)
+    product_id, city_id = await _catalog(db)
+    oid = (await _place(client, headers, _body(product_id, city_id, surprise=True)))["order"]["id"]
+
+    kinds = [m["kind"] for m in (await client.get(f"/api/v1/admin/orders/{oid}/whatsapp", headers=headers)).json()]
+    assert "recipient_on_the_way" not in kinds and "recipient_delivered" in kinds
+
+    await _set_fulfillment(db, oid, FulfillmentStatus.out_for_delivery)
+    assert "recipient_on_the_way" not in await _due(client, headers, oid)
+    bad = await client.post(f"/api/v1/admin/orders/{oid}/whatsapp/recipient_on_the_way/sent", headers=headers)
+    assert bad.status_code == 400
+
+    await _set_fulfillment(db, oid, FulfillmentStatus.delivered)
+    reveal = (await _due(client, headers, oid))["recipient_delivered"]["message"]["text"]
+    assert "Surprise!" in reveal
+
+
+@pytest.mark.asyncio
+async def test_no_manual_recipient_messages_when_api_on(client: AsyncClient, db: AsyncSession) -> None:
+    headers = await _staff_headers(client, db)
+    product_id, city_id = await _catalog(db)
+    oid = (await _place(client, headers, _body(product_id, city_id)))["order"]["id"]
+    msgs = (await client.get(f"/api/v1/admin/orders/{oid}/whatsapp", headers=headers)).json()
+    assert all(m["to"] == "buyer" for m in msgs)

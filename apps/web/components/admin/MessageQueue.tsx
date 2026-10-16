@@ -56,7 +56,8 @@ export function MessageQueue({ token }: { token: string }) {
                 <p className="text-sm">
                   <span className="font-mono">#{e.order_ref}</span> · {e.message.label} ·{" "}
                   <span className="text-muted-foreground">
-                    {SOURCE_LABELS[e.source] ?? e.source} · {e.buyer_phone}
+                    {SOURCE_LABELS[e.source] ?? e.source} ·{" "}
+                    {e.message.to === "recipient" ? "to the recipient" : "to the buyer"} · {e.buyer_phone}
                   </span>
                 </p>
                 <Button size="sm" className="gap-1" onClick={() => void send(e)}>

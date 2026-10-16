@@ -14,6 +14,8 @@ vi.mock("@/lib/social-orders", async () => {
 const summary: WhatsAppMessage = {
   kind: "order_summary",
   label: "Send order summary",
+  to: "buyer",
+  phone: "+447700900123",
   text: "Assalam-o-Alaikum! Order #1A2B3C4D",
   url: "https://wa.me/447700900123?text=hi",
   due: true,
@@ -40,7 +42,7 @@ describe("MessageQueue", () => {
     vi.mocked(socialOrdersApi.queue).mockResolvedValue([entry]);
     render(<MessageQueue token="tok" />);
     expect(await screen.findByText(/Send order summary/)).toBeInTheDocument();
-    expect(screen.getByText(/Instagram · \+447700900123/)).toBeInTheDocument();
+    expect(screen.getByText(/Instagram · to the buyer · \+447700900123/)).toBeInTheDocument();
   });
 
   it("opens WhatsApp, records the send and drops it from the list", async () => {
@@ -53,6 +55,18 @@ describe("MessageQueue", () => {
     expect(window.open).toHaveBeenCalledWith(summary.url, "_blank", "noopener,noreferrer");
     expect(socialOrdersApi.markSent).toHaveBeenCalledWith("o1", "order_summary", "tok");
     expect(await screen.findByText(/All caught up/)).toBeInTheDocument();
+  });
+
+  it("marks recipient messages as going to the recipient", async () => {
+    vi.mocked(socialOrdersApi.queue).mockResolvedValue([
+      {
+        ...entry,
+        buyer_phone: "+923001234567",
+        message: { ...summary, kind: "recipient_on_the_way", label: "Recipient: on its way", to: "recipient", phone: "+923001234567" },
+      },
+    ]);
+    render(<MessageQueue token="tok" />);
+    expect(await screen.findByText(/to the recipient · \+923001234567/)).toBeInTheDocument();
   });
 
   it("says when there is nothing to send", async () => {

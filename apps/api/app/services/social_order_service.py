@@ -53,6 +53,14 @@ _LABELS: dict[MessageKind, str] = {
     "delivered": "Delivered",
 }
 
+# Messages to the person receiving the gift (diaspora Release B), sent by hand
+# while the WhatsApp API is off. Same texts as the automatic ones: no prices,
+# order number or tracking link; only who it's from and their thank-you link.
+_RECIPIENT_LABELS: dict[MessageKind, str] = {
+    "recipient_on_the_way": "Recipient: on its way",
+    "recipient_delivered": "Recipient: delivered",
+}
+
 # Furthest delivery step reached → the message for it. Only the latest step is
 # due: nobody needs "dispatched" after "delivered".
 _STAGE_RANK = {
@@ -262,31 +270,87 @@ def _due_kinds(order: Order, now: datetime) -> set[MessageKind]:
     return due
 
 
-def messages_for(order: Order, now: datetime | None = None) -> list[WhatsAppMessageRead]:
-    """Every message staff can send for this order, with which are due now."""
-    phone = buyer_phone(order)
+def _recipient_kinds(order: Order) -> list[MessageKind]:
+    """Recipient messages that apply to this order. None while the WhatsApp API
+    sends them automatically, and no heads-up for a surprise."""
+    if get_settings().whatsapp_api_enabled:
+        return []
+    return ["recipient_delivered"] if order.surprise else ["recipient_on_the_way", "recipient_delivered"]
+
+
+def _recipient_due(order: Order, sent: dict[str, datetime]) -> set[MessageKind]:
+    if order.status in _CLOSED:
+        return set()
+    stage = max((_STAGE_RANK.get(f.status, 0) for f in order.fulfillments), default=0)
+    kind: MessageKind | None = (
+        "recipient_delivered" if stage == 3 else "recipient_on_the_way" if stage == 2 else None
+    )
+    return {kind} if kind and kind in _recipient_kinds(order) and kind not in sent else set()
+
+
+def _recipient_text(order: Order, kind: MessageKind) -> str:
+    from app.workers.notification_tasks import (
+        RECIPIENT_DELIVERED_TEMPLATE,
+        RECIPIENT_ON_THE_WAY_TEMPLATE,
+        RECIPIENT_SURPRISE_TEMPLATE,
+    )
+    from app.workers.outbox_worker import recipient_text
+
+    settings = get_settings()
+    f = order.fulfillments[0]
+    if kind == "recipient_on_the_way":
+        template = RECIPIENT_ON_THE_WAY_TEMPLATE
+    else:
+        template = RECIPIENT_SURPRISE_TEMPLATE if order.surprise else RECIPIENT_DELIVERED_TEMPLATE
+    payload = {
+        "recipient_name": f.recipient_name,
+        "gift_from": order.gift_from,
+        "has_note": any(i.note_key for i in order.items),
+        "thanks_token": str(f.thanks_token) if kind == "recipient_delivered" else None,
+    }
+    return recipient_text(template, payload, settings.brand_name, settings.frontend_url)
+
+
+def _wa_me(phone: str | None) -> str | None:
     if not phone:
-        return []
-    now = now or datetime.now(UTC)
-    due = _due_kinds(order, now)
-    sent = {m.kind: m.sent_at for m in order.manual_messages}
+        return None
     try:
-        digits = wa_me_digits(normalize_phone(phone))
+        return wa_me_digits(normalize_phone(phone))
     except InvalidPhoneError:
-        return []
-    out = []
-    for kind, label in _LABELS.items():
-        text = _text(order, kind)
-        out.append(
-            WhatsAppMessageRead(
-                kind=kind,
-                label=label,
-                text=text,
-                url=f"https://wa.me/{digits}?text={quote(text)}",
-                due=kind in due,
-                sent_at=sent.get(kind),
+        return None
+
+
+def messages_for(order: Order, now: datetime | None = None) -> list[WhatsAppMessageRead]:
+    """Every message staff can send for this order (to the buyer, and to the
+    recipient while the API is off), with which are due now."""
+    now = now or datetime.now(UTC)
+    sent = {m.kind: m.sent_at for m in order.manual_messages}
+    out: list[WhatsAppMessageRead] = []
+
+    buyer = buyer_phone(order)
+    if digits := _wa_me(buyer):
+        due = _due_kinds(order, now)
+        for kind, label in _LABELS.items():
+            text = _text(order, kind)
+            out.append(
+                WhatsAppMessageRead(
+                    kind=kind, label=label, to="buyer", phone=normalize_phone(buyer or ""), text=text,
+                    url=f"https://wa.me/{digits}?text={quote(text)}", due=kind in due, sent_at=sent.get(kind),
+                )
             )
-        )
+
+    recipient = order.fulfillments[0].recipient_phone if order.fulfillments else None
+    if digits := _wa_me(recipient):
+        due = _recipient_due(order, sent)
+        for kind in _recipient_kinds(order):
+            text = _recipient_text(order, kind)
+            out.append(
+                WhatsAppMessageRead(
+                    kind=kind, label=_RECIPIENT_LABELS[kind], to="recipient", phone=normalize_phone(recipient or ""),
+                    text=text, url=f"https://wa.me/{digits}?text={quote(text)}", due=kind in due,
+                    sent_at=sent.get(kind),
+                )
+            )
     return out
 
 
@@ -312,7 +376,10 @@ async def mark_sent(db: AsyncSession, staff: User, order_id: uuid.UUID, kind: Me
     # The loaded order's message list predates the insert; drop it so reload refetches.
     db.expire(order, ["manual_messages"])
     order = await repo.reload(order)
-    return next(m for m in messages_for(order) if m.kind == kind)
+    message = next((m for m in messages_for(order) if m.kind == kind), None)
+    if message is None:
+        raise _bad_request("That message doesn't apply to this order")
+    return message
 
 
 async def queue(db: AsyncSession, source: OrderSource | None = None) -> list[WhatsAppQueueEntry]:
@@ -323,9 +390,6 @@ async def queue(db: AsyncSession, source: OrderSource | None = None) -> list[Wha
     for order in reversed(orders):
         if source and order.source != source:
             continue
-        phone = buyer_phone(order)
-        if not phone:
-            continue
         for message in messages_for(order, now):
             if message.due:
                 entries.append(
@@ -333,7 +397,7 @@ async def queue(db: AsyncSession, source: OrderSource | None = None) -> list[Wha
                         order_id=order.id,
                         order_ref=order_ref(order),
                         source=OrderSource(order.source),
-                        buyer_phone=phone,
+                        buyer_phone=message.phone,
                         placed_at=order.placed_at,
                         message=message,
                     )
