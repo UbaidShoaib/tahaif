@@ -51,3 +51,27 @@ async def test_unsupported_type_rejected_before_upload(monkeypatch: pytest.Monke
         await s3_client.upload_proof("order-1", "evil.exe", b"MZ", "application/octet-stream")
 
     assert exc.value.status_code == 415
+
+
+@pytest.mark.asyncio
+async def test_product_image_goes_under_public_prefix(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(s3_client, "_upload_sync", lambda key, *_: f"https://cdn/{key}")
+
+    url = await s3_client.upload_product_image("prod-1", b"jpg-bytes", "image/jpeg")
+
+    assert url.startswith("https://cdn/products/prod-1/")
+    assert url.endswith(".jpg")
+
+
+@pytest.mark.asyncio
+async def test_product_image_rejects_non_photos() -> None:
+    with pytest.raises(HTTPException) as exc:
+        await s3_client.upload_product_image("prod-1", b"%PDF", "application/pdf")
+    assert exc.value.status_code == 415
+
+
+@pytest.mark.asyncio
+async def test_product_image_rejects_oversized_files() -> None:
+    with pytest.raises(HTTPException) as exc:
+        await s3_client.upload_product_image("prod-1", b"x" * (10 * 1024 * 1024 + 1), "image/png")
+    assert exc.value.status_code == 413

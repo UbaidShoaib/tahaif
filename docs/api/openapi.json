@@ -823,7 +823,7 @@
         "type": "object"
       },
       "AuthResponse": {
-        "description": "Returned by /login and /register \u2014 includes user so the client can hydrate state immediately.",
+        "description": "Returned by /login and /register — includes user so the client can hydrate state immediately.",
         "properties": {
           "access_token": {
             "title": "Access Token",
@@ -1016,6 +1016,40 @@
           "kind"
         ],
         "title": "Body_upload_application_document_api_v1_vendor_application_documents_post",
+        "type": "object"
+      },
+      "Body_upload_product_image_api_v1_products__slug__images_upload_post": {
+        "properties": {
+          "alt_text": {
+            "anyOf": [
+              {
+                "maxLength": 255,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "examples": [
+              "Red roses bouquet"
+            ],
+            "title": "Alt Text"
+          },
+          "file": {
+            "contentMediaType": "application/octet-stream",
+            "title": "File",
+            "type": "string"
+          },
+          "is_primary": {
+            "default": false,
+            "title": "Is Primary",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "file"
+        ],
+        "title": "Body_upload_product_image_api_v1_products__slug__images_upload_post",
         "type": "object"
       },
       "Body_upload_transfer_proof_api_v1_orders__order_id__proof_post": {
@@ -1880,7 +1914,7 @@
           },
           "fx_rate": {
             "default": "1",
-            "description": "PKR\u2192currency rate used for the charge",
+            "description": "PKR→currency rate used for the charge",
             "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
             "title": "Fx Rate",
             "type": "string"
@@ -2374,7 +2408,7 @@
         "type": "object"
       },
       "FxRatesRead": {
-        "description": "PKR\u2192currency rates buyers can currently be charged in (PKR is always 1).",
+        "description": "PKR→currency rates buyers can currently be charged in (PKR is always 1).",
         "properties": {
           "base": {
             "default": "PKR",
@@ -4899,7 +4933,7 @@
         "type": "object"
       },
       "VendorFulfillmentRead": {
-        "description": "Fulfillment enriched with order context \u2014 used in the vendor portal.",
+        "description": "Fulfillment enriched with order context — used in the vendor portal.",
         "properties": {
           "address_line1": {
             "title": "Address Line1",
@@ -9351,13 +9385,13 @@
             }
           },
           {
-            "description": "recommended (A\u2013Z), price_asc, price_desc or newest. Price uses the city's price when city_id is given.",
+            "description": "recommended (A–Z), price_asc, price_desc or newest. Price uses the city's price when city_id is given.",
             "in": "query",
             "name": "sort",
             "required": false,
             "schema": {
               "default": "recommended",
-              "description": "recommended (A\u2013Z), price_asc, price_desc or newest. Price uses the city's price when city_id is given.",
+              "description": "recommended (A–Z), price_asc, price_desc or newest. Price uses the city's price when city_id is given.",
               "enum": [
                 "recommended",
                 "price_asc",
@@ -9752,6 +9786,64 @@
           }
         ],
         "summary": "Add Product Image",
+        "tags": [
+          "catalog"
+        ]
+      }
+    },
+    "/api/v1/products/{slug}/images/upload": {
+      "post": {
+        "description": "Upload a product photo (JPEG/PNG/WebP, max 10 MB). It is stored publicly and\nadded to the product; the first photo becomes the main one.",
+        "operationId": "upload_product_image_api_v1_products__slug__images_upload_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_upload_product_image_api_v1_products__slug__images_upload_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductImageRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Upload Product Image",
         "tags": [
           "catalog"
         ]

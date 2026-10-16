@@ -11,6 +11,8 @@ import { apiFetch, ApiError } from "@/lib/api";
 
 type Option = { id: string; name: string };
 type Vendor = Option & { owner_user_id: string | null };
+const MAX_PHOTO_BYTES = 10 * 1024 * 1024;
+
 type CreatedProduct = { id: string; slug: string; name: string };
 
 export function slugify(name: string): string {
@@ -40,7 +42,9 @@ export function AddProductForm({ token }: { token: string }) {
   const [slugEdited, setSlugEdited] = useState(false);
   const [description, setDescription] = useState("");
   const [price, setPrice] = useState("");
-  const [imageUrl, setImageUrl] = useState("");
+  const [photo, setPhoto] = useState<File | null>(null);
+  // Remounts the file input on reset; a file input can't be cleared through state.
+  const [photoInputKey, setPhotoInputKey] = useState(0);
   const [cityIds, setCityIds] = useState<string[]>([]);
   const [deliveryFee, setDeliveryFee] = useState("0");
   const [leadTime, setLeadTime] = useState("24");
@@ -79,7 +83,7 @@ export function AddProductForm({ token }: { token: string }) {
 
   function reset() {
     setName(""); setSlug(""); setSlugEdited(false); setDescription("");
-    setPrice(""); setImageUrl(""); setCityIds([]); setCategoryId("");
+    setPrice(""); setPhoto(null); setPhotoInputKey((k) => k + 1); setCityIds([]); setCategoryId("");
   }
 
   async function submit(e: React.FormEvent) {
@@ -96,6 +100,7 @@ export function AddProductForm({ token }: { token: string }) {
     if (basePrice === null) return setError("Enter the price in whole rupees.");
     if (fee === null) return setError("Enter the delivery fee in whole rupees.");
     if (!Number.isInteger(lead) || lead < 0) return setError("Lead time must be a whole number of hours.");
+    if (photo && photo.size > MAX_PHOTO_BYTES) return setError("The photo is larger than 10 MB.");
 
     setSubmitting(true);
     let product: CreatedProduct | null = null;
@@ -112,9 +117,12 @@ export function AddProductForm({ token }: { token: string }) {
           base_price_pkr: basePrice,
         },
       });
-      if (imageUrl.trim()) {
-        const q = new URLSearchParams({ url: imageUrl.trim(), alt_text: name.trim(), is_primary: "true" });
-        await apiFetch(`/products/${product.slug}/images?${q.toString()}`, { method: "POST", token });
+      if (photo) {
+        const form = new FormData();
+        form.append("file", photo);
+        form.append("alt_text", name.trim());
+        form.append("is_primary", "true");
+        await apiFetch(`/products/${product.slug}/images/upload`, { method: "POST", token, body: form });
       }
       if (cityIds.length) {
         await apiFetch(`/products/${product.slug}/cities`, {
@@ -191,8 +199,11 @@ export function AddProductForm({ token }: { token: string }) {
         <FormField label="Price (Rs)" required>
           {(p) => <Input {...p} inputMode="numeric" value={price} onChange={(e) => setPrice(e.target.value)} />}
         </FormField>
-        <FormField label="Image URL" hint="Optional; becomes the main photo.">
-          {(p) => <Input {...p} type="url" value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} />}
+        <FormField label="Photo" hint="JPEG, PNG or WebP, up to 10 MB. Becomes the main photo.">
+          {(p) => (
+            <Input {...p} key={photoInputKey} type="file" accept="image/jpeg,image/png,image/webp"
+              onChange={(e) => setPhoto(e.target.files?.[0] ?? null)} />
+          )}
         </FormField>
       </div>
 

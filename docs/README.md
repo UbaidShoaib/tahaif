@@ -9,6 +9,7 @@
 | [decisions/](decisions/) | Architecture Decision Records (ADRs) |
 | [decisions/0009-social-orders-manual-whatsapp.md](decisions/0009-social-orders-manual-whatsapp.md) | Instagram/WhatsApp orders entered by staff through checkout; buyer confirms on the order link; WhatsApp sent by hand via `wa.me` + admin queue |
 | [decisions/0010-card-note-safety.md](decisions/0010-card-note-safety.md) | Card voice/video notes: consent before upload, public report link, admin review/take-down, play/report rate limits, 90-day expiry after delivery |
+| [decisions/0011-public-product-images.md](decisions/0011-public-product-images.md) | Product photos uploaded to `products/` in the media bucket, the only publicly readable prefix |
 | [questions.md](questions.md) | Open questions with defaults (legal review of card-note rules, retention) |
 | [whatsapp-order-sop.md](whatsapp-order-sop.md) | SOP for staff taking orders in Instagram DMs and WhatsApp |
 | [compliance-social-orders.md](compliance-social-orders.md) | Compliance note: WhatsApp policy, PECA, consumer protection, GDPR/PECR, PCI for chat orders |

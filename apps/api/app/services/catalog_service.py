@@ -1,10 +1,10 @@
 import uuid
 
 import structlog
-from fastapi import HTTPException, status
+from fastapi import HTTPException, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.integrations import meilisearch_client
+from app.integrations import meilisearch_client, s3_client
 from app.models.catalog import (
     Category,
     City,
@@ -379,6 +379,34 @@ async def add_product_image(
     if not vendor or not _owns_vendor(user, vendor):
         raise _FORBIDDEN
 
+    return await _attach_image(repo, product, url, alt_text, is_primary)
+
+
+async def upload_product_image(
+    db: AsyncSession,
+    slug: str,
+    file: UploadFile,
+    alt_text: str | None,
+    is_primary: bool,
+    user: User,
+) -> ProductImage:
+    """Store an uploaded photo in object storage and attach it to the product."""
+    repo = ProductRepository(db)
+    product = await repo.get_by_slug(slug)
+    if not product:
+        raise _NOT_FOUND("Product")
+
+    vendor = await VendorRepository(db).get_by_id(product.vendor_id)
+    if not vendor or not _owns_vendor(user, vendor):
+        raise _FORBIDDEN
+
+    url = await s3_client.upload_product_image(str(product.id), await file.read(), file.content_type or "")
+    return await _attach_image(repo, product, url, alt_text, is_primary)
+
+
+async def _attach_image(
+    repo: ProductRepository, product: Product, url: str, alt_text: str | None, is_primary: bool
+) -> ProductImage:
     sort_order = len(product.images)
     return await repo.add_image(
         product.id,

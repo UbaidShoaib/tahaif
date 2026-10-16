@@ -456,6 +456,42 @@ async def test_add_and_remove_product_image(db: AsyncSession) -> None:
     assert exc_info.value.status_code == 404
 
 
+@pytest.mark.asyncio
+async def test_upload_product_image_stores_and_attaches(
+    db: AsyncSession, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import io
+
+    from fastapi import HTTPException, UploadFile
+    from starlette.datastructures import Headers
+
+    from app.integrations import s3_client
+
+    async def _fake_upload(product_id: str, data: bytes, content_type: str) -> str:
+        return f"https://media.example/products/{product_id}/x.png"
+
+    monkeypatch.setattr(s3_client, "upload_product_image", _fake_upload)
+    owner = await _user(db, UserRole.vendor)
+    stranger = await _user(db, UserRole.vendor)
+    city = await CityRepository(db).create(name="U", slug=f"u-{uuid.uuid4().hex[:4]}", timezone="UTC")
+    vendor = await VendorRepository(db).create(
+        city_id=city.id, owner_user_id=owner.id, name="VU", slug=f"vu-{uuid.uuid4().hex[:4]}"
+    )
+    slug = f"pu-{uuid.uuid4().hex[:4]}"
+    product = await ProductRepository(db).create(vendor_id=vendor.id, name="PU", slug=slug, base_price_pkr=100)
+
+    def _file() -> UploadFile:
+        return UploadFile(io.BytesIO(b"png"), filename="a.png", headers=Headers({"content-type": "image/png"}))
+
+    image = await catalog_service.upload_product_image(db, slug, _file(), "Roses", False, owner)
+    assert image.url == f"https://media.example/products/{product.id}/x.png"
+    assert image.is_primary is True
+    assert image.alt_text == "Roses"
+
+    with pytest.raises(HTTPException) as exc_info:
+        await catalog_service.upload_product_image(db, slug, _file(), None, False, stranger)
+    assert exc_info.value.status_code == 403
+
 # ── Occasion service ──────────────────────────────────────────────────────────
 
 @pytest.mark.asyncio

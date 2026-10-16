@@ -1,6 +1,7 @@
 import uuid
+from typing import Annotated
 
-from fastapi import APIRouter, Query, Response, status
+from fastapi import APIRouter, Form, Query, Response, UploadFile, status
 
 from app.core.deps import DB, CurrentUser
 from app.schemas.catalog import (
@@ -180,6 +181,25 @@ async def add_product_image(
     is_primary: bool = Query(default=False),  # noqa: B008
 ) -> ProductImageRead:
     image = await catalog_service.add_product_image(db, slug, url, alt_text, is_primary, user)
+    return ProductImageRead.model_validate(image)
+
+
+@router.post(
+    "/products/{slug}/images/upload",
+    response_model=ProductImageRead,
+    status_code=status.HTTP_201_CREATED,
+)
+async def upload_product_image(
+    slug: str,
+    file: UploadFile,
+    db: DB,
+    user: CurrentUser,
+    alt_text: Annotated[str | None, Form(max_length=255, examples=["Red roses bouquet"])] = None,
+    is_primary: Annotated[bool, Form()] = False,
+) -> ProductImageRead:
+    """Upload a product photo (JPEG/PNG/WebP, max 10 MB). It is stored publicly and
+    added to the product; the first photo becomes the main one."""
+    image = await catalog_service.upload_product_image(db, slug, file, alt_text, is_primary, user)
     return ProductImageRead.model_validate(image)
 
 

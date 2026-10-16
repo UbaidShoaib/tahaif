@@ -1,6 +1,7 @@
 """S3 / MinIO object storage client (sync boto3 wrapped in asyncio.to_thread)."""
 
 import asyncio
+import uuid
 from pathlib import PurePosixPath
 
 import boto3
@@ -178,6 +179,36 @@ async def upload_thanks_media(order_id: str, fulfillment_id: str, data: bytes, c
     await logger.ainfo("s3_thanks_uploaded", order_id=order_id, key=key)
     return key
 
+
+PRODUCT_IMAGE_PREFIX = "products/"
+
+
+async def upload_product_image(product_id: str, data: bytes, content_type: str) -> str:
+    """Upload a catalog photo; returns its public URL. Only products/ is anonymously
+    readable (minio-init, ADR 0011); everything else in the bucket stays private."""
+    ext = _PHOTO_MIME_TYPES.get(content_type)
+    if ext is None:
+        raise HTTPException(
+            status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+            detail="Upload a JPEG, PNG or WebP photo",
+        )
+    if len(data) > _MAX_FILE_SIZE:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail="File exceeds 10 MB limit",
+        )
+    # A fresh name per upload, so a replaced photo is never served stale from a cache.
+    key = f"{PRODUCT_IMAGE_PREFIX}{product_id}/{uuid.uuid4().hex}{ext}"
+    try:
+        url = await asyncio.to_thread(_upload_sync, key, data, content_type)
+    except (BotoCoreError, ClientError) as exc:
+        await logger.aexception("s3_product_image_upload_failed", product_id=product_id, key=key, error=str(exc))
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Photo storage is unavailable right now. Please try again shortly.",
+        ) from exc
+    await logger.ainfo("s3_product_image_uploaded", product_id=product_id, key=key)
+    return url
 
 _PROOF_PREFIX = "proofs/"
 SIGNED_URL_TTL_SECS = 15 * 60

@@ -10,7 +10,8 @@
 		reverse_proxy api:8000
 	}
 
-	# Private bucket: only links signed by the API are readable.
+	# Private bucket: only links signed by the API are readable, except
+	# products/ (catalog photos), which is public (ADR 0011).
 	@media path /{$S3_BUCKET_NAME}/*
 	handle @media {
 		reverse_proxy minio:9000

@@ -8,6 +8,9 @@ pre-production-cutover).
 ## [Unreleased]
 
 ### Added
+- Admin "Add product" tab: create a live product (house vendor preselected) with a photo upload
+  and delivery cities. API: `POST /products/{slug}/images/upload` (JPEG/PNG/WebP, 10 MB);
+  photos live under the public `products/` prefix of the media bucket (ADR 0011).
 - Urdu versions of all hand-sent WhatsApp messages (buyer and recipient), with an
   English/اردو toggle in "Messages to send" and on each order; API adds `text_ur`/`url_ur`.
 - Order tracking items include `product_image_url` (the product's primary photo); the tracking

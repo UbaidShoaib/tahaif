@@ -50,7 +50,8 @@ describe("AddProductForm", () => {
 
     await userEvent.type(screen.getByLabelText(/Product name/), "Red Roses");
     await userEvent.type(screen.getByLabelText(/Price/), "2500");
-    await userEvent.type(screen.getByLabelText(/Image URL/), "https://img.example/roses.jpg");
+    const photo = new File(["img"], "roses.jpg", { type: "image/jpeg" });
+    await userEvent.upload(screen.getByLabelText(/Photo/), photo);
     await userEvent.click(screen.getByLabelText("Lahore"));
     await userEvent.click(screen.getByRole("button", { name: /Add product/ }));
 
@@ -67,10 +68,11 @@ describe("AddProductForm", () => {
         base_price_pkr: 250000,
       },
     });
-    expect(apiFetch).toHaveBeenCalledWith(
-      expect.stringMatching(/^\/products\/red-roses\/images\?url=https%3A%2F%2Fimg\.example%2Froses\.jpg/),
-      { method: "POST", token: "tok" },
-    );
+    const upload = vi.mocked(apiFetch).mock.calls.find(([path]) => path === "/products/red-roses/images/upload");
+    const form = upload?.[1]?.body as FormData;
+    expect(form.get("file")).toBe(photo);
+    expect(form.get("alt_text")).toBe("Red Roses");
+    expect(form.get("is_primary")).toBe("true");
     expect(apiFetch).toHaveBeenCalledWith("/products/red-roses/cities", {
       method: "PUT",
       token: "tok",
