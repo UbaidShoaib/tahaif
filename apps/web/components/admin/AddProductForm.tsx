@@ -53,9 +53,9 @@ export function AddProductForm({ token }: { token: string }) {
     void (async () => {
       try {
         const [v, c, ci] = await Promise.all([
-          apiFetch<Vendor[]>("/catalog/vendors", { token }),
-          apiFetch<Option[]>("/catalog/categories", { token }),
-          apiFetch<Option[]>("/catalog/cities", { token }),
+          apiFetch<Vendor[]>("/vendors", { token }),
+          apiFetch<Option[]>("/categories", { token }),
+          apiFetch<Option[]>("/cities", { token }),
         ]);
         setVendors(v);
         setCategories(c);
@@ -100,7 +100,7 @@ export function AddProductForm({ token }: { token: string }) {
     setSubmitting(true);
     let product: CreatedProduct | null = null;
     try {
-      product = await apiFetch<CreatedProduct>("/catalog/products", {
+      product = await apiFetch<CreatedProduct>("/products", {
         method: "POST",
         token,
         body: {
@@ -114,10 +114,10 @@ export function AddProductForm({ token }: { token: string }) {
       });
       if (imageUrl.trim()) {
         const q = new URLSearchParams({ url: imageUrl.trim(), alt_text: name.trim(), is_primary: "true" });
-        await apiFetch(`/catalog/products/${product.slug}/images?${q.toString()}`, { method: "POST", token });
+        await apiFetch(`/products/${product.slug}/images?${q.toString()}`, { method: "POST", token });
       }
       if (cityIds.length) {
-        await apiFetch(`/catalog/products/${product.slug}/cities`, {
+        await apiFetch(`/products/${product.slug}/cities`, {
           method: "PUT",
           token,
           body: cityIds.map((city_id) => ({ city_id, delivery_fee_pkr: fee, lead_time_hours: lead })),

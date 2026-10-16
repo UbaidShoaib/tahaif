@@ -19,10 +19,10 @@ const cities = [{ id: "lhr", name: "Lahore" }];
 
 function mockLists() {
   vi.mocked(apiFetch).mockImplementation((path: string) => {
-    if (path === "/catalog/vendors") return Promise.resolve(vendors);
-    if (path === "/catalog/categories") return Promise.resolve(categories);
-    if (path === "/catalog/cities") return Promise.resolve(cities);
-    if (path === "/catalog/products") return Promise.resolve({ id: "p1", slug: "red-roses", name: "Red Roses" });
+    if (path === "/vendors") return Promise.resolve(vendors);
+    if (path === "/categories") return Promise.resolve(categories);
+    if (path === "/cities") return Promise.resolve(cities);
+    if (path === "/products") return Promise.resolve({ id: "p1", slug: "red-roses", name: "Red Roses" });
     return Promise.resolve({});
   });
 }
@@ -55,7 +55,7 @@ describe("AddProductForm", () => {
     await userEvent.click(screen.getByRole("button", { name: /Add product/ }));
 
     expect(await screen.findByText(/“Red Roses” is live/)).toBeInTheDocument();
-    expect(apiFetch).toHaveBeenCalledWith("/catalog/products", {
+    expect(apiFetch).toHaveBeenCalledWith("/products", {
       method: "POST",
       token: "tok",
       body: {
@@ -68,10 +68,10 @@ describe("AddProductForm", () => {
       },
     });
     expect(apiFetch).toHaveBeenCalledWith(
-      expect.stringMatching(/^\/catalog\/products\/red-roses\/images\?url=https%3A%2F%2Fimg\.example%2Froses\.jpg/),
+      expect.stringMatching(/^\/products\/red-roses\/images\?url=https%3A%2F%2Fimg\.example%2Froses\.jpg/),
       { method: "POST", token: "tok" },
     );
-    expect(apiFetch).toHaveBeenCalledWith("/catalog/products/red-roses/cities", {
+    expect(apiFetch).toHaveBeenCalledWith("/products/red-roses/cities", {
       method: "PUT",
       token: "tok",
       body: [{ city_id: "lhr", delivery_fee_pkr: 0, lead_time_hours: 24 }],
@@ -88,7 +88,7 @@ describe("AddProductForm", () => {
     await userEvent.click(screen.getByRole("button", { name: /Add product/ }));
 
     expect(await screen.findByText(/whole rupees/)).toBeInTheDocument();
-    expect(apiFetch).not.toHaveBeenCalledWith("/catalog/products", expect.anything());
+    expect(apiFetch).not.toHaveBeenCalledWith("/products", expect.anything());
   });
 
   it("reports a duplicate URL name", async () => {
