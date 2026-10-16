@@ -8,6 +8,20 @@ pre-production-cutover).
 ## [Unreleased]
 
 ### Added
+- Instagram/WhatsApp orders (ADR 0009). Admin panel **New DM order** places an order for a
+  chat customer through normal checkout (`POST /admin/orders/assisted`): email optional,
+  phones normalised to E.164, duplicate guard (409 / `allow_duplicate`), no COD for
+  surprises, `Idempotency-Key`. Orders record `source`, `source_ref`, `campaign`,
+  `created_by_staff_id`. The buyer confirms on `/track/{token}`
+  (`POST /orders/by-token/{token}/confirm`): accepts terms, can fix recipient details,
+  optional marketing opt-in. Bank-transfer orders show bank details and receipt upload there.
+  **Messages to send** queue (`GET /admin/whatsapp/queue`) and per-order WhatsApp buttons
+  open prefilled `wa.me` chats and record the send (`order_messages`). Migration `0016`.
+  SOP, compliance note and integration options in `docs/`.
+
+### Changed
+- Automatic WhatsApp is off unless `WHATSAPP_API_ENABLED=true` (the Twilio sandbox
+  sender can't reach real customers); email and the tracking page are unaffected.
 - Shops join by application (ADR 0008): a signed-in user applies at `/sell`
   (`POST /vendor/application`, status at `GET /vendor/application`); the shop stays hidden
   until staff approve it in the admin panel's new "Shop applications" section
