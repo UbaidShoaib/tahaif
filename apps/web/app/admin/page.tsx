@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Package, CheckCircle, XCircle, Eye, RefreshCw } from "lucide-react";
 import { HiddenProducts } from "@/components/admin/HiddenProducts";
 import { VendorApplications } from "@/components/admin/VendorApplications";
+import { NoteReports } from "@/components/admin/NoteReports";
 import { AssistedOrderForm } from "@/components/admin/AssistedOrderForm";
 import { MessageQueue } from "@/components/admin/MessageQueue";
 import { CampaignReport } from "@/components/admin/CampaignReport";
@@ -48,7 +49,7 @@ const ORDER_STATUSES = [
   "out_for_delivery", "delivered", "completed", "cancelled", "on_hold",
 ];
 
-type Section = "orders" | "new-order" | "messages" | "campaigns" | "applications" | "products";
+type Section = "orders" | "new-order" | "messages" | "campaigns" | "applications" | "products" | "note-reports";
 const SECTIONS: { key: Section; label: string }[] = [
   { key: "orders", label: "Orders" },
   { key: "new-order", label: "New DM order" },
@@ -56,6 +57,7 @@ const SECTIONS: { key: Section; label: string }[] = [
   { key: "campaigns", label: "Sales by campaign" },
   { key: "applications", label: "Shop applications" },
   { key: "products", label: "Hidden products" },
+  { key: "note-reports", label: "Reported notes" },
 ];
 
 export default function AdminDashboard() {
@@ -165,6 +167,7 @@ export default function AdminDashboard() {
 
       {section === "applications" && token && <VendorApplications token={token} />}
       {section === "products" && token && <HiddenProducts token={token} />}
+      {section === "note-reports" && token && <NoteReports token={token} />}
       {section === "new-order" && token && <AssistedOrderForm token={token} />}
       {section === "messages" && token && <MessageQueue token={token} />}
       {section === "campaigns" && token && <CampaignReport token={token} />}

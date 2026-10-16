@@ -8,6 +8,14 @@ pre-production-cutover).
 ## [Unreleased]
 
 ### Added
+- Card voice notes can be recorded in the browser ("Record a voice note", up to 2 minutes);
+  uploading a file still works.
+- Card-note safety (ADR 0010): buyers tick the content rules (`/terms#card-notes`) before adding
+  a note, and the API stores when and from which IP they agreed. A "Report this message" link on
+  the note page writes to `card_note_reports`. Playing a note is rate-limited (60/hour/IP) and
+  notes stop playing 90 days after delivery (`NOTE_EXPIRY_DAYS`). Migration `0017`.
+- Admin "Reported notes" tab: listen to a reported note, see the reports and the buyer's consent
+  record, then take the note down (QR stops playing, recording kept), dismiss, or restore.
 - Recipient WhatsApp messages in the manual "Messages to send" queue while
   `WHATSAPP_API_ENABLED=false`: "on its way" (skipped for surprises) and "delivered" /
   surprise reveal with the thank-you link. Messages now say who they go to (`to`, `phone`).

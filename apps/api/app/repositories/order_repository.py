@@ -9,6 +9,7 @@ from sqlalchemy.sql import Select
 
 from app.models.catalog import City
 from app.models.order import (
+    CardNoteReport,
     Fulfillment,
     FulfillmentStatus,
     Order,
@@ -184,10 +185,48 @@ class OrderRepository:
     async def get_item_by_note_token(self, token: uuid.UUID) -> OrderItem | None:
         result = await self._db.execute(
             select(OrderItem)
-            .options(selectinload(OrderItem.product), selectinload(OrderItem.order))
+            .options(
+                selectinload(OrderItem.product),
+                selectinload(OrderItem.order),
+                selectinload(OrderItem.fulfillment),
+            )
             .where(OrderItem.note_token == token)
         )
         return result.scalar_one_or_none()
+
+    async def get_note_report(self, item_id: uuid.UUID, reporter_ip: str) -> CardNoteReport | None:
+        result = await self._db.execute(
+            select(CardNoteReport).where(
+                CardNoteReport.order_item_id == item_id, CardNoteReport.reporter_ip == reporter_ip
+            )
+        )
+        return result.scalar_one_or_none()
+
+    async def list_note_reports(self, item_id: uuid.UUID | None = None) -> list[CardNoteReport]:
+        query = select(CardNoteReport).options(
+            selectinload(CardNoteReport.order_item).selectinload(OrderItem.product),
+            selectinload(CardNoteReport.order_item).selectinload(OrderItem.order),
+        )
+        if item_id is not None:
+            query = query.where(CardNoteReport.order_item_id == item_id)
+        result = await self._db.execute(query.order_by(CardNoteReport.created_at.desc()).limit(1000))
+        return list(result.scalars().all())
+
+    async def get_item_with_note_reports(self, item_id: uuid.UUID) -> OrderItem | None:
+        """An order item that has at least one note report (what the admin may act on)."""
+        result = await self._db.execute(
+            select(OrderItem).where(
+                OrderItem.id == item_id,
+                select(CardNoteReport.id).where(CardNoteReport.order_item_id == item_id).exists(),
+            )
+        )
+        return result.scalar_one_or_none()
+
+    async def add_note_report(self, **kwargs: object) -> CardNoteReport:
+        report = CardNoteReport(**kwargs)
+        self._db.add(report)
+        await self._db.flush()
+        return report
 
     async def get_fulfillment_by_thanks_token(self, token: uuid.UUID) -> Fulfillment | None:
         result = await self._db.execute(

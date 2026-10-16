@@ -215,6 +215,16 @@ class OrderItem(UUIDPrimaryKeyMixin, Base):
     note_key: Mapped[str | None] = mapped_column(Text, nullable=True)
     note_content_type: Mapped[str | None] = mapped_column(String(100), nullable=True)
     note_token: Mapped[uuid.UUID | None] = mapped_column(nullable=True, unique=True, index=True)
+    # When and from where the buyer agreed to the content rules for this note
+    # (our record if a note is ever reported).
+    note_consent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    note_consent_ip: Mapped[str | None] = mapped_column(String(45), nullable=True)
+    # Staff took the note down after a report. The file and key are kept as
+    # evidence; the QR link just stops playing it.
+    note_disabled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    note_disabled_by: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
 
     order: Mapped["Order"] = relationship(back_populates="items")
     fulfillment: Mapped["Fulfillment | None"] = relationship(
@@ -315,3 +325,28 @@ class OrderMessage(UUIDPrimaryKeyMixin, Base):
     sent_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
 
     order: Mapped["Order"] = relationship(back_populates="manual_messages")
+
+
+class CardNoteReport(UUIDPrimaryKeyMixin, Base):
+    """Someone who opened a card note reported it (abusive, unwanted, ...).
+
+    Kept even if the note is later removed: it's the record we act on and may
+    have to hand to the PTA/FIA. One report per (item, IP).
+    """
+
+    __tablename__ = "card_note_reports"
+    __table_args__ = (UniqueConstraint("order_item_id", "reporter_ip", name="uq_card_note_reports_item_ip"),)
+
+    order_item_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("order_items.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    reason: Mapped[str] = mapped_column(String(40), nullable=False)
+    details: Mapped[str | None] = mapped_column(Text, nullable=True)
+    reporter_ip: Mapped[str] = mapped_column(String(45), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
+    # open → note_disabled (staff took it down) or dismissed (nothing wrong).
+    status: Mapped[str] = mapped_column(String(20), default="open", server_default="open", nullable=False, index=True)
+    resolved_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    order_item: Mapped["OrderItem"] = relationship()

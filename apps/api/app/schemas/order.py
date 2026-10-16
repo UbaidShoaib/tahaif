@@ -1,6 +1,7 @@
 import uuid
 from datetime import date, datetime
 from decimal import Decimal
+from typing import Literal
 
 from pydantic import BaseModel, EmailStr, Field
 
@@ -126,6 +127,41 @@ class CardNoteRead(BaseModel):
     content_type: str = Field(examples=["video/mp4"])
     greeting_message: str | None
     product_name: str
+
+
+NoteReportReason = Literal["abusive", "threatening", "sexual", "hateful", "unwanted", "other"]
+
+
+class NoteReportRead(BaseModel):
+    id: uuid.UUID
+    reason: str = Field(examples=["abusive"])
+    details: str | None
+    status: str = Field(examples=["open"], description="open | note_disabled | dismissed")
+    created_at: datetime
+
+
+class ReportedNoteRead(BaseModel):
+    """Admin: a reported card note with everything needed to decide on it."""
+
+    item_id: uuid.UUID
+    order_id: uuid.UUID
+    public_token: uuid.UUID = Field(description="Opens the order's tracking page")
+    product_name: str
+    greeting_message: str | None
+    content_type: str | None
+    media_url: str | None = Field(description="Short-lived signed link so staff can listen")
+    consent_at: datetime | None
+    consent_ip: str | None
+    disabled_at: datetime | None
+    last_reported_at: datetime
+    reports: list[NoteReportRead]
+
+
+class CardNoteReportCreate(BaseModel):
+    """A report from someone who opened a card note."""
+
+    reason: NoteReportReason = Field(examples=["abusive"])
+    details: str | None = Field(default=None, max_length=1000, examples=["I don't know the sender"])
 
 
 class OrderRead(BaseModel):

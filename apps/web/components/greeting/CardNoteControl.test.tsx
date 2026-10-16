@@ -25,6 +25,8 @@ const item = (overrides: Partial<OrderItemRead> = {}): OrderItemRead => ({
   ...overrides,
 });
 
+const accept = () => userEvent.click(screen.getByRole("checkbox", { name: /follows the content rules/ }));
+
 const voice = () => new File(["x"], "note.m4a", { type: "audio/mp4" });
 
 describe("CardNoteControl", () => {
@@ -36,11 +38,12 @@ describe("CardNoteControl", () => {
   it("uploads a recording for the card", async () => {
     vi.mocked(notesApi.attach).mockResolvedValue(undefined);
     render(<CardNoteControl publicToken="tok" item={item()} />);
+    await accept();
 
     const file = voice();
     await userEvent.upload(screen.getByLabelText("Voice or video note for Fudge Cake"), file);
 
-    expect(notesApi.attach).toHaveBeenCalledWith("tok", "i-1", file);
+    expect(notesApi.attach).toHaveBeenCalledWith("tok", "i-1", file, true);
     expect(await screen.findByText("Your note will play from a QR code on the card")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Replace note" })).toBeInTheDocument();
   });
@@ -84,5 +87,52 @@ describe("CardNoteControl", () => {
 
     expect(screen.getByText("A voice/video note is on the card")).toBeInTheDocument();
     expect(screen.queryByRole("button")).not.toBeInTheDocument();
+  });
+
+  it("records a voice note in the browser and uploads it", async () => {
+    class FakeRecorder {
+      static isTypeSupported = (t: string) => t === "audio/webm";
+      mimeType = "audio/webm;codecs=opus";
+      state = "inactive";
+      ondataavailable: ((e: { data: Blob }) => void) | null = null;
+      onstop: (() => void) | null = null;
+      start() { this.state = "recording"; }
+      stop() {
+        this.state = "inactive";
+        this.ondataavailable?.({ data: new Blob(["audio"]) });
+        this.onstop?.();
+      }
+    }
+    const track = { stop: vi.fn() };
+    vi.stubGlobal("MediaRecorder", FakeRecorder);
+    Object.defineProperty(navigator, "mediaDevices", {
+      configurable: true,
+      value: { getUserMedia: vi.fn().mockResolvedValue({ getTracks: () => [track] }) },
+    });
+    vi.mocked(notesApi.attach).mockResolvedValue(undefined);
+    render(<CardNoteControl publicToken="tok" item={item()} />);
+    await accept();
+
+    await userEvent.click(await screen.findByRole("button", { name: "Record a voice note" }));
+    await userEvent.click(await screen.findByRole("button", { name: /Stop & save/ }));
+
+    const file = vi.mocked(notesApi.attach).mock.calls[0][2];
+    expect(file.type).toBe("audio/webm");
+    expect(file.name).toBe("voice-note.webm");
+    expect(track.stop).toHaveBeenCalled();
+    expect(await screen.findByText("Your note will play from a QR code on the card")).toBeInTheDocument();
+    vi.unstubAllGlobals();
+    Reflect.deleteProperty(navigator, "mediaDevices");
+  });
+
+  it("asks the buyer to accept the content rules before adding a note", async () => {
+    render(<CardNoteControl publicToken="tok" item={item()} />);
+
+    const add = screen.getByRole("button", { name: "Add a voice or video note" });
+    expect(add).toBeDisabled();
+    expect(screen.getByRole("link", { name: "content rules" })).toHaveAttribute("href", "/terms#card-notes");
+
+    await accept();
+    expect(add).toBeEnabled();
   });
 });

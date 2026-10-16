@@ -337,3 +337,15 @@ while `REQUIRE_VERIFIED_EMAIL_FOR_CHECKOUT=true`.
 
 Until a domain is verified, `REQUIRE_VERIFIED_EMAIL_FOR_CHECKOUT=false` keeps
 signed-in checkout open.
+
+## Card note reports
+
+Reported voice/video notes appear in **Admin → Reported notes** (log event `card_note_reported`).
+For each note, listen to it and read the reports, then:
+
+- **Take note down**: the card's QR link stops playing it. The recording and reports are kept as evidence, and
+  the buyer can't undo it by uploading again. **Restore note** reverses it.
+- **Nothing wrong, dismiss**: closes the reports; the note keeps playing.
+
+Aim to act within 24 hours. Treat PTA/FIA requests as urgent: take the note down first, then send them the
+recording, the reports and the buyer's consent record (time and IP, shown on the card).

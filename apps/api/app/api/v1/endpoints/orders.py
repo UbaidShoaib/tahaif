@@ -4,12 +4,14 @@ from typing import Annotated
 
 from fastapi import APIRouter, Form, Header, Query, Request, UploadFile, status
 
+from app.core.client_ip import client_ip
 from app.core.deps import DB, CurrentUser
 from app.core.guest import OptionalUser
 from app.core.rate_limit import limiter
 from app.models.order import PaymentMethod
 from app.schemas.order import (
     CardNoteRead,
+    CardNoteReportCreate,
     CheckoutPlace,
     CheckoutQuote,
     OrderRead,
@@ -125,16 +127,20 @@ async def confirm_order(
 )
 @limiter.limit("10/hour")
 async def attach_card_note(
-    request: Request,  # noqa: ARG001 — required by slowapi
+    request: Request,
     public_token: uuid.UUID,
     item_id: uuid.UUID,
     file: UploadFile,
     db: DB,
+    accepted_terms: Annotated[bool, Form(description="Buyer confirms the note follows the content rules")] = False,
 ) -> None:
     """Attach (or replace) a voice/video note for this item's card: audio or video,
     max 25 MB. Allowed until the gift is dispatched. The order's public token
-    (from the confirmation/tracking link) authorises it."""
-    await note_service.attach_note(db, public_token, item_id, file)
+    (from the confirmation/tracking link) authorises it. `accepted_terms` must be
+    true; the time and IP of that consent are stored with the note."""
+    await note_service.attach_note(
+        db, public_token, item_id, file, accepted_terms=accepted_terms, client_ip=client_ip(request)
+    )
 
 
 @router.delete(
@@ -147,9 +153,24 @@ async def remove_card_note(public_token: uuid.UUID, item_id: uuid.UUID, db: DB) 
 
 
 @router.get("/notes/{note_token}", response_model=CardNoteRead)
-async def play_card_note(note_token: uuid.UUID, db: DB) -> CardNoteRead:
-    """Public: what the recipient opens from the QR code on the printed card."""
+@limiter.limit("60/hour")
+async def play_card_note(
+    request: Request,  # noqa: ARG001 — required by slowapi
+    note_token: uuid.UUID,
+    db: DB,
+) -> CardNoteRead:
+    """Public: what the recipient opens from the QR code on the printed card.
+    404 once the note is removed or note_expiry_days after delivery.
+    Rate-limited per IP so tokens can't be guessed at speed."""
     return await note_service.get_note(db, note_token)
+
+
+@router.post("/notes/{note_token}/report", status_code=status.HTTP_204_NO_CONTENT)
+@limiter.limit("5/hour")
+async def report_card_note(request: Request, note_token: uuid.UUID, body: CardNoteReportCreate, db: DB) -> None:
+    """Public: report a card note (abusive, unwanted, ...). No login: whoever has
+    the card's link can report it. One report per note per IP; repeats are no-ops."""
+    await note_service.report_note(db, note_token, body, client_ip(request))
 
 
 # ── Recipient thank-you (diaspora Release B) ─────────────────────────────────

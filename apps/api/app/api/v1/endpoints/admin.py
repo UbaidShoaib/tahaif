@@ -17,6 +17,7 @@ from app.models.user import User, UserRole
 from app.repositories.loyalty_repository import CouponRepository
 from app.repositories.order_repository import OrderRepository
 from app.repositories.user_repository import UserRepository
+from app.schemas.order import ReportedNoteRead
 from app.schemas.report import CampaignSalesReport
 from app.schemas.social_order import (
     AssistedOrderCreate,
@@ -32,6 +33,7 @@ from app.schemas.vendor import (
 )
 from app.services import (
     catalog_service,
+    note_service,
     proof_service,
     report_service,
     social_order_service,
@@ -201,6 +203,38 @@ async def campaign_sales_report(
     """Sales by channel and reel/campaign over the last `days` days. "Paid" means the
     order moved past payment; revenue counts only those. Cancelled/refunded excluded."""
     return await report_service.campaign_sales(db, days)
+
+
+# ── Card note reports (ADR 0010) ──────────────────────────────────────────────
+
+@router.get("/note-reports", response_model=list[ReportedNoteRead])
+async def list_note_reports(
+    _admin: AdminUser,
+    db: DB,
+    status: Annotated[str, Query(pattern="^(open|all)$")] = "open",
+) -> list[ReportedNoteRead]:
+    """Reported voice/video notes, most recently reported first. `status=open` (default)
+    is the review queue; `all` includes notes already handled."""
+    return await note_service.list_reported_notes(db, status)
+
+
+@router.post("/note-reports/{item_id}/disable", status_code=status.HTTP_204_NO_CONTENT)
+async def disable_reported_note(item_id: uuid.UUID, admin: AdminUser, db: DB) -> None:
+    """Take the note down: the card's QR link stops playing it. The recording is kept
+    as evidence. Closes the open reports as `note_disabled`."""
+    await note_service.resolve_reports(db, admin, item_id, disable=True)
+
+
+@router.post("/note-reports/{item_id}/dismiss", status_code=status.HTTP_204_NO_CONTENT)
+async def dismiss_note_reports(item_id: uuid.UUID, admin: AdminUser, db: DB) -> None:
+    """Nothing wrong with the note: close its open reports as `dismissed`."""
+    await note_service.resolve_reports(db, admin, item_id, disable=False)
+
+
+@router.post("/note-reports/{item_id}/restore", status_code=status.HTTP_204_NO_CONTENT)
+async def restore_reported_note(item_id: uuid.UUID, admin: AdminUser, db: DB) -> None:
+    """Undo a take-down: the QR link plays the note again."""
+    await note_service.restore_note(db, admin, item_id)
 
 
 # ── Vendor applications ───────────────────────────────────────────────────────
