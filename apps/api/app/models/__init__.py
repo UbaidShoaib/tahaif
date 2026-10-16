@@ -28,6 +28,7 @@ from app.models.order import (
     Fulfillment,
     Order,
     OrderItem,
+    OrderMessage,
     Payment,
 )
 from app.models.reminder import OccasionReminderSent
@@ -54,6 +55,7 @@ __all__ = [
     "OccasionReminderSent",
     "Order",
     "OrderItem",
+    "OrderMessage",
     "PasswordResetToken",
     "Payment",
     "Product",

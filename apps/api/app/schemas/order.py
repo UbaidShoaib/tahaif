@@ -4,7 +4,7 @@ from decimal import Decimal
 
 from pydantic import BaseModel, EmailStr, Field
 
-from app.models.order import FulfillmentStatus, OrderStatus, PaymentMethod
+from app.models.order import FulfillmentStatus, OrderSource, OrderStatus, PaymentMethod
 
 
 class CheckoutPlace(BaseModel):
@@ -138,3 +138,9 @@ class OrderRead(BaseModel):
     payment_method: PaymentMethod | None
     surprise: bool = False
     gift_from: str | None = None
+    source: OrderSource = Field(default=OrderSource.web, description="Where the order came from (ADR 0009)")
+    customer_confirmed_at: datetime | None = None
+    needs_confirmation: bool = Field(
+        default=False,
+        description="Taken by staff from a chat; the buyer must check and confirm it on the order link page",
+    )

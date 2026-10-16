@@ -15,7 +15,13 @@ from app.schemas.order import (
     OrderRead,
     ThanksPage,
 )
-from app.services import checkout_service, note_service, thanks_service
+from app.schemas.social_order import OrderConfirm
+from app.services import (
+    checkout_service,
+    note_service,
+    social_order_service,
+    thanks_service,
+)
 
 router = APIRouter(tags=["orders"])
 
@@ -94,6 +100,20 @@ async def upload_transfer_proof_by_token(
     """Guest version: the order's public token (from the confirmation/tracking link) authorises it."""
     url = await checkout_service.upload_transfer_proof(db, file=file, public_token=public_token)
     return {"proof_url": url}
+
+
+@router.post("/orders/by-token/{public_token}/confirm", response_model=OrderRead)
+@limiter.limit("10/hour")
+async def confirm_order(
+    request: Request,  # noqa: ARG001 — required by slowapi
+    public_token: uuid.UUID,
+    body: OrderConfirm,
+    db: DB,
+) -> OrderRead:
+    """The buyer confirms an order staff took from a chat (ADR 0009): accepts the
+    terms, optionally fixes the recipient's details and opts in to offers.
+    Allowed while the order awaits payment; confirming again changes nothing."""
+    return await social_order_service.confirm_order(db, public_token, body)
 
 
 # ── Greeting-card voice/video notes (diaspora Release B) ─────────────────────

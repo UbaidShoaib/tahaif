@@ -15,6 +15,7 @@ from sqlalchemy import (
     Numeric,
     String,
     Text,
+    UniqueConstraint,
     false,
 )
 from sqlalchemy.dialects.postgresql import JSONB
@@ -48,6 +49,14 @@ class FulfillmentStatus(enum.StrEnum):
     out_for_delivery = "out_for_delivery"
     delivered = "delivered"
     failed = "failed"
+
+
+class OrderSource(enum.StrEnum):
+    web = "web"
+    instagram = "instagram"
+    whatsapp = "whatsapp"
+    phone = "phone"
+    walk_in = "walk_in"
 
 
 class PaymentMethod(enum.StrEnum):
@@ -156,11 +165,28 @@ class Order(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     placed_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utcnow, nullable=False
     )
+    # Where the order came from (ADR 0009). Staff-entered orders also record who
+    # took them, the chat/handle they came from and the reel/campaign.
+    source: Mapped[str] = mapped_column(
+        String(20), default=OrderSource.web, server_default=OrderSource.web.value, nullable=False, index=True
+    )
+    source_ref: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    campaign: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    created_by_staff_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    # The buyer checked the details and accepted the terms on the order link
+    # page; this is the record of what was agreed, not the chat history.
+    customer_confirmed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    marketing_opt_in_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
-    user: Mapped["User | None"] = relationship()
+    user: Mapped["User | None"] = relationship(foreign_keys=[user_id])
     items: Mapped[list["OrderItem"]] = relationship(back_populates="order", cascade="all, delete-orphan")
     fulfillments: Mapped[list["Fulfillment"]] = relationship(back_populates="order", cascade="all, delete-orphan")
     payments: Mapped[list["Payment"]] = relationship(back_populates="order", cascade="all, delete-orphan")
+    manual_messages: Mapped[list["OrderMessage"]] = relationship(
+        back_populates="order", cascade="all, delete-orphan"
+    )
 
 
 class OrderItem(UUIDPrimaryKeyMixin, Base):
@@ -270,3 +296,22 @@ class Payment(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     raw_response: Mapped[dict[str, object] | None] = mapped_column(JSONB, nullable=True)
 
     order: Mapped["Order"] = relationship(back_populates="payments")
+
+
+class OrderMessage(UUIDPrimaryKeyMixin, Base):
+    """A WhatsApp message a staff member sent by hand via a wa.me link (ADR 0009).
+
+    One row per (order, kind) so the "messages to send" queue knows what's done.
+    """
+
+    __tablename__ = "order_messages"
+    __table_args__ = (UniqueConstraint("order_id", "kind", name="uq_order_messages_order_kind"),)
+
+    order_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("orders.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    kind: Mapped[str] = mapped_column(String(40), nullable=False)
+    sent_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    sent_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
+
+    order: Mapped["Order"] = relationship(back_populates="manual_messages")

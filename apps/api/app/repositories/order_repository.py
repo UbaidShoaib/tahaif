@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 from typing import Any
 
 from sqlalchemy import Date, case, cast, func, select
@@ -8,7 +8,15 @@ from sqlalchemy.orm import selectinload
 from sqlalchemy.sql import Select
 
 from app.models.catalog import City
-from app.models.order import Fulfillment, FulfillmentStatus, Order, OrderItem, Payment
+from app.models.order import (
+    Fulfillment,
+    FulfillmentStatus,
+    Order,
+    OrderItem,
+    OrderMessage,
+    OrderStatus,
+    Payment,
+)
 
 
 class OrderRepository:
@@ -50,6 +58,8 @@ class OrderRepository:
                 selectinload(Fulfillment.city),
             ),
             selectinload(Order.payments),
+            selectinload(Order.manual_messages),
+            selectinload(Order.user),
         )
 
     async def get_by_idempotency_key(self, key: str) -> Order | None:
@@ -108,6 +118,48 @@ class OrderRepository:
             self._with_relations().where(Order.id == order.id)
         )
         return result.scalar_one()
+
+    async def find_duplicate(
+        self, contact_phone: str, recipient_phone: str, delivery_date: date
+    ) -> Order | None:
+        """A live order from the same buyer phone to the same recipient on the same day."""
+        result = await self._db.execute(
+            select(Order)
+            .join(Fulfillment, Fulfillment.order_id == Order.id)
+            .where(
+                Order.contact_phone == contact_phone,
+                Fulfillment.recipient_phone == recipient_phone,
+                Fulfillment.delivery_date == delivery_date,
+                Order.status.not_in([OrderStatus.cancelled, OrderStatus.refunded]),
+            )
+            .limit(1)
+        )
+        return result.scalars().first()
+
+    async def list_open_since(self, since: datetime, limit: int = 200) -> list[Order]:
+        """Orders placed since ``since`` that aren't finished, newest first."""
+        result = await self._db.execute(
+            self._with_relations()
+            .where(
+                Order.placed_at >= since,
+                Order.status.not_in([OrderStatus.cancelled, OrderStatus.refunded, OrderStatus.completed]),
+            )
+            .order_by(Order.placed_at.desc())
+            .limit(limit)
+        )
+        return list(result.scalars().unique().all())
+
+    async def get_message(self, order_id: uuid.UUID, kind: str) -> OrderMessage | None:
+        result = await self._db.execute(
+            select(OrderMessage).where(OrderMessage.order_id == order_id, OrderMessage.kind == kind)
+        )
+        return result.scalar_one_or_none()
+
+    async def add_message(self, **kwargs: object) -> OrderMessage:
+        message = OrderMessage(**kwargs)
+        self._db.add(message)
+        await self._db.flush()
+        return message
 
     async def get_item_by_note_token(self, token: uuid.UUID) -> OrderItem | None:
         result = await self._db.execute(

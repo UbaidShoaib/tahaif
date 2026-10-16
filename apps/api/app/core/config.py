@@ -80,6 +80,9 @@ class Settings(BaseSettings):
     twilio_auth_token: str = ""
     twilio_whatsapp_from: str = "whatsapp:+14155238886"
     twilio_sms_from: str = ""
+    # Off: no automatic WhatsApp; staff send from the admin "messages to send"
+    # queue via wa.me links (ADR 0009). Turn on only with a paid WhatsApp API.
+    whatsapp_api_enabled: bool = False
 
     # FX rates
     open_exchange_rates_app_id: str = ""

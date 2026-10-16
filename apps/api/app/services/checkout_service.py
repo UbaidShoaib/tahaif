@@ -14,6 +14,7 @@ from app.models.loyalty import Coupon, CouponType
 from app.models.order import (
     CartItem,
     Order,
+    OrderSource,
     OrderStatus,
     PaymentMethod,
     PaymentStatus,
@@ -210,11 +211,14 @@ async def place_order(
     body: CheckoutPlace,
     idempotency_key: str | None = None,
     guest_token: str | None = None,
+    require_contact_email: bool = True,
 ) -> OrderRead:
     """Place an order for a signed-in buyer or a guest (ADR 0004).
 
     Guests must give an email and phone for the confirmation; they can use
-    coupons but not loyalty points, and earn no points.
+    coupons but not loyalty points, and earn no points. Orders staff take from
+    a chat (ADR 0009) pass ``require_contact_email=False``: many of those buyers
+    only gave a WhatsApp number.
     """
     cart_repo = CartRepository(db)
     order_repo = OrderRepository(db)
@@ -233,7 +237,7 @@ async def place_order(
             detail="Please verify your email before placing an order",
         )
 
-    if user is None and (not body.contact_email or not body.contact_phone):
+    if user is None and (not body.contact_phone or (require_contact_email and not body.contact_email)):
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="Enter your email and phone so we can confirm your order",
@@ -297,7 +301,7 @@ async def place_order(
     # ── Create order ───────────────────────────────────────────────────────────
     order = await order_repo.create(
         user_id=user.id if user else None,
-        contact_email=None if user else str(body.contact_email),
+        contact_email=None if user or not body.contact_email else str(body.contact_email),
         contact_phone=None if user else body.contact_phone,
         surprise=body.surprise,
         gift_from=(body.gift_from or "").strip() or (user.full_name if user else None),
@@ -395,7 +399,7 @@ async def place_order(
             await enqueue_order_confirmation(
                 db=db,
                 order_id=order.id,
-                user_email=user.email if user else str(body.contact_email),
+                user_email=user.email if user else (str(body.contact_email) if body.contact_email else None),
                 user_phone=user.phone if user else body.contact_phone,
                 order_total_pkr=total_pkr,
                 public_token=order_reloaded_for_notif.public_token,
@@ -476,6 +480,13 @@ def _order_to_read(order: Order) -> OrderRead:
         payment_method=payment_method,
         surprise=order.surprise,
         gift_from=order.gift_from,
+        source=OrderSource(order.source),
+        customer_confirmed_at=order.customer_confirmed_at,
+        needs_confirmation=(
+            order.source != OrderSource.web
+            and order.customer_confirmed_at is None
+            and order.status == OrderStatus.pending_payment
+        ),
     )
 
 

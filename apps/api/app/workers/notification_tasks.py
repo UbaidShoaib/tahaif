@@ -8,6 +8,8 @@ import sqlalchemy as sa
 import structlog
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import get_settings
+
 logger = structlog.get_logger()
 
 _ORDER_CONFIRM_EMAIL_TEMPLATE = "order_confirmation"
@@ -17,12 +19,12 @@ _ORDER_CONFIRM_SMS_TEMPLATE = "order_confirmation_sms"
 async def enqueue_order_confirmation(
     db: AsyncSession,
     order_id: uuid.UUID,
-    user_email: str,
+    user_email: str | None,
     user_phone: str | None,
     order_total_pkr: int,
     public_token: uuid.UUID,
 ) -> None:
-    """Insert email (and optional SMS) rows into notifications_outbox."""
+    """Insert email and/or SMS rows into notifications_outbox (whichever contact is known)."""
     payload = json.dumps({
         "order_id": str(order_id),
         "public_token": str(public_token),
@@ -30,18 +32,20 @@ async def enqueue_order_confirmation(
     })
     now = datetime.now(UTC)
 
-    rows: list[dict[str, object]] = [
-        {
-            "id": uuid.uuid4(),
-            "channel": "email",
-            "to_address": user_email,
-            "template": _ORDER_CONFIRM_EMAIL_TEMPLATE,
-            "payload": payload,
-            "status": "pending",
-            "attempts": 0,
-            "created_at": now,
-        }
-    ]
+    rows: list[dict[str, object]] = []
+    if user_email:
+        rows.append(
+            {
+                "id": uuid.uuid4(),
+                "channel": "email",
+                "to_address": user_email,
+                "template": _ORDER_CONFIRM_EMAIL_TEMPLATE,
+                "payload": payload,
+                "status": "pending",
+                "attempts": 0,
+                "created_at": now,
+            }
+        )
 
     if user_phone:
         rows.append(
@@ -57,7 +61,8 @@ async def enqueue_order_confirmation(
             }
         )
 
-    await _insert(db, rows)
+    if rows:
+        await _insert(db, rows)
     await logger.ainfo("notification_enqueued", order_id=str(order_id), count=len(rows))
 
 
@@ -260,6 +265,12 @@ async def enqueue_occasion_reminder(
 
 
 async def _insert(db: AsyncSession, rows: list[dict[str, object]]) -> None:
+    # With no paid WhatsApp API (ADR 0009) staff send WhatsApp by hand from the
+    # admin queue, so automatic WhatsApp rows would only fail and retry.
+    if not get_settings().whatsapp_api_enabled:
+        rows = [r for r in rows if r["channel"] != "whatsapp"]
+        if not rows:
+            return
     await db.execute(sa.text("""
         INSERT INTO notifications_outbox (id, channel, to_address, template, payload, status, attempts, created_at)
         VALUES (:id, :channel, :to_address, :template, CAST(:payload AS jsonb), :status, :attempts, :created_at)

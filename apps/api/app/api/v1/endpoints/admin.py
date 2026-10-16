@@ -5,24 +5,36 @@ from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Annotated, Any
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Header, HTTPException, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 
 from app.core.deps import DB, require_roles
 from app.models.catalog import FxRate, FxRateSource, VendorApprovalStatus
 from app.models.loyalty import Coupon, CouponType
-from app.models.order import Order, OrderStatus, PaymentStatus
+from app.models.order import Order, OrderSource, OrderStatus, PaymentStatus
 from app.models.user import User, UserRole
 from app.repositories.loyalty_repository import CouponRepository
 from app.repositories.order_repository import OrderRepository
 from app.repositories.user_repository import UserRepository
+from app.schemas.social_order import (
+    AssistedOrderCreate,
+    AssistedOrderRead,
+    MessageKind,
+    WhatsAppMessageRead,
+    WhatsAppQueueEntry,
+)
 from app.schemas.vendor import (
     AdminProductRead,
     AdminVendorApplicationRead,
     VendorApplicationReject,
 )
-from app.services import catalog_service, proof_service, vendor_application_service
+from app.services import (
+    catalog_service,
+    proof_service,
+    social_order_service,
+    vendor_application_service,
+)
 
 AdminUser = Annotated[User, require_roles(UserRole.admin, UserRole.staff)]
 
@@ -86,6 +98,9 @@ async def list_orders(
             "payment_status": o.payments[0].status if o.payments else None,
             # Short-lived signed link; the receipt bucket is private.
             "proof_url": proof_service.signed_proof_url(o.payments[0].proof_url) if o.payments else None,
+            "source": o.source,
+            "buyer_phone": social_order_service.buyer_phone(o),
+            "customer_confirmed_at": o.customer_confirmed_at.isoformat() if o.customer_confirmed_at else None,
         }
         for o in orders
     ]
@@ -132,6 +147,49 @@ async def verify_payment(
 
     await db.flush()
     return {"payment_status": payment.status, "order_status": order.status}
+
+
+# ── Orders from Instagram / WhatsApp chats (ADR 0009) ─────────────────────────
+
+
+@router.post("/orders/assisted", response_model=AssistedOrderRead, status_code=status.HTTP_201_CREATED)
+async def create_assisted_order(
+    body: AssistedOrderCreate,
+    admin: AdminUser,
+    db: DB,
+    idempotency_key: Annotated[str | None, Header(alias="idempotency-key")] = None,
+) -> AssistedOrderRead:
+    """Place an order for a customer who ordered in an Instagram DM or WhatsApp chat.
+
+    Goes through normal checkout: same prices, city availability, cutoffs and
+    coupons. Email is optional. 409 when this buyer already has a live order
+    to the same recipient that day (resend with `allow_duplicate: true`).
+    COD is refused for surprise gifts. The response includes the WhatsApp
+    messages to send, starting with the order summary and its confirm link.
+    """
+    return await social_order_service.create_assisted_order(db, admin, body, idempotency_key)
+
+
+@router.get("/orders/{order_id}/whatsapp", response_model=list[WhatsAppMessageRead])
+async def order_whatsapp_messages(order_id: uuid.UUID, _admin: AdminUser, db: DB) -> list[WhatsAppMessageRead]:
+    """Every WhatsApp message for this order as a wa.me link, with which are due and which were sent."""
+    return await social_order_service.order_messages(db, order_id)
+
+
+@router.post("/orders/{order_id}/whatsapp/{kind}/sent", response_model=WhatsAppMessageRead)
+async def mark_whatsapp_sent(
+    order_id: uuid.UUID, kind: MessageKind, admin: AdminUser, db: DB
+) -> WhatsAppMessageRead:
+    """Record that this message was sent by hand, so it leaves the queue. Repeats are harmless."""
+    return await social_order_service.mark_sent(db, admin, order_id, kind)
+
+
+@router.get("/whatsapp/queue", response_model=list[WhatsAppQueueEntry])
+async def whatsapp_queue(
+    _admin: AdminUser, db: DB, source: OrderSource | None = None
+) -> list[WhatsAppQueueEntry]:
+    """Messages to send: every WhatsApp message due on open orders from the last 30 days, oldest first."""
+    return await social_order_service.queue(db, source)
 
 
 # ── Vendor applications ───────────────────────────────────────────────────────

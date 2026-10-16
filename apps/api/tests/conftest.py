@@ -19,6 +19,7 @@ os.environ["TESTING"] = "1"  # disables rate limiting
 # Most suites check out as freshly made (unverified) users; test_email_verification
 # turns the gate back on where it is under test.
 os.environ.setdefault("REQUIRE_VERIFIED_EMAIL_FOR_CHECKOUT", "false")
+os.environ.setdefault("WHATSAPP_API_ENABLED", "true")  # exercise the automatic queueing paths
 
 import asyncio  # noqa: E402
 from collections.abc import AsyncIterator  # noqa: E402
