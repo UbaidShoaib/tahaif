@@ -27,8 +27,21 @@ export interface WhatsAppMessage {
   text: string;
   /** wa.me link that opens the buyer's chat with the text filled in. */
   url: string;
+  /** The same message in Urdu, and its wa.me link. */
+  text_ur: string;
+  url_ur: string;
   due: boolean;
   sent_at: string | null;
+}
+
+export type MessageLanguage = "en" | "ur";
+
+export function messageText(m: WhatsAppMessage, lang: MessageLanguage): string {
+  return lang === "ur" ? m.text_ur : m.text;
+}
+
+export function messageUrl(m: WhatsAppMessage, lang: MessageLanguage): string {
+  return lang === "ur" ? m.url_ur : m.url;
 }
 
 export interface QueueEntry {

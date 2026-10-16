@@ -40,7 +40,7 @@ describe("AssistedOrderForm", { timeout: 30_000 }, () => {
   it("places the order and shows the WhatsApp messages to send", async () => {
     vi.mocked(socialOrdersApi.create).mockResolvedValue({
       order: { id: "o1", public_token: "1a2b3c4d-0000", total_pkr: 370000 } as never,
-      messages: [{ kind: "order_summary", label: "Send order summary", to: "buyer", phone: "+447700900123", text: "hi", url: "https://wa.me/1", due: true, sent_at: null }],
+      messages: [{ kind: "order_summary", label: "Send order summary", to: "buyer", phone: "+447700900123", text: "hi", url: "https://wa.me/1", text_ur: "ur", url_ur: "https://wa.me/1?ur", due: true, sent_at: null }],
     });
     render(<AssistedOrderForm token="tok" />);
     await fillRequired();

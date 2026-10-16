@@ -4,7 +4,14 @@ import { useCallback, useEffect, useState } from "react";
 import { Check, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ApiError } from "@/lib/api";
-import { socialOrdersApi, type WhatsAppMessage } from "@/lib/social-orders";
+import {
+  messageText,
+  messageUrl,
+  socialOrdersApi,
+  type MessageLanguage,
+  type WhatsAppMessage,
+} from "@/lib/social-orders";
+import { MessageLanguageToggle, useMessageLanguage } from "@/components/admin/MessageLanguageToggle";
 
 /**
  * Opens WhatsApp with the message filled in, and records it as sent (ADR 0009).
@@ -14,8 +21,9 @@ export function openAndMark(
   message: WhatsAppMessage,
   orderId: string,
   token: string,
+  lang: MessageLanguage = "en",
 ): Promise<WhatsAppMessage> {
-  window.open(message.url, "_blank", "noopener,noreferrer");
+  window.open(messageUrl(message, lang), "_blank", "noopener,noreferrer");
   return socialOrdersApi.markSent(orderId, message.kind, token);
 }
 
@@ -31,6 +39,7 @@ export function WhatsAppMessages({
 }) {
   const [messages, setMessages] = useState<WhatsAppMessage[] | null>(initial ?? null);
   const [error, setError] = useState<string | null>(null);
+  const [lang, setLang] = useMessageLanguage();
 
   const load = useCallback(async () => {
     try {
@@ -47,7 +56,7 @@ export function WhatsAppMessages({
   async function send(m: WhatsAppMessage) {
     setError(null);
     try {
-      const updated = await openAndMark(m, orderId, token);
+      const updated = await openAndMark(m, orderId, token, lang);
       setMessages((prev) => prev?.map((x) => (x.kind === updated.kind ? updated : x)) ?? prev);
     } catch (e) {
       setError(e instanceof ApiError ? e.detail : "Sent, but could not record it. Try again.");
@@ -61,6 +70,8 @@ export function WhatsAppMessages({
   }
 
   return (
+    <div className="space-y-2">
+    <MessageLanguageToggle value={lang} onChange={setLang} />
     <ul className="flex flex-wrap gap-2" aria-label="WhatsApp messages">
       {messages.map((m) => (
         <li key={m.kind}>
@@ -68,7 +79,7 @@ export function WhatsAppMessages({
             size="sm"
             variant={m.due ? "default" : "outline"}
             className="gap-1"
-            title={m.text}
+            title={messageText(m, lang)}
             onClick={() => void send(m)}
           >
             {m.sent_at ? <Check aria-hidden className="h-3 w-3" /> : <MessageCircle aria-hidden className="h-3 w-3" />}
@@ -79,5 +90,6 @@ export function WhatsAppMessages({
         </li>
       ))}
     </ul>
+    </div>
   );
 }

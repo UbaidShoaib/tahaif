@@ -39,6 +39,7 @@ from app.schemas.social_order import (
 )
 from app.services import cart_service, checkout_service
 from app.services.cart_service import CartOwner
+from app.services.message_texts_ur import buyer_text_ur, recipient_text_ur
 
 # A customer who hasn't confirmed after this long gets one reminder.
 REMINDER_AFTER = timedelta(hours=6)
@@ -251,6 +252,20 @@ def _text(order: Order, kind: MessageKind) -> str:
     return f"Delivered! 🎁 {recipient} has received your gift (order #{ref}). See the delivery photo: {link}"
 
 
+def _text_ur(order: Order, kind: MessageKind) -> str:
+    settings = get_settings()
+    return buyer_text_ur(
+        order,
+        kind,
+        brand=settings.brand_name,
+        link=f"{settings.frontend_url}/track/{order.public_token}",
+        ref=order_ref(order),
+        recipient=order.fulfillments[0].recipient_name if order.fulfillments else "آپ کے پیارے",
+        total=f"PKR {order.total_pkr / 100:,.0f}",
+        paid=_is_paid(order),
+    )
+
+
 def _due_kinds(order: Order, now: datetime) -> set[MessageKind]:
     if order.status in _CLOSED:
         return set()
@@ -311,6 +326,24 @@ def _recipient_text(order: Order, kind: MessageKind) -> str:
     return recipient_text(template, payload, settings.brand_name, settings.frontend_url)
 
 
+def _recipient_text_ur(order: Order, kind: MessageKind) -> str:
+    settings = get_settings()
+    f = order.fulfillments[0]
+    return recipient_text_ur(
+        kind,
+        surprise=order.surprise,
+        recipient_name=f.recipient_name,
+        gift_from=order.gift_from,
+        has_note=any(i.note_key for i in order.items),
+        thanks_url=f"{settings.frontend_url}/thanks/{f.thanks_token}" if kind == "recipient_delivered" else None,
+        brand=settings.brand_name,
+    )
+
+
+def _link(digits: str, text: str) -> str:
+    return f"https://wa.me/{digits}?text={quote(text)}"
+
+
 def _wa_me(phone: str | None) -> str | None:
     if not phone:
         return None
@@ -331,11 +364,12 @@ def messages_for(order: Order, now: datetime | None = None) -> list[WhatsAppMess
     if digits := _wa_me(buyer):
         due = _due_kinds(order, now)
         for kind, label in _LABELS.items():
-            text = _text(order, kind)
+            text, text_ur = _text(order, kind), _text_ur(order, kind)
             out.append(
                 WhatsAppMessageRead(
-                    kind=kind, label=label, to="buyer", phone=normalize_phone(buyer or ""), text=text,
-                    url=f"https://wa.me/{digits}?text={quote(text)}", due=kind in due, sent_at=sent.get(kind),
+                    kind=kind, label=label, to="buyer", phone=normalize_phone(buyer or ""),
+                    text=text, url=_link(digits, text), text_ur=text_ur, url_ur=_link(digits, text_ur),
+                    due=kind in due, sent_at=sent.get(kind),
                 )
             )
 
@@ -343,12 +377,12 @@ def messages_for(order: Order, now: datetime | None = None) -> list[WhatsAppMess
     if digits := _wa_me(recipient):
         due = _recipient_due(order, sent)
         for kind in _recipient_kinds(order):
-            text = _recipient_text(order, kind)
+            text, text_ur = _recipient_text(order, kind), _recipient_text_ur(order, kind)
             out.append(
                 WhatsAppMessageRead(
                     kind=kind, label=_RECIPIENT_LABELS[kind], to="recipient", phone=normalize_phone(recipient or ""),
-                    text=text, url=f"https://wa.me/{digits}?text={quote(text)}", due=kind in due,
-                    sent_at=sent.get(kind),
+                    text=text, url=_link(digits, text), text_ur=text_ur, url_ur=_link(digits, text_ur),
+                    due=kind in due, sent_at=sent.get(kind),
                 )
             )
     return out

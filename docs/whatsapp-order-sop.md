@@ -65,7 +65,8 @@ reminder, payment received, dispatched, out for delivery, delivered (with the
 delivery photo link). It also lists messages **to the recipient** ("to the recipient"
 in the list): "on its way" when the rider leaves (never for surprises) and, after
 delivery, who the gift is from with their thank-you link. Never add prices or
-order details to a recipient message. Tap → WhatsApp opens → send. The system records that you sent it, so
+order details to a recipient message. Pick **English** or **اردو** at the top (match the language the customer
+writes in; the choice is remembered on your device). Tap → WhatsApp opens → send. The system records that you sent it, so
 nobody sends it twice.
 
 ## 5. Changes and cancellations

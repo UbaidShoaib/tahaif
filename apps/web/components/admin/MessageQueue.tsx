@@ -4,8 +4,9 @@ import { useCallback, useEffect, useState } from "react";
 import { MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ApiError } from "@/lib/api";
-import { SOURCE_LABELS, socialOrdersApi, type QueueEntry } from "@/lib/social-orders";
+import { SOURCE_LABELS, messageText, socialOrdersApi, type QueueEntry } from "@/lib/social-orders";
 import { openAndMark } from "@/components/admin/WhatsAppMessages";
+import { MessageLanguageToggle, useMessageLanguage } from "@/components/admin/MessageLanguageToggle";
 
 /**
  * "Messages to send": every WhatsApp message due on open orders (ADR 0009).
@@ -16,6 +17,7 @@ export function MessageQueue({ token }: { token: string }) {
   const [entries, setEntries] = useState<QueueEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [lang, setLang] = useMessageLanguage();
 
   const load = useCallback(async () => {
     setError(null);
@@ -32,7 +34,7 @@ export function MessageQueue({ token }: { token: string }) {
 
   async function send(entry: QueueEntry) {
     try {
-      await openAndMark(entry.message, entry.order_id, token);
+      await openAndMark(entry.message, entry.order_id, token, lang);
       setEntries((prev) =>
         prev.filter((e) => !(e.order_id === entry.order_id && e.message.kind === entry.message.kind)),
       );
@@ -45,6 +47,7 @@ export function MessageQueue({ token }: { token: string }) {
 
   return (
     <div className="space-y-3">
+      <MessageLanguageToggle value={lang} onChange={setLang} />
       {error && <div role="alert" className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">{error}</div>}
       {entries.length === 0 ? (
         <p className="text-sm text-muted-foreground">All caught up — no WhatsApp messages to send.</p>
@@ -65,7 +68,9 @@ export function MessageQueue({ token }: { token: string }) {
                   Open WhatsApp
                 </Button>
               </div>
-              <p className="whitespace-pre-line text-xs text-muted-foreground line-clamp-3">{e.message.text}</p>
+              <p dir="auto" lang={lang} className="whitespace-pre-line text-xs text-muted-foreground line-clamp-3">
+                {messageText(e.message, lang)}
+              </p>
             </li>
           ))}
         </ul>

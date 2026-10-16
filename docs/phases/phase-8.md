@@ -18,7 +18,7 @@ compliance `docs/compliance-social-orders.md`
 - [ ] Summary-sent → paid conversion per staff member
 - [x] Recipient messages in the manual queue while the API is off: "on its way" (not for surprises) and "delivered" / surprise reveal with the thank-you link; no prices or tracking
 - [ ] Admin toggle for a customer's marketing opt-in; auto-cancel unconfirmed orders after 24 h
-- [ ] Urdu versions of message texts
+- [x] Urdu versions of every hand-sent message (`app/services/message_texts_ur.py`; `text_ur`/`url_ur`); English/اردو toggle in admin, remembered per device. **Needs a native-speaker review before heavy use.**
 - [ ] Meta catalog feed (`/feeds/meta-catalog.xml`) for Instagram Shopping tags
 
 ## P2

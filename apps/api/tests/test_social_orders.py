@@ -476,3 +476,50 @@ async def test_no_manual_recipient_messages_when_api_on(client: AsyncClient, db:
     oid = (await _place(client, headers, _body(product_id, city_id)))["order"]["id"]
     msgs = (await client.get(f"/api/v1/admin/orders/{oid}/whatsapp", headers=headers)).json()
     assert all(m["to"] == "buyer" for m in msgs)
+
+
+# ── Urdu versions ──────────────────────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_every_buyer_message_has_an_urdu_version(client: AsyncClient, db: AsyncSession) -> None:
+    headers = await _staff_headers(client, db)
+    product_id, city_id = await _catalog(db)
+    data = await _place(client, headers, _body(product_id, city_id))
+    token = data["order"]["public_token"]
+
+    for m in data["messages"]:
+        assert m["text_ur"] and m["text_ur"] != m["text"]
+        assert m["url_ur"].split("?text=")[0] == m["url"].split("?text=")[0]  # same chat
+        assert unquote(m["url_ur"].split("text=", 1)[1]) == m["text_ur"]
+
+    summary = _msg(data["messages"], "order_summary")["text_ur"]
+    assert summary.startswith("السلام علیکم!")
+    assert f"/track/{token}" in summary  # links, order number and amount stay as-is
+    assert "PKR 1,700" in summary and "رسید" in summary
+    assert "Ammi Jaan کے لیے" in summary
+
+
+@pytest.mark.asyncio
+@pytest.mark.usefixtures("api_off")
+async def test_recipient_messages_in_urdu(client: AsyncClient, db: AsyncSession) -> None:
+    headers = await _staff_headers(client, db)
+    product_id, city_id = await _catalog(db)
+    oid = (await _place(client, headers, _body(product_id, city_id, surprise=True)))["order"]["id"]
+    await _set_fulfillment(db, oid, FulfillmentStatus.delivered)
+
+    reveal = (await _due(client, headers, oid))["recipient_delivered"]["message"]["text_ur"]
+    assert reveal.startswith("السلام علیکم Ammi Jaan!")
+    assert "سرپرائز" in reveal and "Sara (London) کی طرف سے" in reveal
+    assert "/thanks/" in reveal and "PKR" not in reveal and "/track/" not in reveal
+
+
+def test_urdu_recipient_text_without_sender_or_name() -> None:
+    from app.services.message_texts_ur import recipient_text_ur
+
+    text = recipient_text_ur(
+        "recipient_on_the_way", surprise=False, recipient_name=" ", gift_from=None,
+        has_note=False, thanks_url=None, brand="Bouquet Bar",
+    )
+    assert text.startswith("السلام علیکم! آپ کے کسی چاہنے والے کی طرف سے")
+    assert "Bouquet Bar" in text

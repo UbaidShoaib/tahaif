@@ -18,6 +18,8 @@ const summary: WhatsAppMessage = {
   phone: "+447700900123",
   text: "Assalam-o-Alaikum! Order #1A2B3C4D",
   url: "https://wa.me/447700900123?text=hi",
+  text_ur: "السلام علیکم! آرڈر نمبر #1A2B3C4D",
+  url_ur: "https://wa.me/447700900123?text=ur",
   due: true,
   sent_at: null,
 };
@@ -33,6 +35,7 @@ const entry: QueueEntry = {
 
 describe("MessageQueue", () => {
   beforeEach(() => {
+    window.localStorage.clear();
     vi.mocked(socialOrdersApi.queue).mockReset();
     vi.mocked(socialOrdersApi.markSent).mockReset();
     vi.spyOn(window, "open").mockReturnValue(null);
@@ -67,6 +70,20 @@ describe("MessageQueue", () => {
     ]);
     render(<MessageQueue token="tok" />);
     expect(await screen.findByText(/to the recipient · \+923001234567/)).toBeInTheDocument();
+  });
+
+  it("sends the Urdu version once Urdu is chosen, and remembers it", async () => {
+    window.localStorage.clear();
+    vi.mocked(socialOrdersApi.queue).mockResolvedValue([entry]);
+    vi.mocked(socialOrdersApi.markSent).mockResolvedValue({ ...summary, sent_at: "now", due: false });
+    render(<MessageQueue token="tok" />);
+
+    await userEvent.click(await screen.findByRole("button", { name: "اردو" }));
+    expect(screen.getByText(summary.text_ur)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: /Open WhatsApp/ }));
+
+    expect(window.open).toHaveBeenCalledWith(summary.url_ur, "_blank", "noopener,noreferrer");
+    expect(window.localStorage.getItem("admin-wa-lang")).toBe("ur");
   });
 
   it("says when there is nothing to send", async () => {

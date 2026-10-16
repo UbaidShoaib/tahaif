@@ -64,7 +64,9 @@ class WhatsAppMessageRead(BaseModel):
     to: Literal["buyer", "recipient"] = Field(description="Who the message goes to")
     phone: str = Field(description="Their number, E.164", examples=["+923001234567"])
     text: str
-    url: str = Field(description="wa.me link that opens the buyer's chat with the text filled in")
+    url: str = Field(description="wa.me link that opens the chat with the text filled in")
+    text_ur: str = Field(description="The same message in Urdu")
+    url_ur: str = Field(description="wa.me link with the Urdu text")
     due: bool = Field(description="Should be sent now")
     sent_at: datetime | None
 
