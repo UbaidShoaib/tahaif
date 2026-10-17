@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, ExternalLink, Eye, EyeOff, Star, Trash2, Upload } from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight, ExternalLink, Eye, EyeOff, Star, Trash2, Upload } from "lucide-react";
 import { toPaisa } from "@/components/admin/AddProductForm";
 import { VariantsEditor, type Variant } from "@/components/admin/VariantsEditor";
 import { Badge } from "@/components/ui/badge";
@@ -190,6 +190,15 @@ export function ProductEditor({ token, productId }: { token: string; productId: 
       .then(() => setPhotoInputKey((k) => k + 1));
   }
 
+  /** Swap a photo with its neighbour and save the whole order. */
+  function movePhoto(index: number, by: -1 | 1) {
+    const ids = product!.images.map((i) => i.id);
+    [ids[index], ids[index + by]] = [ids[index + by], ids[index]];
+    void run("photos", () => apiFetch(`/products/${slug}/images/order`, {
+      method: "PUT", token, body: { image_ids: ids },
+    }), "Photo order saved.");
+  }
+
   function removePhoto(id: string) {
     setConfirmRemove(null);
     void run("photos", () => apiFetch(`/products/${slug}/images/${id}`, { method: "DELETE", token }), "Photo removed.");
@@ -335,7 +344,7 @@ export function ProductEditor({ token, productId }: { token: string; productId: 
           <p className="text-sm text-muted-foreground">No photos yet. Products with a photo sell far better.</p>
         ) : (
           <ul className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            {product.images.map((img) => (
+            {product.images.map((img, index) => (
               <li key={img.id} className="space-y-2">
                 <div className="relative">
                   {/* eslint-disable-next-line @next/next/no-img-element -- photos from any storage host */}
@@ -343,6 +352,18 @@ export function ProductEditor({ token, productId }: { token: string; productId: 
                   {img.is_primary && <Badge variant="brand" className="absolute left-2 top-2">Main photo</Badge>}
                 </div>
                 <div className="flex flex-wrap gap-1">
+                  {product.images.length > 1 && (
+                    <>
+                      <Button size="sm" variant="ghost" className="px-2" disabled={busy !== null || index === 0}
+                        aria-label={`Move photo ${index + 1} earlier`} onClick={() => movePhoto(index, -1)}>
+                        <ChevronLeft aria-hidden className="h-4 w-4" />
+                      </Button>
+                      <Button size="sm" variant="ghost" className="px-2" disabled={busy !== null || index === product.images.length - 1}
+                        aria-label={`Move photo ${index + 1} later`} onClick={() => movePhoto(index, 1)}>
+                        <ChevronRight aria-hidden className="h-4 w-4" />
+                      </Button>
+                    </>
+                  )}
                   {!img.is_primary && (
                     <Button size="sm" variant="outline" className="gap-1" disabled={busy !== null}
                       onClick={() => void run("photos", () => apiFetch(`/products/${slug}/images/${img.id}/primary`, { method: "POST", token }), "Main photo changed.")}>
@@ -358,7 +379,7 @@ export function ProductEditor({ token, productId }: { token: string; productId: 
                     </>
                   ) : (
                     <Button size="sm" variant="ghost" className="gap-1" disabled={busy !== null}
-                      aria-label={`Remove photo ${img.sort_order + 1}`} onClick={() => setConfirmRemove(img.id)}>
+                      aria-label={`Remove photo ${index + 1}`} onClick={() => setConfirmRemove(img.id)}>
                       <Trash2 aria-hidden className="h-3 w-3" /> Remove
                     </Button>
                   )}

@@ -18,6 +18,7 @@ from app.schemas.catalog import (
     PaginatedProducts,
     ProductCityUpsert,
     ProductCreate,
+    ProductImageOrder,
     ProductImageRead,
     ProductOccasionsSet,
     ProductRead,
@@ -213,6 +214,15 @@ async def remove_product_image(
     slug: str, image_id: uuid.UUID, db: DB, user: CurrentUser
 ) -> None:
     await catalog_service.remove_product_image(db, slug, image_id, user)
+
+
+@router.put(
+    "/products/{slug}/images/order", response_model=ProductRead,
+    responses={422: {"description": "The list must hold every photo of the product exactly once"}},
+)
+async def reorder_product_images(slug: str, body: ProductImageOrder, db: DB, user: CurrentUser) -> ProductRead:
+    """Set the order photos appear in on the product page, first to last."""
+    return ProductRead.model_validate(await catalog_service.reorder_product_images(db, slug, body.image_ids, user))
 
 
 @router.post("/products/{slug}/images/{image_id}/primary", response_model=ProductRead)

@@ -432,6 +432,13 @@ class ProductRepository:
         await self._db.delete(image)
         await self._db.flush()
 
+    async def reorder_images(self, product_id: uuid.UUID, image_ids: builtins.list[uuid.UUID]) -> None:
+        result = await self._db.execute(select(ProductImage).where(ProductImage.product_id == product_id))
+        position = {image_id: i for i, image_id in enumerate(image_ids)}
+        for image in result.scalars().all():
+            image.sort_order = position[image.id]
+        await self._db.flush()
+
     async def set_primary_image(self, product_id: uuid.UUID, image_id: uuid.UUID) -> None:
         """Exactly one main photo per product."""
         result = await self._db.execute(select(ProductImage).where(ProductImage.product_id == product_id))

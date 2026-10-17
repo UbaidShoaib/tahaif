@@ -593,6 +593,29 @@ async def update_product_variant(
     return updated
 
 
+async def reorder_product_images(db: AsyncSession, slug: str, image_ids: list[uuid.UUID], user: User) -> Product:
+    """Put the photos in this order on the product page. The main photo is chosen separately."""
+    product, vendor = await _owned_product(db, slug, user)
+    current = [i.id for i in product.images]  # already in sort order
+    if sorted(map(str, image_ids)) != sorted(map(str, current)) or len(set(image_ids)) != len(image_ids):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Send every photo of this product exactly once",
+        )
+    repo = ProductRepository(db)
+    await repo.reorder_images(product.id, image_ids)
+    await audit_service.record(
+        db, user, "product.photos_reordered", "product", product.id,
+        before={"order": [str(i) for i in current]}, after={"order": [str(i) for i in image_ids]},
+    )
+    db.expire(product, ["images"])
+    updated = await repo.get_by_id(product.id)
+    assert updated is not None
+    if updated.is_active:
+        await meilisearch_client.index_product(_to_meili_doc(updated, vendor.name))
+    return updated
+
+
 async def set_product_city_availability(
     db: AsyncSession, slug: str, entries: list[ProductCityUpsert], user: User
 ) -> Product:

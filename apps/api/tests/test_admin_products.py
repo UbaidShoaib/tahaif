@@ -147,3 +147,24 @@ async def test_main_photo_can_be_changed_and_survives_deletion(
     assert [(i["id"], i["is_primary"]) for i in images] == [(first["id"], True)]
 
     assert (await client.post(f"{base}/{uuid.uuid4()}/primary", headers=admin_headers)).status_code == 404
+
+
+async def test_photos_can_be_reordered(
+    client: AsyncClient, admin_headers: dict[str, str], shop: SimpleNamespace
+) -> None:
+    product = await _product(client, admin_headers, shop, "Tulips")
+    base = f"{API}/products/{product['slug']}/images"
+    ids = [
+        (await client.post(base, params={"url": f"https://img.example/{n}.jpg"}, headers=admin_headers)).json()["id"]
+        for n in range(3)
+    ]
+
+    resp = await client.put(f"{base}/order", json={"image_ids": [ids[2], ids[0], ids[1]]}, headers=admin_headers)
+    assert resp.status_code == 200, resp.text
+    images = (await client.get(f"{API}/admin/products/{product['id']}", headers=admin_headers)).json()["images"]
+    assert [i["id"] for i in images] == [ids[2], ids[0], ids[1]]
+    assert [i["sort_order"] for i in images] == [0, 1, 2]
+
+    # Every photo exactly once, or nothing changes.
+    for bad in ([ids[0], ids[1]], [ids[0], ids[0], ids[1]], [ids[0], ids[1], str(uuid.uuid4())]):
+        assert (await client.put(f"{base}/order", json={"image_ids": bad}, headers=admin_headers)).status_code == 422

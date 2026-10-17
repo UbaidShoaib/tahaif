@@ -35,6 +35,7 @@ ACTION_LABELS: dict[str, str] = {
     "product.photo_added": "Added a product photo",
     "product.photo_removed": "Removed a product photo",
     "product.main_photo_changed": "Changed a product's main photo",
+    "product.photos_reordered": "Reordered a product's photos",
     "product.cities_changed": "Changed delivery cities",
     "product.occasions_changed": "Changed a product's occasions",
     "product.variant_added": "Added a size/option",

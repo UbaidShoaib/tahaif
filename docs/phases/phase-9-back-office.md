@@ -168,7 +168,11 @@ refresh, shared links and the back button work. Count badges (e.g. receipts wait
 Occasions are returned only on the admin product (`AdminProductDetail`), not on the shared `ProductRead`, so
 storefront queries don't have to load them.
 
-**Still open in P0:** photo reordering.
+**P0 · Photo order — done (2026-10-18)** — arrow buttons on each photo (keyboard- and phone-friendly; no
+drag library). `PUT /products/{slug}/images/order` takes every photo id exactly once, else 422. The main
+photo is still chosen separately ("Make main").
+
+**P0 is complete.** Next is P1 (see section 3): the Today home page, payouts, merchandising, reports.
 
 ## 5. Open questions (defaults in brackets)
 

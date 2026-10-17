@@ -8,6 +8,8 @@ pre-production-cutover).
 ## [Unreleased]
 
 ### Added
+- Back office (Phase 9 P0): **photo order**. Move a product's photos earlier or later from its admin page.
+  API: `PUT /products/{slug}/images/order`.
 - Back office (Phase 9 P0): **occasions on a product**. Tick which occasion pages (Eid, Mother's Day…) list a
   product, from its page in the admin. API: `PUT /products/{slug}/occasions`; `GET /admin/products/{id}` now
   includes `occasions`.

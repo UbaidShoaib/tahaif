@@ -4712,6 +4712,26 @@
         "title": "ProductCreate",
         "type": "object"
       },
+      "ProductImageOrder": {
+        "properties": {
+          "image_ids": {
+            "description": "Every photo of the product, first to last",
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "maxItems": 50,
+            "minItems": 1,
+            "title": "Image Ids",
+            "type": "array"
+          }
+        },
+        "required": [
+          "image_ids"
+        ],
+        "title": "ProductImageOrder",
+        "type": "object"
+      },
       "ProductImageRead": {
         "properties": {
           "alt_text": {
@@ -11565,6 +11585,57 @@
           }
         ],
         "summary": "Add Product Image",
+        "tags": [
+          "catalog"
+        ]
+      }
+    },
+    "/api/v1/products/{slug}/images/order": {
+      "put": {
+        "description": "Set the order photos appear in on the product page, first to last.",
+        "operationId": "reorder_product_images_api_v1_products__slug__images_order_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProductImageOrder"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "The list must hold every photo of the product exactly once"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Reorder Product Images",
         "tags": [
           "catalog"
         ]

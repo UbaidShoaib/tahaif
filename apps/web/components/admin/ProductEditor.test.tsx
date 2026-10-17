@@ -223,4 +223,17 @@ describe("ProductEditor", () => {
       method: "PUT", body: { occasion_ids: ["mom"] },
     })));
   });
+
+  it("moves a photo and saves the new order", async () => {
+    serve();
+    render(<ProductEditor token="tok" productId="p1" />);
+
+    expect(await screen.findByRole("button", { name: "Move photo 1 earlier" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Move photo 2 later" })).toBeDisabled();
+    await userEvent.click(screen.getByRole("button", { name: "Move photo 2 earlier" }));
+
+    await waitFor(() => expect(apiFetch).toHaveBeenCalledWith("/products/red-roses/images/order", expect.objectContaining({
+      method: "PUT", body: { image_ids: ["i2", "i1"] },
+    })));
+  });
 });

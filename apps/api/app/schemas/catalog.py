@@ -193,6 +193,10 @@ class AdminProductDetail(ProductRead):
     occasions: list[OccasionSummary] = Field(description="Occasion pages the product appears on")
 
 
+class ProductImageOrder(BaseModel):
+    image_ids: list[uuid.UUID] = Field(min_length=1, max_length=50, description="Every photo of the product, first to last")
+
+
 class ProductOccasionsSet(BaseModel):
     occasion_ids: list[uuid.UUID] = Field(max_length=50, description="The full set; occasions left out are removed")
 
