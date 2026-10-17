@@ -1,5 +1,19 @@
 import type { ProductCity } from "@/lib/catalog";
 
+/**
+ * Delivery times a buyer can pick. The label is what's stored on the order, so
+ * these must match DeliverySlot in apps/api/app/schemas/order.py.
+ * Midnight arrives just before midnight at the end of the chosen date.
+ */
+export const DELIVERY_SLOTS = [
+  "Midnight (11pm–12am)",
+  "Morning (10am–1pm)",
+  "Afternoon (2pm–5pm)",
+  "Evening (6pm–9pm)",
+] as const;
+
+export type DeliverySlot = (typeof DELIVERY_SLOTS)[number];
+
 /** Wall-clock date (YYYY-MM-DD) and minutes-since-midnight in a time zone. */
 export function zonedNow(timeZone: string, now: Date = new Date()): { date: string; minutes: number } {
   const parts = new Intl.DateTimeFormat("en-CA", {

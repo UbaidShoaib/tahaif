@@ -1,6 +1,7 @@
 import { currentCampaign } from "@/lib/campaign";
 import { guestCartHeaders, syncGuestCartToken } from "@/lib/guest-cart";
 import { apiFetch } from "@/lib/api";
+import type { DeliverySlot } from "@/lib/delivery";
 
 /** Matches the API's greeting_message limit. */
 export const GREETING_MAX = 500;
@@ -55,6 +56,8 @@ export interface CheckoutPlace {
   payment_method: PaymentMethod;
   delivery_city_id: string;
   delivery_date: string;
+  /** null = any time. */
+  delivery_slot?: DeliverySlot | null;
   recipient_name: string;
   recipient_phone: string;
   address_line1: string;

@@ -3,6 +3,7 @@
  * messages that go with them, and the buyer's confirmation (ADR 0009).
  */
 import { apiFetch } from "@/lib/api";
+import type { DeliverySlot } from "@/lib/delivery";
 import type { OrderRead } from "@/lib/cart";
 
 export type OrderSource = "instagram" | "whatsapp" | "phone" | "walk_in";
@@ -71,6 +72,7 @@ export interface AssistedOrderCreate {
   payment_method: "cod" | "bank_transfer";
   delivery_city_id: string;
   delivery_date: string;
+  delivery_slot?: DeliverySlot | null;
   recipient_name: string;
   recipient_phone: string;
   address_line1: string;

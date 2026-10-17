@@ -89,6 +89,7 @@ export default function CheckoutPage() {
       payment_method: "cod",
       delivery_city_id: useDeliveryStore.getState().cityId ?? "",
       delivery_date: today,
+      delivery_slot: "",
       recipient_name: "",
       recipient_phone: "",
       address_line1: "",
@@ -214,6 +215,7 @@ export default function CheckoutPage() {
     const { is_guest, contact_email, contact_phone, ...delivery } = values;
     const body = {
       ...delivery,
+      delivery_slot: delivery.delivery_slot || null,
       coupon_code: appliedCoupon,
       use_loyalty_points: useLoyalty,
       ...(is_guest ? { contact_email, contact_phone } : {}),
@@ -402,6 +404,8 @@ export default function CheckoutPage() {
             selectedAddressId={selectedAddressId}
             onSelectAddress={selectAddress}
             minDate={today}
+            slot={watch("delivery_slot")}
+            onSlotChange={(s) => setValue("delivery_slot", s, { shouldDirty: true })}
             onCityChange={(id) => useDeliveryStore.getState().setCity(id || null)}
           />
 

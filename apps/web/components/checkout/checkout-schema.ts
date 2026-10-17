@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { DELIVERY_SLOTS } from "@/lib/delivery";
 
 /** Today's date in the buyer's local time zone, as YYYY-MM-DD (what <input type="date"> uses). */
 export function localToday(now = new Date()): string {
@@ -32,6 +33,8 @@ export const checkoutSchema = z
       .string()
       .min(1, "Choose a delivery date")
       .refine((d) => d >= localToday(), "Choose today or a later date"),
+    /** "" = any time. */
+    delivery_slot: z.enum(["", ...DELIVERY_SLOTS]),
     recipient_name: z
       .string()
       .trim()
@@ -96,6 +99,7 @@ export const FIELD_ORDER: { name: keyof CheckoutFormValues; label: string }[] = 
   { name: "contact_phone", label: "Your phone" },
   { name: "delivery_city_id", label: "Delivery city" },
   { name: "delivery_date", label: "Delivery date" },
+  { name: "delivery_slot", label: "Delivery time" },
   { name: "recipient_name", label: "Recipient name" },
   { name: "recipient_phone", label: "Recipient phone" },
   { name: "address_line1", label: "Address" },

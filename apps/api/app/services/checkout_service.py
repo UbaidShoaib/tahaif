@@ -339,6 +339,7 @@ async def place_order(
             city_id=body.delivery_city_id,
             landmark=body.landmark,
             delivery_date=body.delivery_date,
+            delivery_slot=body.delivery_slot,
         )
         fulfillment_map[vendor_id] = fulfillment.id
 

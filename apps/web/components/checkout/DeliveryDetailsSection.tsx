@@ -7,6 +7,7 @@ import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { RadioCard, RadioGroup } from "@/components/ui/radio-group";
 import type { AddressRead } from "@/lib/account";
+import { DELIVERY_SLOTS, type DeliverySlot } from "@/lib/delivery";
 import type { CheckoutFormValues } from "@/components/checkout/checkout-schema";
 
 export type CheckoutCity = { id: string; name: string; slug: string; is_active: boolean };
@@ -20,6 +21,9 @@ type Props = {
   selectedAddressId: string;
   onSelectAddress: (id: string) => void;
   minDate: string;
+  /** "" = any time. */
+  slot: DeliverySlot | "";
+  onSlotChange: (slot: DeliverySlot | "") => void;
   /** Lets the parent sync the city to the Deliver-to store. */
   onCityChange: (cityId: string) => void;
 };
@@ -32,6 +36,8 @@ export function DeliveryDetailsSection({
   selectedAddressId,
   onSelectAddress,
   minDate,
+  slot,
+  onSlotChange,
   onCityChange,
 }: Props) {
   const city = register("delivery_city_id");
@@ -93,6 +99,28 @@ export function DeliveryDetailsSection({
           {(p) => <Input {...p} type="date" min={minDate} {...register("delivery_date")} />}
         </FormField>
       </div>
+
+      <RadioGroup
+        legend="Delivery time"
+        value={slot}
+        onValueChange={(v) => onSlotChange(v as DeliverySlot | "")}
+        className="grid gap-2 sm:grid-cols-2"
+      >
+        {DELIVERY_SLOTS.map((s) => (
+          <RadioCard key={s} value={s}>
+            <span className="block font-medium">{s}</span>
+            {s.startsWith("Midnight") && (
+              <span className="block text-sm text-muted-foreground">
+                Arrives as the date above ends. For a birthday, pick the day before.
+              </span>
+            )}
+          </RadioCard>
+        ))}
+        <RadioCard value="">
+          <span className="block font-medium">Any time</span>
+          <span className="block text-sm text-muted-foreground">Between 10am and 9pm</span>
+        </RadioCard>
+      </RadioGroup>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <FormField label="Recipient name" required id="recipient_name" error={errors.recipient_name?.message}>

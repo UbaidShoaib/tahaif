@@ -17,6 +17,7 @@ import {
   type AssistedOrderRead,
   type OrderSource,
 } from "@/lib/social-orders";
+import { DELIVERY_SLOTS, type DeliverySlot } from "@/lib/delivery";
 import { formatPrice } from "@/lib/utils";
 
 type Line = { product_id: string; variant_id: string; qty: number; greeting_message: string };
@@ -44,6 +45,7 @@ export function AssistedOrderForm({ token }: { token: string }) {
   const [buyerEmail, setBuyerEmail] = useState("");
   const [cityId, setCityId] = useState("");
   const [date, setDate] = useState(tomorrow);
+  const [slot, setSlot] = useState<DeliverySlot | "">("");
   const [lines, setLines] = useState<Line[]>([{ ...EMPTY_LINE }]);
   const [recipientName, setRecipientName] = useState("");
   const [recipientPhone, setRecipientPhone] = useState("");
@@ -103,6 +105,7 @@ export function AssistedOrderForm({ token }: { token: string }) {
       payment_method: payment,
       delivery_city_id: cityId,
       delivery_date: date,
+      delivery_slot: slot || null,
       recipient_name: recipientName.trim(),
       recipient_phone: recipientPhone.trim(),
       address_line1: address.trim(),
@@ -134,7 +137,7 @@ export function AssistedOrderForm({ token }: { token: string }) {
     setLines([{ ...EMPTY_LINE }]);
     setBuyerPhone(""); setBuyerEmail(""); setSourceRef(""); setCampaign("");
     setRecipientName(""); setRecipientPhone(""); setAddress(""); setLandmark("");
-    setGiftFrom(""); setSurprise(false); setCoupon(""); setNotes("");
+    setSlot(""); setGiftFrom(""); setSurprise(false); setCoupon(""); setNotes("");
     setIdempotencyKey(crypto.randomUUID());
   }
 
@@ -197,6 +200,14 @@ export function AssistedOrderForm({ token }: { token: string }) {
           </FormField>
           <FormField label="Delivery date" required>
             {(p) => <Input {...p} type="date" value={date} onChange={(e) => setDate(e.target.value)} />}
+          </FormField>
+          <FormField label="Delivery time">
+            {(p) => (
+              <Select {...p} value={slot} onChange={(e) => setSlot(e.target.value as DeliverySlot | "")}>
+                <option value="">Any time</option>
+                {DELIVERY_SLOTS.map((s) => <option key={s} value={s}>{s}</option>)}
+              </Select>
+            )}
           </FormField>
         </div>
         {lines.map((line, i) => {
