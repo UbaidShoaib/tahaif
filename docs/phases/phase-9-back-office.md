@@ -138,8 +138,22 @@ Each stage follows the Definition of Done in CLAUDE.md (tests, OpenAPI examples,
 **P0 · Audit log — done (2026-10-17)** — see ADR 0012. Activity tab (admin only), order timeline shows
 status changes with who. The status-history part of the state-machine item is now covered by the log.
 
-**Still open in P0:** variants & stock, occasions on a product (no API yet), photo reordering, sidebar shell,
-status state machine (allowed transitions).
+**P0 · Order status rules — done (2026-10-18)** — `app/services/order_status.py` holds the table.
+- Forward along the flow, skipping allowed (preparing → delivered). No backward moves, except via `on_hold`,
+  which can return to any not-yet-delivered status.
+- `cancelled` only up to `preparing` (before the gift leaves the shop); `refunded` only from `paid` onward.
+  Both are final.
+- The API answers 409 with a plain-words reason; setting the current status again is a no-op. Approving a
+  payment is refused once the order has moved past payment (e.g. cancelled).
+- List and order page return `next_statuses`; the dropdowns only offer those, and are disabled on a final order.
+- Known gap: `on_hold → refunded` is allowed even if the order was never paid (we don't keep the pre-hold status).
+
+**P0 · Sidebar — done (2026-10-18)** — `components/admin/AdminShell.tsx`. Sections grouped (Orders, Catalog,
+Shops & content, Reports, Admin) in a left sidebar; a scrolling row on phones. The order and product pages
+use the same shell, so staff never lose the menu. The dashboard section is in `?section=…` (pushState), so
+refresh, shared links and the back button work. Count badges (e.g. receipts waiting) are a follow-up.
+
+**Still open in P0:** variants & stock, occasions on a product (no API yet), photo reordering.
 
 ## 5. Open questions (defaults in brackets)
 

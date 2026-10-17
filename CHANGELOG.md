@@ -8,6 +8,13 @@ pre-production-cutover).
 ## [Unreleased]
 
 ### Added
+- Back office (Phase 9 P0): **sidebar**. Admin sections are grouped (Orders, Catalog, Shops & content,
+  Reports, Admin) in a left sidebar, a scrolling row on phones, and it stays on the order and product
+  pages. The open section is in the URL (`/admin?section=…`), so refresh and the back button work.
+- Back office (Phase 9 P0): **order status rules**. Staff can only move an order forward (steps may be
+  skipped), back only via on hold; cancel up to "preparing"; refund once paid; cancelled and refunded are
+  final. Disallowed changes get a 409 with the reason; the status dropdowns offer only allowed statuses
+  (`next_statuses` on `GET /admin/orders` and `GET /admin/orders/{id}`).
 - Back office (Phase 9 P0): **audit log** (ADR 0012). Order status changes, payment approve/reject,
   staff notes and DM orders; product create/edit/publish/hide/photos/cities; vendor delivery updates;
   shop approvals; card-note take-downs; coupons; exchange-rate overrides; and role changes record who,
