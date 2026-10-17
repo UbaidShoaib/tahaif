@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Package, CheckCircle, XCircle, Eye, RefreshCw } from "lucide-react";
 import { AddProductForm } from "@/components/admin/AddProductForm";
-import { HiddenProducts } from "@/components/admin/HiddenProducts";
+import { ProductList } from "@/components/admin/ProductList";
 import { VendorApplications } from "@/components/admin/VendorApplications";
 import { NoteReports } from "@/components/admin/NoteReports";
 import { AssistedOrderForm } from "@/components/admin/AssistedOrderForm";
@@ -57,8 +57,8 @@ const SECTIONS: { key: Section; label: string }[] = [
   { key: "messages", label: "Messages to send" },
   { key: "campaigns", label: "Sales by campaign" },
   { key: "applications", label: "Shop applications" },
+  { key: "products", label: "Products" },
   { key: "add-product", label: "Add product" },
-  { key: "products", label: "Hidden products" },
   { key: "note-reports", label: "Reported notes" },
 ];
 
@@ -72,6 +72,12 @@ export default function AdminDashboard() {
   const [actionInProgress, setActionInProgress] = useState<string | null>(null);
   const [section, setSection] = useState<Section>("orders");
   const [openMessages, setOpenMessages] = useState<string | null>(null);
+
+  // Other admin pages link back to a tab with ?section=…
+  useEffect(() => {
+    const wanted = new URLSearchParams(window.location.search).get("section");
+    if (SECTIONS.some((s) => s.key === wanted)) setSection(wanted as Section);
+  }, []);
 
   useEffect(() => {
     // On a hard reload the session is restored from the refresh cookie after
@@ -169,7 +175,7 @@ export default function AdminDashboard() {
 
       {section === "applications" && token && <VendorApplications token={token} />}
       {section === "add-product" && token && <AddProductForm token={token} />}
-      {section === "products" && token && <HiddenProducts token={token} />}
+      {section === "products" && token && <ProductList token={token} />}
       {section === "note-reports" && token && <NoteReports token={token} />}
       {section === "new-order" && token && <AssistedOrderForm token={token} />}
       {section === "messages" && token && <MessageQueue token={token} />}

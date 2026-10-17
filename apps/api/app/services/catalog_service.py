@@ -244,9 +244,22 @@ async def get_product(db: AsyncSession, slug: str) -> Product:
     return product
 
 
-async def list_admin_products(db: AsyncSession, is_active: bool | None = None) -> list[Product]:
+async def list_admin_products(
+    db: AsyncSession,
+    is_active: bool | None = None,
+    q: str | None = None,
+    vendor_id: uuid.UUID | None = None,
+) -> list[Product]:
     """Admin list, hidden products included (vendor listings wait here to be published)."""
-    return await ProductRepository(db).list_for_admin(is_active)
+    return await ProductRepository(db).list_for_admin(is_active, q_text=q, vendor_id=vendor_id)
+
+
+async def get_admin_product(db: AsyncSession, product_id: uuid.UUID) -> Product:
+    """Admin lookup by id. Unlike the public one, hidden products are returned so they can be edited."""
+    product = await ProductRepository(db).get_by_id(product_id)
+    if not product:
+        raise _NOT_FOUND("Product")
+    return product
 
 
 async def set_product_active(db: AsyncSession, product_id: uuid.UUID, is_active: bool) -> Product:
@@ -335,7 +348,11 @@ async def update_product(
     if not vendor or not _owns_vendor(user, vendor):
         raise _FORBIDDEN
 
-    updates = data.model_dump(exclude_none=True)
+    # An explicit null clears the category or description; required fields ignore it.
+    updates = {
+        k: v for k, v in data.model_dump(exclude_unset=True).items()
+        if v is not None or k in ("category_id", "description")
+    }
     if updates.get("is_active") and not product.is_active and not _is_staff(user):
         # Vendors may hide their own product, but publishing one is staff's call.
         raise _STAFF_ONLY("Only staff can publish a product")
@@ -432,7 +449,38 @@ async def remove_product_image(
     image = await repo.get_image(image_id)
     if not image or image.product_id != product.id:
         raise _NOT_FOUND("Image")
+    was_primary = image.is_primary
     await repo.delete_image(image)
+    if was_primary:
+        # Promote the next photo so the product never loses its main image.
+        db.expire(product, ["images"])
+        refreshed = await repo.get_by_id(product.id)
+        if refreshed and refreshed.images:
+            await repo.set_primary_image(product.id, refreshed.images[0].id)
+
+
+async def set_primary_product_image(
+    db: AsyncSession, slug: str, image_id: uuid.UUID, user: User
+) -> Product:
+    repo = ProductRepository(db)
+    product = await repo.get_by_slug(slug)
+    if not product:
+        raise _NOT_FOUND("Product")
+
+    vendor = await VendorRepository(db).get_by_id(product.vendor_id)
+    if not vendor or not _owns_vendor(user, vendor):
+        raise _FORBIDDEN
+
+    image = await repo.get_image(image_id)
+    if not image or image.product_id != product.id:
+        raise _NOT_FOUND("Image")
+    await repo.set_primary_image(product.id, image_id)
+    db.expire(product, ["images"])
+    updated = await repo.get_by_id(product.id)
+    assert updated is not None
+    if updated.is_active:
+        await meilisearch_client.index_product(_to_meili_doc(updated, vendor.name))
+    return updated
 
 
 async def set_product_city_availability(

@@ -212,6 +212,15 @@ async def remove_product_image(
     await catalog_service.remove_product_image(db, slug, image_id, user)
 
 
+@router.post("/products/{slug}/images/{image_id}/primary", response_model=ProductRead)
+async def set_primary_product_image(
+    slug: str, image_id: uuid.UUID, db: DB, user: CurrentUser
+) -> ProductRead:
+    """Make this photo the main one shown on listings; the others stay as extra photos."""
+    product = await catalog_service.set_primary_product_image(db, slug, image_id, user)
+    return ProductRead.model_validate(product)
+
+
 @router.put("/products/{slug}/cities", response_model=ProductRead)
 async def set_product_cities(
     slug: str,

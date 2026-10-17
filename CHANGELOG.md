@@ -8,6 +8,13 @@ pre-production-cutover).
 ## [Unreleased]
 
 ### Added
+- Back office (Phase 9 P0): admin **Products** tab replaces "Hidden products" — the whole
+  catalog with name search, shop filter and All/Live/Hidden, publish/hide, and an **editor** at
+  `/admin/products/{id}` (details & price, photos with main-photo choice and remove, per-city
+  price/fee/lead time/same-day cutoff). API: `GET /admin/products` gains `q`, `vendor_id`,
+  `image_url`, `updated_at`; new `GET /admin/products/{id}` (hidden included) and
+  `POST /products/{slug}/images/{image_id}/primary`.
+
 - Admin "Add product" tab: create a live product (house vendor preselected) with a photo upload
   and delivery cities. API: `POST /products/{slug}/images/upload` (JPEG/PNG/WebP, 10 MB);
   photos live under the public `products/` prefix of the media bucket (ADR 0011).
@@ -160,6 +167,8 @@ pre-production-cutover).
   once. Migration `0013`.
 
 ### Fixed
+- `PATCH /products/{slug}` can now clear `category_id` and `description` with an explicit null.
+- Removing a product's main photo promotes the next one instead of leaving it with none.
 - Security: `POST /vendors` was open to any signed-in user, who became the owner of the new
   shop and could then list products with no review. It is now staff/admin only, and a
   staff-created shop has no owner until one is assigned.

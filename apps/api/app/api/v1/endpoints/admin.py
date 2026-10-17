@@ -17,6 +17,7 @@ from app.models.user import User, UserRole
 from app.repositories.loyalty_repository import CouponRepository
 from app.repositories.order_repository import OrderRepository
 from app.repositories.user_repository import UserRepository
+from app.schemas.catalog import ProductRead
 from app.schemas.order import ReportedNoteRead
 from app.schemas.report import CampaignSalesReport
 from app.schemas.social_order import (
@@ -269,17 +270,30 @@ async def reject_vendor_application(
 
 @router.get("/products", response_model=list[AdminProductRead])
 async def list_products(
-    _admin: AdminUser, db: DB, is_active: bool | None = None
+    _admin: AdminUser,
+    db: DB,
+    is_active: bool | None = None,
+    q: str | None = Query(default=None, max_length=100, examples=["roses"]),  # noqa: B008
+    vendor_id: uuid.UUID | None = None,
 ) -> list[AdminProductRead]:
-    """Every product, hidden ones included. `is_active=false` lists what is waiting to be published."""
-    products = await catalog_service.list_admin_products(db, is_active)
+    """Every product, hidden ones included. `is_active=false` lists what is waiting to be published;
+    `q` matches the name or URL name."""
+    products = await catalog_service.list_admin_products(db, is_active, q=q, vendor_id=vendor_id)
     return [
         AdminProductRead(
             id=p.id, name=p.name, slug=p.slug, vendor_name=p.vendor.name,
-            base_price_pkr=p.base_price_pkr, is_active=p.is_active, created_at=p.created_at,
+            base_price_pkr=p.base_price_pkr, is_active=p.is_active,
+            created_at=p.created_at, updated_at=p.updated_at,
+            image_url=next((i.url for i in p.images if i.is_primary), p.images[0].url if p.images else None),
         )
         for p in products
     ]
+
+
+@router.get("/products/{product_id}", response_model=ProductRead)
+async def get_product(product_id: uuid.UUID, _admin: AdminUser, db: DB) -> ProductRead:
+    """One product for the editor, hidden or live."""
+    return ProductRead.model_validate(await catalog_service.get_admin_product(db, product_id))
 
 
 @router.patch("/products/{product_id}/active")

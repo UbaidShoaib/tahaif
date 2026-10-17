@@ -227,11 +227,22 @@ class ProductRepository:
     def __init__(self, db: AsyncSession) -> None:
         self._db = db
 
-    async def list_for_admin(self, is_active: bool | None = None, limit: int = 200) -> builtins.list[Product]:
-        """Every product with its vendor, hidden ones included, newest first."""
-        q = select(Product).options(selectinload(Product.vendor))
+    async def list_for_admin(
+        self,
+        is_active: bool | None = None,
+        q_text: str | None = None,
+        vendor_id: uuid.UUID | None = None,
+        limit: int = 200,
+    ) -> builtins.list[Product]:
+        """Every product with its vendor and photos, hidden ones included, newest first."""
+        q = select(Product).options(selectinload(Product.vendor), selectinload(Product.images))
         if is_active is not None:
             q = q.where(Product.is_active.is_(is_active))
+        if vendor_id:
+            q = q.where(Product.vendor_id == vendor_id)
+        if q_text:
+            pattern = f"%{q_text.strip()}%"
+            q = q.where(or_(Product.name.ilike(pattern), Product.slug.ilike(pattern)))
         result = await self._db.execute(q.order_by(Product.created_at.desc()).limit(limit))
         return list(result.scalars().all())
 
@@ -384,6 +395,13 @@ class ProductRepository:
 
     async def delete_image(self, image: ProductImage) -> None:
         await self._db.delete(image)
+        await self._db.flush()
+
+    async def set_primary_image(self, product_id: uuid.UUID, image_id: uuid.UUID) -> None:
+        """Exactly one main photo per product."""
+        result = await self._db.execute(select(ProductImage).where(ProductImage.product_id == product_id))
+        for image in result.scalars().all():
+            image.is_primary = image.id == image_id
         await self._db.flush()
 
     async def upsert_city_availability(

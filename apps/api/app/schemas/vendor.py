@@ -134,3 +134,5 @@ class AdminProductRead(BaseModel):
     base_price_pkr: int
     is_active: bool
     created_at: datetime
+    updated_at: datetime
+    image_url: str | None = Field(default=None, description="Main photo, for the list thumbnail")

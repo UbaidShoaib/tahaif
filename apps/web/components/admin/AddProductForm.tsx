@@ -20,7 +20,7 @@ export function slugify(name: string): string {
 }
 
 /** Rupees as typed → paisa as stored. Returns null for anything that isn't a whole, non-negative amount. */
-function toPaisa(rupees: string): number | null {
+export function toPaisa(rupees: string): number | null {
   if (!/^\d+$/.test(rupees.trim())) return null;
   return Number(rupees.trim()) * 100;
 }

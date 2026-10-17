@@ -80,11 +80,19 @@ describe("AdminDashboard sections", () => {
     );
   });
 
-  it("shows hidden products in their own section", async () => {
+  it("shows the catalog in the products section", async () => {
     render(<AdminDashboard />);
 
-    await userEvent.click(await screen.findByRole("button", { name: "Hidden products" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Products" }));
 
-    expect(await screen.findByText(/No hidden products/)).toBeInTheDocument();
+    expect(await screen.findByRole("searchbox", { name: "Search products" })).toBeInTheDocument();
+  });
+
+  it("opens the tab named in ?section=", async () => {
+    window.history.replaceState(null, "", "/admin?section=products");
+    render(<AdminDashboard />);
+
+    expect(await screen.findByRole("searchbox", { name: "Search products" })).toBeInTheDocument();
+    window.history.replaceState(null, "", "/");
   });
 });
