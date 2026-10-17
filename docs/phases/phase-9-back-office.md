@@ -163,7 +163,12 @@ refresh, shared links and the back button work. Count badges (e.g. receipts wait
 - Sizes are never deleted, only switched off: past order lines point at them.
 - Daily capacity for made-to-order items is still a P1 idea, not built.
 
-**Still open in P0:** occasions on a product (no API yet), photo reordering.
+**P0 · Occasions on a product — done (2026-10-18)** — "Occasions" checkboxes on the product page;
+`PUT /products/{slug}/occasions` replaces the full set (owner or staff, audited with the names before → after).
+Occasions are returned only on the admin product (`AdminProductDetail`), not on the shared `ProductRead`, so
+storefront queries don't have to load them.
+
+**Still open in P0:** photo reordering.
 
 ## 5. Open questions (defaults in brackets)
 

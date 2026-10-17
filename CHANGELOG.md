@@ -8,6 +8,9 @@ pre-production-cutover).
 ## [Unreleased]
 
 ### Added
+- Back office (Phase 9 P0): **occasions on a product**. Tick which occasion pages (Eid, Mother's Day…) list a
+  product, from its page in the admin. API: `PUT /products/{slug}/occasions`; `GET /admin/products/{id}` now
+  includes `occasions`.
 - Back office (Phase 9 P0): **sizes & stock** on the product page. Add, rename, reprice, restock or switch off
   a size; leave stock blank for made-to-order items (never runs out) or enter a count for boxed goods.
   Cancelling an order puts counted stock back. API: `POST /products/{slug}/variants`,

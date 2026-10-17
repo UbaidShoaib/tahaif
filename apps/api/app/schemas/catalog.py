@@ -179,6 +179,24 @@ class ProductRead(BaseModel):
     vendor: VendorSummary | None = None
 
 
+class OccasionSummary(BaseModel):
+    model_config = {"from_attributes": True}
+
+    id: uuid.UUID
+    slug: str
+    name: str
+
+
+class AdminProductDetail(ProductRead):
+    """The product editor's view: everything buyers see plus what only staff edit."""
+
+    occasions: list[OccasionSummary] = Field(description="Occasion pages the product appears on")
+
+
+class ProductOccasionsSet(BaseModel):
+    occasion_ids: list[uuid.UUID] = Field(max_length=50, description="The full set; occasions left out are removed")
+
+
 class ProductCreate(BaseModel):
     vendor_id: uuid.UUID
     category_id: uuid.UUID | None = None

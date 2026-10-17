@@ -1204,6 +1204,115 @@
         "title": "AdminPaymentRead",
         "type": "object"
       },
+      "AdminProductDetail": {
+        "description": "The product editor's view: everything buyers see plus what only staff edit.",
+        "properties": {
+          "base_price_pkr": {
+            "title": "Base Price Pkr",
+            "type": "integer"
+          },
+          "category_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category Id"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "images": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/ProductImageRead"
+            },
+            "title": "Images",
+            "type": "array"
+          },
+          "is_active": {
+            "title": "Is Active",
+            "type": "boolean"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "occasions": {
+            "description": "Occasion pages the product appears on",
+            "items": {
+              "$ref": "#/components/schemas/OccasionSummary"
+            },
+            "title": "Occasions",
+            "type": "array"
+          },
+          "product_cities": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/ProductCityRead"
+            },
+            "title": "Product Cities",
+            "type": "array"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          },
+          "variants": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/ProductVariantRead"
+            },
+            "title": "Variants",
+            "type": "array"
+          },
+          "vendor": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/VendorSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "vendor_id": {
+            "format": "uuid",
+            "title": "Vendor Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "vendor_id",
+          "category_id",
+          "name",
+          "slug",
+          "description",
+          "base_price_pkr",
+          "is_active",
+          "occasions"
+        ],
+        "title": "AdminProductDetail",
+        "type": "object"
+      },
       "AdminProductRead": {
         "properties": {
           "base_price_pkr": {
@@ -3824,6 +3933,30 @@
         "title": "OccasionRead",
         "type": "object"
       },
+      "OccasionSummary": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "slug",
+          "name"
+        ],
+        "title": "OccasionSummary",
+        "type": "object"
+      },
       "OccasionUpdate": {
         "properties": {
           "banner_url": {
@@ -4618,6 +4751,25 @@
           "is_primary"
         ],
         "title": "ProductImageRead",
+        "type": "object"
+      },
+      "ProductOccasionsSet": {
+        "properties": {
+          "occasion_ids": {
+            "description": "The full set; occasions left out are removed",
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "maxItems": 50,
+            "title": "Occasion Ids",
+            "type": "array"
+          }
+        },
+        "required": [
+          "occasion_ids"
+        ],
+        "title": "ProductOccasionsSet",
         "type": "object"
       },
       "ProductRead": {
@@ -7911,7 +8063,7 @@
     },
     "/api/v1/admin/products/{product_id}": {
       "get": {
-        "description": "One product for the editor, hidden or live.",
+        "description": "One product for the editor, hidden or live, with its occasions.",
         "operationId": "get_product_api_v1_admin_products__product_id__get",
         "parameters": [
           {
@@ -7930,7 +8082,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProductRead"
+                  "$ref": "#/components/schemas/AdminProductDetail"
                 }
               }
             },
@@ -11579,6 +11731,64 @@
           }
         ],
         "summary": "Set Primary Product Image",
+        "tags": [
+          "catalog"
+        ]
+      }
+    },
+    "/api/v1/products/{slug}/occasions": {
+      "put": {
+        "description": "Choose the occasion pages this product appears on. Send the full list; an empty list removes it from all.",
+        "operationId": "set_product_occasions_api_v1_products__slug__occasions_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProductOccasionsSet"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Set Product Occasions",
         "tags": [
           "catalog"
         ]

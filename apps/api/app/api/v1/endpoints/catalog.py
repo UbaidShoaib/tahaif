@@ -19,6 +19,7 @@ from app.schemas.catalog import (
     ProductCityUpsert,
     ProductCreate,
     ProductImageRead,
+    ProductOccasionsSet,
     ProductRead,
     ProductSort,
     ProductUpdate,
@@ -221,6 +222,12 @@ async def set_primary_product_image(
     """Make this photo the main one shown on listings; the others stay as extra photos."""
     product = await catalog_service.set_primary_product_image(db, slug, image_id, user)
     return ProductRead.model_validate(product)
+
+
+@router.put("/products/{slug}/occasions", response_model=ProductRead)
+async def set_product_occasions(slug: str, body: ProductOccasionsSet, db: DB, user: CurrentUser) -> ProductRead:
+    """Choose the occasion pages this product appears on. Send the full list; an empty list removes it from all."""
+    return ProductRead.model_validate(await catalog_service.set_product_occasions(db, slug, body.occasion_ids, user))
 
 
 @router.post(

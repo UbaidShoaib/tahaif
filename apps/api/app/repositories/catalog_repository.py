@@ -216,6 +216,12 @@ class OccasionRepository:
         await self._db.refresh(occasion)
         return occasion
 
+    async def get_by_ids(self, occasion_ids: list[uuid.UUID]) -> list[Occasion]:
+        if not occasion_ids:
+            return []
+        result = await self._db.execute(select(Occasion).where(Occasion.id.in_(occasion_ids)))
+        return list(result.scalars().all())
+
     async def update(self, occasion: Occasion, **kwargs: Any) -> Occasion:
         for key, value in kwargs.items():
             setattr(occasion, key, value)
@@ -364,6 +370,17 @@ class ProductRepository:
             self._with_relations().where(Product.id == product_id)
         )
         return result.scalar_one_or_none()
+
+    async def get_with_occasions(self, product_id: uuid.UUID) -> Product | None:
+        result = await self._db.execute(
+            self._with_relations().options(selectinload(Product.occasions)).where(Product.id == product_id)
+        )
+        return result.scalar_one_or_none()
+
+    async def set_occasions(self, product: Product, occasions: builtins.list[Occasion]) -> None:
+        """`product` must have been loaded with its occasions (get_with_occasions)."""
+        product.occasions = occasions
+        await self._db.flush()
 
     async def create(self, **kwargs: Any) -> Product:
         product = Product(**kwargs)

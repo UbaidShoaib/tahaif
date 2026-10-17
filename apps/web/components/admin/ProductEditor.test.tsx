@@ -27,6 +27,7 @@ const product: EditableProduct = {
     { id: "va", name: "Dozen", price_delta_pkr: 0, stock_qty: null, is_active: true },
     { id: "vb", name: "Gift box", price_delta_pkr: 150000, stock_qty: 0, is_active: true },
   ],
+  occasions: [{ id: "eid", name: "Eid" }],
   product_cities: [
     { city_id: "lhr", price_override_pkr: null, delivery_fee_pkr: 30000, lead_time_hours: 24, same_day_cutoff: "14:00:00", is_available: true },
   ],
@@ -42,6 +43,7 @@ function serve(overrides: Record<string, unknown> = {}) {
     }
     if (path === "/admin/products/p1") return Promise.resolve(product);
     if (path === "/categories") return Promise.resolve([{ id: "cat1", name: "Flowers" }]);
+    if (path === "/occasions") return Promise.resolve([{ id: "eid", name: "Eid" }, { id: "mom", name: "Mother's Day" }]);
     if (path === "/cities") return Promise.resolve([{ id: "lhr", name: "Lahore" }, { id: "khi", name: "Karachi" }]);
     return Promise.resolve({});
   });
@@ -206,5 +208,19 @@ describe("ProductEditor", () => {
 
     expect(await screen.findByRole("alert")).toHaveTextContent("stock must be a whole number");
     expect(apiFetch).not.toHaveBeenCalledWith("/products/red-roses/variants", expect.anything());
+  });
+
+  it("ticks the product's occasions and saves the full set", async () => {
+    serve();
+    render(<ProductEditor token="tok" productId="p1" />);
+
+    expect(await screen.findByRole("checkbox", { name: "Eid" })).toBeChecked();
+    await userEvent.click(screen.getByRole("checkbox", { name: "Mother's Day" }));
+    await userEvent.click(screen.getByRole("checkbox", { name: "Eid" }));
+    await userEvent.click(screen.getByRole("button", { name: "Save occasions" }));
+
+    await waitFor(() => expect(apiFetch).toHaveBeenCalledWith("/products/red-roses/occasions", expect.objectContaining({
+      method: "PUT", body: { occasion_ids: ["mom"] },
+    })));
   });
 });

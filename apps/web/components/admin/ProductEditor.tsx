@@ -37,6 +37,7 @@ export type EditableProduct = {
   is_active: boolean;
   images: ProductImage[];
   variants: Variant[];
+  occasions: Option[];
   product_cities: ProductCity[];
   vendor: { id: string; name: string; slug: string } | null;
 };
@@ -72,7 +73,7 @@ function Notice({ kind, children }: { kind: "error" | "ok"; children: React.Reac
 }
 
 /**
- * Edit any product, live or hidden: details and price, photos, sizes and stock, and which cities
+ * Edit any product, live or hidden: details and price, occasions, photos, sizes and stock, and which cities
  * it delivers to at what fee. Each section saves on its own so a slow photo
  * upload never holds back a price fix.
  */
@@ -80,6 +81,8 @@ export function ProductEditor({ token, productId }: { token: string; productId: 
   const [product, setProduct] = useState<EditableProduct | null>(null);
   const [categories, setCategories] = useState<Option[]>([]);
   const [cities, setCities] = useState<Option[]>([]);
+  const [occasions, setOccasions] = useState<Option[]>([]);
+  const [occasionIds, setOccasionIds] = useState<Set<string>>(new Set());
   const [loadError, setLoadError] = useState<string | null>(null);
 
   const [name, setName] = useState("");
@@ -101,18 +104,22 @@ export function ProductEditor({ token, productId }: { token: string; productId: 
     setPrice(rupees(p.base_price_pkr));
     setCategoryId(p.category_id ?? "");
     setRows(cityRows(allCities, p));
+    setOccasionIds(new Set(p.occasions.map((o) => o.id)));
   }, []);
 
   useEffect(() => {
     void (async () => {
       try {
-        const [p, cat, ci] = await Promise.all([
+        const [p, cat, ci, occ] = await Promise.all([
           apiFetch<EditableProduct>(`/admin/products/${productId}`, { token }),
           apiFetch<Option[]>("/categories", { token }),
           apiFetch<Option[]>("/cities", { token }),
+          apiFetch<Option[]>("/occasions", { token }),
         ]);
         setCategories(cat);
         setCities(ci);
+        // The list has live occasions only; keep any switched-off one the product is still on.
+        setOccasions([...occ, ...p.occasions.filter((o) => !occ.some((x) => x.id === o.id))]);
         fill(p, ci);
       } catch (e) {
         setLoadError(e instanceof ApiError ? e.detail : "Could not load the product.");
@@ -186,6 +193,22 @@ export function ProductEditor({ token, productId }: { token: string; productId: 
   function removePhoto(id: string) {
     setConfirmRemove(null);
     void run("photos", () => apiFetch(`/products/${slug}/images/${id}`, { method: "DELETE", token }), "Photo removed.");
+  }
+
+  function toggleOccasion(id: string, on: boolean) {
+    setOccasionIds((ids) => {
+      const next = new Set(ids);
+      if (on) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  }
+
+  function saveOccasions(e: React.FormEvent) {
+    e.preventDefault();
+    void run("occasions", () => apiFetch(`/products/${slug}/occasions`, {
+      method: "PUT", token, body: { occasion_ids: [...occasionIds] },
+    }), "Occasions saved.");
   }
 
   function setRow(cityId: string, patch: Partial<CityRow>) {
@@ -281,6 +304,29 @@ export function ProductEditor({ token, productId }: { token: string; productId: 
         </div>
         {show("details")}
         <Button type="submit" disabled={busy !== null}>{busy === "details" ? "Saving…" : "Save details"}</Button>
+      </form>
+
+      <form onSubmit={saveOccasions} aria-labelledby="occasions-heading" className="space-y-4 rounded-xl border p-4">
+        <div>
+          <h2 id="occasions-heading" className="font-semibold">Occasions</h2>
+          <p className="text-sm text-muted-foreground">The product shows on each ticked occasion&apos;s page, e.g. Mother&apos;s Day.</p>
+        </div>
+        {occasions.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No occasions have been set up yet.</p>
+        ) : (
+          <div className="flex flex-wrap gap-x-5 gap-y-2">
+            {occasions.map((o) => (
+              <label key={o.id} className="flex items-center gap-2 text-sm">
+                <input type="checkbox" checked={occasionIds.has(o.id)} onChange={(e) => toggleOccasion(o.id, e.target.checked)} />
+                {o.name}
+              </label>
+            ))}
+          </div>
+        )}
+        {show("occasions")}
+        {occasions.length > 0 && (
+          <Button type="submit" disabled={busy !== null}>{busy === "occasions" ? "Saving…" : "Save occasions"}</Button>
+        )}
       </form>
 
       <section aria-labelledby="photos-heading" className="space-y-4 rounded-xl border p-4">

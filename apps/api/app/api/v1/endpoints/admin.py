@@ -17,7 +17,7 @@ from app.models.user import User, UserRole
 from app.repositories.loyalty_repository import CouponRepository
 from app.repositories.user_repository import UserRepository
 from app.schemas.audit import AuditPage
-from app.schemas.catalog import ProductRead
+from app.schemas.catalog import AdminProductDetail
 from app.schemas.order import (
     AdminOrderDetail,
     AdminOrderPage,
@@ -280,10 +280,10 @@ async def list_products(
     ]
 
 
-@router.get("/products/{product_id}", response_model=ProductRead)
-async def get_product(product_id: uuid.UUID, _admin: AdminUser, db: DB) -> ProductRead:
-    """One product for the editor, hidden or live."""
-    return ProductRead.model_validate(await catalog_service.get_admin_product(db, product_id))
+@router.get("/products/{product_id}", response_model=AdminProductDetail)
+async def get_product(product_id: uuid.UUID, _admin: AdminUser, db: DB) -> AdminProductDetail:
+    """One product for the editor, hidden or live, with its occasions."""
+    return AdminProductDetail.model_validate(await catalog_service.get_admin_product(db, product_id))
 
 
 @router.patch("/products/{product_id}/active")

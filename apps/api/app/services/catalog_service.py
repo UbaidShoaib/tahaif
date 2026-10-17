@@ -262,8 +262,8 @@ async def list_admin_products(
 
 
 async def get_admin_product(db: AsyncSession, product_id: uuid.UUID) -> Product:
-    """Admin lookup by id. Unlike the public one, hidden products are returned so they can be edited."""
-    product = await ProductRepository(db).get_by_id(product_id)
+    """Admin lookup by id, occasions loaded. Unlike the public one, hidden products are returned so they can be edited."""
+    product = await ProductRepository(db).get_with_occasions(product_id)
     if not product:
         raise _NOT_FOUND("Product")
     return product
@@ -512,6 +512,25 @@ async def set_primary_product_image(
     if updated.is_active:
         await meilisearch_client.index_product(_to_meili_doc(updated, vendor.name))
     return updated
+
+
+async def set_product_occasions(db: AsyncSession, slug: str, occasion_ids: list[uuid.UUID], user: User) -> Product:
+    """Which occasion pages ("Mother's Day", "Eid") list this product. Replaces the whole set."""
+    product, _vendor = await _owned_product(db, slug, user)
+    wanted = list(dict.fromkeys(occasion_ids))
+    occasions = await OccasionRepository(db).get_by_ids(wanted)
+    if len(occasions) != len(wanted):
+        raise _NOT_FOUND("Occasion")
+    repo = ProductRepository(db)
+    loaded = await repo.get_with_occasions(product.id)
+    assert loaded is not None
+    before = sorted(o.name for o in loaded.occasions)
+    await repo.set_occasions(loaded, occasions)
+    await audit_service.record(
+        db, user, "product.occasions_changed", "product", product.id,
+        before={"occasions": before}, after={"occasions": sorted(o.name for o in occasions)},
+    )
+    return loaded
 
 
 _VARIANT_FIELDS = ["name", "price_delta_pkr", "stock_qty", "is_active"]
