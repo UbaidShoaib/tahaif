@@ -83,8 +83,8 @@ export function OrderSummary({
   isPlacing,
 }: Props) {
   return (
-    <section aria-labelledby="summary-heading" className="space-y-4 rounded-xl border bg-card p-5 lg:sticky lg:top-20">
-      <h2 id="summary-heading" className="text-h3">
+    <section aria-labelledby="summary-heading" className="space-y-4 rounded-2xl bg-background-alt p-5 sm:p-6 lg:sticky lg:top-24">
+      <h2 id="summary-heading" className="font-display text-xl">
         Order summary
       </h2>
 
@@ -146,7 +146,7 @@ export function OrderSummary({
 
       <div className="flex items-baseline justify-between font-semibold">
         <span>Total</span>
-        <span className="text-lg tabular-nums text-link">{pkr(totals.total_pkr)}</span>
+        <span className="font-display text-2xl tabular-nums">{pkr(totals.total_pkr)}</span>
       </div>
       {quote && quote.currency !== "PKR" ? (
         <p className="rounded-md bg-muted px-3 py-2 text-sm">

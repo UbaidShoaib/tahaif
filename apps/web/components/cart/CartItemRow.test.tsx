@@ -71,8 +71,9 @@ describe("CartItemRow", () => {
     expect(removeItem).toHaveBeenCalledWith("item-1");
   });
 
-  it("shows a placeholder emoji when there is no product image", () => {
-    render(<CartItemRow item={baseItem} />);
-    expect(screen.getByText("🎁")).toBeInTheDocument();
+  it("shows a gift icon placeholder when there is no product image", () => {
+    const { container } = render(<CartItemRow item={baseItem} />);
+    expect(container.querySelector("img")).toBeNull();
+    expect(container.querySelector("svg.lucide-gift")).not.toBeNull();
   });
 });

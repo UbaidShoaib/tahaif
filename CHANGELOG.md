@@ -44,6 +44,10 @@ pre-production-cutover).
   SOP, compliance note and integration options in `docs/`.
 
 ### Changed
+- Cart and checkout redesigned to match: cart items as hairline rows (bigger photo, serif name, price
+  in ink) with a soft tinted summary panel and a proper empty state (no emoji); checkout sections
+  (your details, recipient & delivery, payment) as open sections divided by hairlines, the order
+  summary as a tinted panel with a serif total. Borders remain only on things you select.
 - Product page redesigned to match: the gallery stays in view while scrolling on desktop (taller
   4:5 on large screens), shop name in small caps above a serif title, serif price in ink, delivery
   panel on a soft tint instead of a bordered box, trust icons in gold, and "About this gift", the

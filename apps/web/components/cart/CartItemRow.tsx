@@ -4,6 +4,7 @@ import { useState } from "react";
 import Image from "next/image";
 import { isOptimizable } from "@/lib/image-hosts";
 import Link from "next/link";
+import { Gift } from "lucide-react";
 import { useCartStore } from "@/stores/cart.store";
 import { Price } from "@/components/money/Price";
 import { QuantityStepper } from "@/components/ui/quantity-stepper";
@@ -56,18 +57,18 @@ export function CartItemRow({ item }: { item: CartItemRead }) {
   return (
     <div className="flex gap-3 py-3">
       {/* Image */}
-      <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-lg border bg-muted">
+      <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-lg bg-muted sm:h-20 sm:w-20">
         {item.product_image ? (
           <Image
             src={item.product_image}
             alt=""
             fill
-            sizes="64px"
+            sizes="80px"
             className="object-cover"
             unoptimized={!isOptimizable(item.product_image)}
           />
         ) : (
-          <div aria-hidden className="flex h-full w-full items-center justify-center text-2xl">🎁</div>
+          <Gift aria-hidden className="absolute inset-0 m-auto h-6 w-6 text-muted-foreground" />
         )}
       </div>
 
@@ -75,12 +76,12 @@ export function CartItemRow({ item }: { item: CartItemRead }) {
       <div className="flex min-w-0 flex-1 flex-col gap-1">
         <Link
           href={`/p/${item.product_slug}`}
-          className="line-clamp-2 text-sm font-medium leading-tight hover:text-link"
+          className="line-clamp-2 font-display text-base leading-snug hover:text-link"
         >
           {item.product_name}
         </Link>
         {item.variant_name && <span className="text-xs text-muted-foreground">{item.variant_name}</span>}
-        <span className="text-sm font-semibold text-link">
+        <span className="text-sm font-semibold tabular-nums text-foreground">
           <Price pkr={item.line_total_pkr} />
         </span>
       </div>

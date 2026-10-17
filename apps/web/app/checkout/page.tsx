@@ -311,15 +311,15 @@ export default function CheckoutPage() {
 
       {/* Phones: collapsible item list with the running total, above the form. */}
       {cart && (
-        <details className="group mb-6 rounded-xl border bg-card lg:hidden">
+        <details className="group mb-6 rounded-xl bg-background-alt lg:hidden">
           <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-2 px-4 font-medium [&::-webkit-details-marker]:hidden">
             <span className="flex items-center gap-2">
               Order summary
               <ChevronDown aria-hidden className="h-4 w-4 transition-transform group-open:rotate-180" />
             </span>
-            <span className="tabular-nums text-link">{formatMoney(totals.total_pkr, "PKR")}</span>
+            <span className="font-semibold tabular-nums">{formatMoney(totals.total_pkr, "PKR")}</span>
           </summary>
-          <div className="border-t px-4 py-3">
+          <div className="border-t border-foreground/10 px-4 py-3">
             <SummaryItems cart={cart} />
           </div>
         </details>
@@ -328,11 +328,11 @@ export default function CheckoutPage() {
       <form
         noValidate
         onSubmit={(e) => void handleSubmit(onValid, onInvalid)(e)}
-        className="grid grid-cols-1 gap-6 lg:grid-cols-3 lg:gap-8"
+        className="grid grid-cols-1 gap-8 lg:grid-cols-3 lg:gap-12"
       >
         {/* Disabled until hydrated so nothing typed early is wiped (hooks/use-hydrated.ts). */}
         <fieldset disabled={!hydrated} className="contents">
-        <div className="space-y-6 lg:col-span-2">
+        <div className="space-y-8 lg:col-span-2 [&>section:first-of-type]:border-t-0 [&>section:first-of-type]:pt-0">
           {errorList.length > 0 && (
             <Alert variant="destructive" ref={errorSummaryRef} tabIndex={-1} aria-labelledby="error-summary-title">
               <AlertTitle id="error-summary-title">
@@ -354,7 +354,7 @@ export default function CheckoutPage() {
           )}
 
           {!user && (
-            <section aria-labelledby="contact-heading" className="space-y-4 rounded-xl border bg-card p-5">
+            <section aria-labelledby="contact-heading" className="space-y-4 border-t pt-8">
               <div className="flex flex-wrap items-baseline justify-between gap-2">
                 <h2 id="contact-heading" className="text-h3">
                   Your details

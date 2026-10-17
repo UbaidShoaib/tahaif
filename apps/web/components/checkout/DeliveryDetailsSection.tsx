@@ -37,7 +37,7 @@ export function DeliveryDetailsSection({
   const city = register("delivery_city_id");
 
   return (
-    <section aria-labelledby="delivery-heading" className="space-y-5 rounded-xl border bg-card p-5">
+    <section aria-labelledby="delivery-heading" className="space-y-5 border-t pt-8">
       <h2 id="delivery-heading" className="text-h3">
         Recipient &amp; delivery
       </h2>

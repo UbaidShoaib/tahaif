@@ -19,7 +19,7 @@ export function PaymentMethodSection({
   onChange: (method: PaymentMethod) => void;
 }) {
   return (
-    <section aria-labelledby="payment-heading" className="space-y-4 rounded-xl border bg-card p-5">
+    <section aria-labelledby="payment-heading" className="space-y-4 border-t pt-8">
       <h2 id="payment-heading" className="text-h3">
         Payment
       </h2>
@@ -34,7 +34,7 @@ export function PaymentMethodSection({
         {METHODS.map(({ value: v, label, desc, icon: Icon }) => (
           <RadioCard key={v} value={v}>
             <span className="flex items-center gap-2 font-medium">
-              <Icon aria-hidden className="h-4 w-4 text-link" />
+              <Icon aria-hidden className="h-4 w-4 text-gold-ink" />
               {label}
             </span>
             <span className="mt-0.5 block text-xs text-muted-foreground">{desc}</span>
