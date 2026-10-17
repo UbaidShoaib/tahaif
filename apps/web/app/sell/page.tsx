@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
 import { SellApplication } from "@/components/vendor/SellApplication";
 import { brand } from "@/lib/brand";
+import { canonical } from "@/lib/seo";
 
 export const metadata: Metadata = {
   title: "Sell with us",
   description: `Apply to open your shop on ${brand.name} and deliver gifts across Pakistan.`,
+  ...canonical("/sell"),
 };
 
 export default function SellPage() {

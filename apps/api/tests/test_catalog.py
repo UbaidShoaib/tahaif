@@ -1,6 +1,7 @@
 """HTTP-layer tests for the catalog endpoints."""
 
 import uuid
+from datetime import datetime
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -398,6 +399,7 @@ async def test_update_product(
     )
 
     token = await _login(client, vendor_email)
+    before = (await client.get(f"/api/v1/products/{slug}")).json()["updated_at"]
 
     with patch("app.services.catalog_service.meilisearch_client.index_product", new_callable=AsyncMock):
         resp = await client.patch(
@@ -407,6 +409,8 @@ async def test_update_product(
         )
     assert resp.status_code == 200
     assert resp.json()["base_price_pkr"] == 600000
+    # The sitemap's lastmod comes from here, so an edit must move it forward.
+    assert datetime.fromisoformat(resp.json()["updated_at"]) > datetime.fromisoformat(before)
 
 
 @pytest.mark.asyncio

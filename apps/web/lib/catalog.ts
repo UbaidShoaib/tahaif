@@ -50,6 +50,7 @@ export type Product = {
   product_cities: ProductCity[];
   variants: ProductVariant[];
   vendor: VendorSummary | null;
+  updated_at?: string;
 };
 
 export type PaginatedProducts = {
@@ -132,6 +133,8 @@ export const catalogApi = {
   getProduct: (slug: string) => apiFetch<Product>(`/products/${slug}`),
 
   getVendor: (slug: string) => apiFetch<Vendor>(`/vendors/${slug}`),
+
+  getVendors: () => apiFetch<Vendor[]>("/vendors"),
 
   getOccasions: () => apiFetch<Occasion[]>("/occasions"),
 

@@ -1,6 +1,6 @@
 # Phase 10 — SEO & Discoverability (evaluation & plan)
 
-Status: **Proposed** · Written 2026-10-17
+Status: **P0 done** · Written 2026-10-17
 
 This is an SEO audit of the storefront (`apps/web`) and a plan to fix it in
 stages. It covers technical SEO, on-page SEO, structured data, content and
@@ -188,6 +188,16 @@ thin doorway pages, which Google penalises.
 | 5 | Make `/c/[...slug]` return 404 or 301 when the path has extra segments | `app/c/[...slug]/page.tsx` |
 | 6 | Add tests: sitemap contents, robots output, canonical/noindex snapshots | `*.test.ts` |
 | 7 | Set up Google Search Console and Bing Webmaster Tools, submit the sitemap, add the verification meta via env | `layout.tsx` `verification` |
+
+P0 shipped as above, with these choices: private pages get an `X-Robots-Tag: noindex` header
+from `lib/seo.ts` (it also covers client pages that can't export metadata), and robots.txt
+blocks only signed-in areas, so crawlers can still see the noindex on token pages. Canonicals are
+set per page, not in the root layout, where every page would inherit the home canonical.
+Remaining manual step: verify the domain in Search Console and Bing (set the two
+`NEXT_PUBLIC_*_SITE_VERIFICATION` values, rebuild) and submit `/sitemap.xml`.
+Known gap: pages with a `loading.tsx` (product, category, occasion, shop) stream, so a missing
+slug returns 200 with `noindex` rather than a 404. Search engines drop it either way; a true 404
+needs the lookup to happen before streaming starts (P3 performance work).
 
 ### P1 — Metadata & structured data (≈1 week)
 

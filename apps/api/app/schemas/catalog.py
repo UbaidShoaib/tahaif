@@ -161,6 +161,7 @@ class ProductRead(BaseModel):
     product_cities: list[ProductCityRead] = []
     variants: list[ProductVariantRead] = []
     vendor: VendorSummary | None = None
+    updated_at: datetime
 
 
 class ProductCreate(BaseModel):

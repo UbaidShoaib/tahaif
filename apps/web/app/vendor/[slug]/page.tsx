@@ -8,6 +8,7 @@ import { MapPin } from "lucide-react";
 import { fetchListing, parseListingParams } from "@/lib/listing";
 import { ProductListing } from "@/components/catalog/ProductListing";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
+import { canonical } from "@/lib/seo";
 
 type Props = {
   params: Promise<{ slug: string }>;
@@ -18,7 +19,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const vendor = await catalogApi.getVendor(slug).catch(() => null);
   if (!vendor) return { title: "Vendor Not Found" };
-  return { title: vendor.name, description: vendor.description ?? undefined };
+  return { title: vendor.name, description: vendor.description ?? undefined, ...canonical(`/vendor/${vendor.slug}`) };
 }
 
 export default async function VendorPage({ params, searchParams }: Props) {

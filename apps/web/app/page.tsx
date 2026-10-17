@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import Image from "next/image";
 import {
   Banknote,
@@ -22,6 +23,9 @@ import { HeroFinder } from "@/components/home/HeroFinder";
 import { SameDayRail } from "@/components/home/SameDayRail";
 import { brand } from "@/lib/brand";
 import { onTimePercent } from "@/lib/stats";
+import { canonical } from "@/lib/seo";
+
+export const metadata: Metadata = canonical("/");
 
 const CATEGORIES: { name: string; slug: string; icon: LucideIcon; desc: string }[] = [
   { name: "Cakes", slug: "cakes", icon: Cake, desc: "Birthday, wedding & custom cakes" },

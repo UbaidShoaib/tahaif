@@ -7,6 +7,7 @@ import { fetchListing, parseListingParams } from "@/lib/listing";
 import { ProductListing } from "@/components/catalog/ProductListing";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { cn } from "@/lib/utils";
+import { canonical } from "@/lib/seo";
 
 type Props = {
   params: Promise<{ slug: string[] }>;
@@ -15,13 +16,16 @@ type Props = {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
-  const category = await catalogApi.getCategoryBySlug(slug[0]);
+  const category = slug.length === 1 ? await catalogApi.getCategoryBySlug(slug[0]) : null;
   if (!category) return { title: "Category Not Found" };
-  return { title: category.name };
+  // Sort, price and city filters all point back at the unfiltered category.
+  return { title: category.name, ...canonical(`/c/${category.slug}`) };
 }
 
 export default async function CategoryPage({ params, searchParams }: Props) {
   const { slug } = await params;
+  // One segment only, so /c/cakes/anything isn't a duplicate of /c/cakes.
+  if (slug.length !== 1) notFound();
   const categorySlug = slug[0];
 
   const [category, allCategories] = await Promise.all([
