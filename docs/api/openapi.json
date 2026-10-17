@@ -4815,8 +4815,16 @@
             "type": "integer"
           },
           "stock_qty": {
-            "title": "Stock Qty",
-            "type": "integer"
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "null = made to order, not counted; 0 = sold out",
+            "title": "Stock Qty"
           }
         },
         "required": [
@@ -4828,6 +4836,108 @@
           "is_active"
         ],
         "title": "ProductVariantRead",
+        "type": "object"
+      },
+      "ProductVariantUpdate": {
+        "properties": {
+          "is_active": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Active"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 255,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "price_delta_pkr": {
+            "anyOf": [
+              {
+                "maximum": 1000000000.0,
+                "minimum": -1000000000.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Price Delta Pkr"
+          },
+          "stock_qty": {
+            "anyOf": [
+              {
+                "maximum": 1000000.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stock Qty"
+          }
+        },
+        "title": "ProductVariantUpdate",
+        "type": "object"
+      },
+      "ProductVariantWrite": {
+        "description": "Add or change a size/option. On PATCH, omitted fields are left alone.",
+        "properties": {
+          "is_active": {
+            "default": true,
+            "title": "Is Active",
+            "type": "boolean"
+          },
+          "name": {
+            "examples": [
+              "2 lb"
+            ],
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "price_delta_pkr": {
+            "default": 0,
+            "description": "Added to the base price, in paisa",
+            "maximum": 1000000000.0,
+            "minimum": -1000000000.0,
+            "title": "Price Delta Pkr",
+            "type": "integer"
+          },
+          "stock_qty": {
+            "anyOf": [
+              {
+                "maximum": 1000000.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "null = not counted",
+            "title": "Stock Qty"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "ProductVariantWrite",
         "type": "object"
       },
       "QuoteLineItem": {
@@ -11469,6 +11579,138 @@
           }
         ],
         "summary": "Set Primary Product Image",
+        "tags": [
+          "catalog"
+        ]
+      }
+    },
+    "/api/v1/products/{slug}/variants": {
+      "post": {
+        "description": "Add a size or option. Leave `stock_qty` out for made-to-order items; give a number to count stock.",
+        "operationId": "add_product_variant_api_v1_products__slug__variants_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProductVariantWrite"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "409": {
+            "description": "The product already has a size with that name"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Add Product Variant",
+        "tags": [
+          "catalog"
+        ]
+      }
+    },
+    "/api/v1/products/{slug}/variants/{variant_id}": {
+      "patch": {
+        "description": "Rename, reprice, restock or switch off a size. Sizes are never deleted: past orders point at them.\nSend `stock_qty: null` to stop counting stock.",
+        "operationId": "update_product_variant_api_v1_products__slug__variants__variant_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "variant_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Variant Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProductVariantUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "409": {
+            "description": "The product already has a size with that name"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Update Product Variant",
         "tags": [
           "catalog"
         ]

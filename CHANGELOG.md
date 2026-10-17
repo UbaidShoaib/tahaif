@@ -8,6 +8,10 @@ pre-production-cutover).
 ## [Unreleased]
 
 ### Added
+- Back office (Phase 9 P0): **sizes & stock** on the product page. Add, rename, reprice, restock or switch off
+  a size; leave stock blank for made-to-order items (never runs out) or enter a count for boxed goods.
+  Cancelling an order puts counted stock back. API: `POST /products/{slug}/variants`,
+  `PATCH /products/{slug}/variants/{id}`. Migration `0019` makes `product_variants.stock_qty` nullable.
 - Back office (Phase 9 P0): **sidebar**. Admin sections are grouped (Orders, Catalog, Shops & content,
   Reports, Admin) in a left sidebar, a scrolling row on phones, and it stays on the order and product
   pages. The open section is in the URL (`/admin?section=…`), so refresh and the back button work.
@@ -74,6 +78,8 @@ pre-production-cutover).
   SOP, compliance note and integration options in `docs/`.
 
 ### Changed
+- A size that sells out stays switched on (shown as sold out) instead of being turned off, so restocking
+  brings it straight back.
 - Order status change and payment verification moved from the admin router into `admin_order_service`.
 - Removed the request-level audit middleware (it logged only the HTTP method and URL, no actor).
 - Cart and checkout redesigned to match: cart items as hairline rows (bigger photo, serif name, price

@@ -23,6 +23,10 @@ const product: EditableProduct = {
     { id: "i1", url: "https://img.example/1.jpg", alt_text: null, sort_order: 0, is_primary: true },
     { id: "i2", url: "https://img.example/2.jpg", alt_text: null, sort_order: 1, is_primary: false },
   ],
+  variants: [
+    { id: "va", name: "Dozen", price_delta_pkr: 0, stock_qty: null, is_active: true },
+    { id: "vb", name: "Gift box", price_delta_pkr: 150000, stock_qty: 0, is_active: true },
+  ],
   product_cities: [
     { city_id: "lhr", price_override_pkr: null, delivery_fee_pkr: 30000, lead_time_hours: 24, same_day_cutoff: "14:00:00", is_available: true },
   ],
@@ -157,5 +161,50 @@ describe("ProductEditor", () => {
 
     expect(await screen.findByRole("alert")).toHaveTextContent("Product not found");
     expect(screen.getByRole("link", { name: /All products/ })).toHaveAttribute("href", "/admin?section=products");
+  });
+
+  it("shows sizes with their price and stock state", async () => {
+    serve();
+    render(<ProductEditor token="tok" productId="p1" />);
+
+    expect(await screen.findByLabelText("Dozen stock")).toHaveValue("");
+    expect(screen.getByText("Sells at Rs 4,000", { exact: false })).toBeInTheDocument();
+    expect(screen.getByText("Sold out")).toBeInTheDocument();
+  });
+
+  it("restocks a size and sends a cleared count as null", async () => {
+    serve();
+    render(<ProductEditor token="tok" productId="p1" />);
+
+    const stock = await screen.findByLabelText("Gift box stock");
+    await userEvent.clear(stock);
+    await userEvent.type(stock, "12");
+    const row = stock.closest("li")!;
+    await userEvent.click(within(row as HTMLElement).getByRole("button", { name: "Save" }));
+
+    await waitFor(() => expect(apiFetch).toHaveBeenCalledWith("/products/red-roses/variants/vb", expect.objectContaining({
+      method: "PATCH", body: { name: "Gift box", price_delta_pkr: 150000, stock_qty: 12, is_active: true },
+    })));
+
+    await userEvent.type(screen.getByLabelText("New size name"), "Half dozen");
+    await userEvent.clear(screen.getByLabelText("New size extra price (Rs)"));
+    await userEvent.type(screen.getByLabelText("New size extra price (Rs)"), "-800");
+    await userEvent.click(screen.getByRole("button", { name: "Add" }));
+
+    await waitFor(() => expect(apiFetch).toHaveBeenCalledWith("/products/red-roses/variants", expect.objectContaining({
+      method: "POST", body: { name: "Half dozen", price_delta_pkr: -80000, stock_qty: null, is_active: true },
+    })));
+  });
+
+  it("rejects a stock count that isn't a whole number", async () => {
+    serve();
+    render(<ProductEditor token="tok" productId="p1" />);
+
+    await userEvent.type(await screen.findByLabelText("New size name"), "Jar");
+    await userEvent.type(screen.getByLabelText("New size stock"), "lots");
+    await userEvent.click(screen.getByRole("button", { name: "Add" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("stock must be a whole number");
+    expect(apiFetch).not.toHaveBeenCalledWith("/products/red-roses/variants", expect.anything());
   });
 });

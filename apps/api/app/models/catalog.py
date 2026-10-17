@@ -197,11 +197,15 @@ class ProductVariant(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     sku: Mapped[str | None] = mapped_column(String(100), unique=True, nullable=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     price_delta_pkr: Mapped[int] = mapped_column(BigInteger, default=0, nullable=False)
-    stock_qty: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    # None = made to order, not counted. A number is a real count; 0 is sold out.
+    stock_qty: Mapped[int | None] = mapped_column(Integer, nullable=True)
     attrs: Mapped[dict[str, object] | None] = mapped_column(JSONB, nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 
     product: Mapped["Product"] = relationship(back_populates="variants")
+
+    def has_stock(self, qty: int) -> bool:
+        return self.stock_qty is None or self.stock_qty >= qty
 
 
 # ── ProductImage ───────────────────────────────────────────────────────────────

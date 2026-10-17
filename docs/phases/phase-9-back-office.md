@@ -153,11 +153,21 @@ Shops & content, Reports, Admin) in a left sidebar; a scrolling row on phones. T
 use the same shell, so staff never lose the menu. The dashboard section is in `?section=…` (pushState), so
 refresh, shared links and the back button work. Count badges (e.g. receipts waiting) are a follow-up.
 
-**Still open in P0:** variants & stock, occasions on a product (no API yet), photo reordering.
+**P0 · Sizes & stock — done (2026-10-18)** — "Sizes & stock" on the product page (`VariantsEditor.tsx`),
+`POST /products/{slug}/variants` and `PATCH /products/{slug}/variants/{id}` (owner or staff, audited).
+- `stock_qty` is now nullable (migration 0019): **null = made to order, not counted**; a number counts down at
+  checkout; 0 = sold out. Existing rows kept their numbers — staff clear the count on cakes/bouquets.
+- Selling out no longer switches the size off (it used to set `is_active=false`), so a restock brings it back.
+- Cancelling an order puts counted stock back (audited as `order.restocked`). A refund does not: the goods
+  may have been delivered.
+- Sizes are never deleted, only switched off: past order lines point at them.
+- Daily capacity for made-to-order items is still a P1 idea, not built.
+
+**Still open in P0:** occasions on a product (no API yet), photo reordering.
 
 ## 5. Open questions (defaults in brackets)
 
 - Vendor commission model: flat % per vendor or per category? **[flat % per vendor, stored on `Vendor`]**
 - Who issues refunds: ops or admin only? **[admin only until permission scopes ship]**
 - Should vendors edit their own prices, or must admin approve? **[vendor edits go live; audit log + admin can revert]**
-- Is stock tracked for made-to-order items (cakes, bouquets)? **[no — use daily capacity; stock only for perfumes/hampers]**
+- Is stock tracked for made-to-order items (cakes, bouquets)? **[no — use daily capacity; stock only for perfumes/hampers]** — built as "blank stock = not counted" (2026-10-18); capacity not yet.

@@ -93,7 +93,7 @@ async def _add_item(client: AsyncClient, token: str, product_id: str, variant_id
     assert resp.status_code == 201
 
 
-async def _make_variant(db: AsyncSession, product: Product, stock_qty: int = 5, price_delta: int = 0) -> ProductVariant:
+async def _make_variant(db: AsyncSession, product: Product, stock_qty: int | None = 5, price_delta: int = 0) -> ProductVariant:
     suffix = uuid.uuid4().hex[:6]
     variant = ProductVariant(
         product_id=product.id,
@@ -880,7 +880,7 @@ async def test_place_order_decrements_variant_stock(
 
 
 @pytest.mark.asyncio
-async def test_place_order_deactivates_variant_when_stock_hits_zero(
+async def test_place_order_sells_out_variant_but_leaves_it_switched_on(
     client: AsyncClient, db: AsyncSession, customer: User, product: Product, city: City
 ) -> None:
     email = customer.email
@@ -907,7 +907,32 @@ async def test_place_order_deactivates_variant_when_stock_hits_zero(
     refreshed_product = await PR(db).get_by_id(product_pk)
     refreshed_variant = next(v for v in refreshed_product.variants if v.id == variant_pk)
     assert refreshed_variant.stock_qty == 0
-    assert refreshed_variant.is_active is False
+    # Sold out, not switched off: a restock brings it back without re-enabling.
+    assert refreshed_variant.is_active is True
+    resp = await client.post(
+        "/api/v1/cart/items", json={"product_id": product_id, "qty": 1, "variant_id": variant_id}, headers=headers,
+    )
+    assert resp.status_code == 409
+
+
+@pytest.mark.asyncio
+async def test_untracked_variant_is_never_out_of_stock(
+    client: AsyncClient, db: AsyncSession, customer: User, product: Product, city: City
+) -> None:
+    email, product_pk, city_id = customer.email, product.id, str(city.id)
+    variant = await _make_variant(db, product, stock_qty=None)
+    variant_pk = variant.id
+    token = await _login(client, email)
+    await _add_item(client, token, str(product_pk), variant_id=str(variant_pk))
+
+    resp = await client.post(
+        "/api/v1/checkout/place", json=_place_body(city_id), headers={"Authorization": f"Bearer {token}"},
+    )
+    assert resp.status_code == 201
+
+    from app.repositories.catalog_repository import ProductRepository as PR
+    refreshed = await PR(db).get_by_id(product_pk)
+    assert next(v for v in refreshed.variants if v.id == variant_pk).stock_qty is None
 
 
 @pytest.mark.asyncio

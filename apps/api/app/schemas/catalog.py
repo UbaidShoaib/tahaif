@@ -129,9 +129,25 @@ class ProductVariantRead(BaseModel):
     id: uuid.UUID
     name: str
     price_delta_pkr: int
-    stock_qty: int
+    stock_qty: int | None = Field(description="null = made to order, not counted; 0 = sold out")
     attrs: dict[str, object] | None
     is_active: bool
+
+
+class ProductVariantWrite(BaseModel):
+    """Add or change a size/option. On PATCH, omitted fields are left alone."""
+
+    name: str = Field(min_length=1, max_length=255, examples=["2 lb"])
+    price_delta_pkr: int = Field(default=0, ge=-10_000_000_00, le=10_000_000_00, description="Added to the base price, in paisa")
+    stock_qty: int | None = Field(default=None, ge=0, le=1_000_000, description="null = not counted")
+    is_active: bool = True
+
+
+class ProductVariantUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=255)
+    price_delta_pkr: int | None = Field(default=None, ge=-10_000_000_00, le=10_000_000_00)
+    stock_qty: int | None = Field(default=None, ge=0, le=1_000_000)
+    is_active: bool | None = None
 
 
 # ── VendorSummary (embedded in ProductRead) ───────────────────────────────────

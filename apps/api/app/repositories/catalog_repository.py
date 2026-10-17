@@ -13,6 +13,7 @@ from app.models.catalog import (
     Product,
     ProductCity,
     ProductImage,
+    ProductVariant,
     Vendor,
     VendorDocument,
     product_occasions_table,
@@ -386,6 +387,23 @@ class ProductRepository:
         await self._db.flush()
         await self._db.refresh(image)
         return image
+
+    async def add_variant(self, product_id: uuid.UUID, **kwargs: Any) -> ProductVariant:
+        variant = ProductVariant(product_id=product_id, **kwargs)
+        self._db.add(variant)
+        await self._db.flush()
+        await self._db.refresh(variant)
+        return variant
+
+    async def get_variant(self, variant_id: uuid.UUID) -> ProductVariant | None:
+        result = await self._db.execute(select(ProductVariant).where(ProductVariant.id == variant_id))
+        return result.scalar_one_or_none()
+
+    async def update_variant(self, variant: ProductVariant, **kwargs: Any) -> ProductVariant:
+        for key, value in kwargs.items():
+            setattr(variant, key, value)
+        await self._db.flush()
+        return variant
 
     async def get_image(self, image_id: uuid.UUID) -> ProductImage | None:
         result = await self._db.execute(

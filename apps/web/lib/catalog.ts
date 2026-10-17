@@ -26,7 +26,8 @@ export type ProductVariant = {
   id: string;
   name: string;
   price_delta_pkr: number;
-  stock_qty: number;
+  /** null = made to order, not counted; 0 = sold out. */
+  stock_qty: number | null;
   attrs: Record<string, unknown> | null;
   is_active: boolean;
 };
@@ -153,3 +154,6 @@ export function primaryImage(product: Product): string {
     "https://images.unsplash.com/photo-1513104890138-7c749659a591?w=800"
   );
 }
+
+/** A size can be bought unless its stock is counted and gone. */
+export const isInStock = (v: { stock_qty: number | null }): boolean => v.stock_qty === null || v.stock_qty > 0;

@@ -273,7 +273,7 @@ async def place_order(
             if cart_item.variant_id
             else None
         )
-        if variant and variant.stock_qty < cart_item.qty:
+        if variant and not variant.has_stock(cart_item.qty):
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
                 detail=f"'{product.name}' ({variant.name}) is out of stock "
@@ -355,11 +355,9 @@ async def place_order(
             line_total_pkr=unit * cart_item.qty,
             greeting_message=cart_item.greeting_message,
         )
-        if variant:
-            variant.stock_qty -= cart_item.qty
-            if variant.stock_qty <= 0:
-                variant.stock_qty = 0
-                variant.is_active = False
+        if variant and variant.stock_qty is not None:
+            # Sold out stays switched on: restocking brings it straight back.
+            variant.stock_qty = max(0, variant.stock_qty - cart_item.qty)
             await db.flush()
 
     # ── Payment record ─────────────────────────────────────────────────────────

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, ExternalLink, Eye, EyeOff, Star, Trash2, Upload } from "lucide-react";
 import { toPaisa } from "@/components/admin/AddProductForm";
+import { VariantsEditor, type Variant } from "@/components/admin/VariantsEditor";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { FormField } from "@/components/ui/form-field";
@@ -35,6 +36,7 @@ export type EditableProduct = {
   base_price_pkr: number;
   is_active: boolean;
   images: ProductImage[];
+  variants: Variant[];
   product_cities: ProductCity[];
   vendor: { id: string; name: string; slug: string } | null;
 };
@@ -70,7 +72,7 @@ function Notice({ kind, children }: { kind: "error" | "ok"; children: React.Reac
 }
 
 /**
- * Edit any product, live or hidden: details and price, photos, and which cities
+ * Edit any product, live or hidden: details and price, photos, sizes and stock, and which cities
  * it delivers to at what fee. Each section saves on its own so a slow photo
  * upload never holds back a price fix.
  */
@@ -330,6 +332,17 @@ export function ProductEditor({ token, productId }: { token: string; productId: 
         </FormField>
         {show("photos")}
       </section>
+
+      <VariantsEditor
+        variants={product.variants}
+        slug={slug}
+        token={token}
+        basePrice={product.base_price_pkr}
+        busy={busy !== null}
+        run={(work, done) => run("variants", work, done)}
+        notice={show("variants")}
+        onError={(text) => setNotice({ section: "variants", kind: "error", text })}
+      />
 
       <form onSubmit={saveCities} aria-labelledby="cities-heading" className="space-y-4 rounded-xl border p-4">
         <div>

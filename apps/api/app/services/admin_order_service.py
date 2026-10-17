@@ -242,11 +242,25 @@ async def set_status(db: AsyncSession, actor: User, order_id: uuid.UUID, new_sta
         )
     before = audit_service.snapshot(order, ["status"])
     order.status = new_status
+    if new_status == OrderStatus.cancelled:
+        await _restock(db, actor, order)
     await db.flush()
     await audit_service.record(
         db, actor, "order.status_changed", "order", order.id, before=before, after=audit_service.snapshot(order, ["status"])
     )
     return order
+
+
+async def _restock(db: AsyncSession, actor: User, order: Order) -> None:
+    """A cancelled order never left the shop, so counted stock goes back on the shelf."""
+    returned = []
+    for item in order.items:
+        v = item.variant
+        if v is not None and v.stock_qty is not None:
+            v.stock_qty += item.qty
+            returned.append({"variant": v.name, "qty": item.qty, "stock_now": v.stock_qty})
+    if returned:
+        await audit_service.record(db, actor, "order.restocked", "order", order.id, after={"items": returned})
 
 
 async def verify_payment(db: AsyncSession, actor: User, order_id: uuid.UUID, verified: bool) -> Order:

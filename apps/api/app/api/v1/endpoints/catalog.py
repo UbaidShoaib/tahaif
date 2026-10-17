@@ -22,6 +22,8 @@ from app.schemas.catalog import (
     ProductRead,
     ProductSort,
     ProductUpdate,
+    ProductVariantUpdate,
+    ProductVariantWrite,
     VendorCreate,
     VendorRead,
     VendorUpdate,
@@ -219,6 +221,27 @@ async def set_primary_product_image(
     """Make this photo the main one shown on listings; the others stay as extra photos."""
     product = await catalog_service.set_primary_product_image(db, slug, image_id, user)
     return ProductRead.model_validate(product)
+
+
+@router.post(
+    "/products/{slug}/variants", response_model=ProductRead, status_code=status.HTTP_201_CREATED,
+    responses={409: {"description": "The product already has a size with that name"}},
+)
+async def add_product_variant(slug: str, body: ProductVariantWrite, db: DB, user: CurrentUser) -> ProductRead:
+    """Add a size or option. Leave `stock_qty` out for made-to-order items; give a number to count stock."""
+    return ProductRead.model_validate(await catalog_service.add_product_variant(db, slug, body, user))
+
+
+@router.patch(
+    "/products/{slug}/variants/{variant_id}", response_model=ProductRead,
+    responses={409: {"description": "The product already has a size with that name"}},
+)
+async def update_product_variant(
+    slug: str, variant_id: uuid.UUID, body: ProductVariantUpdate, db: DB, user: CurrentUser
+) -> ProductRead:
+    """Rename, reprice, restock or switch off a size. Sizes are never deleted: past orders point at them.
+    Send `stock_qty: null` to stop counting stock."""
+    return ProductRead.model_validate(await catalog_service.update_product_variant(db, slug, variant_id, body, user))
 
 
 @router.put("/products/{slug}/cities", response_model=ProductRead)

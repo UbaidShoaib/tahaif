@@ -165,7 +165,7 @@ async def add_item(db: AsyncSession, owner: CartOwner | uuid.UUID, body: CartIte
         variant = next((v for v in product.variants if v.id == body.variant_id), None)
         if not variant or not variant.is_active:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Variant not found")
-        if variant.stock_qty < body.qty:
+        if not variant.has_stock(body.qty):
             raise _OUT_OF_STOCK
 
     cart, token = await resolve_cart(db, owner, create=True)
@@ -178,7 +178,7 @@ async def add_item(db: AsyncSession, owner: CartOwner | uuid.UUID, body: CartIte
     )
     if existing:
         new_qty = existing.qty + body.qty
-        if variant and variant.stock_qty < new_qty:
+        if variant and not variant.has_stock(new_qty):
             raise _OUT_OF_STOCK
         existing.qty = new_qty
         existing.line_total_pkr = _unit_price(product, variant) * new_qty

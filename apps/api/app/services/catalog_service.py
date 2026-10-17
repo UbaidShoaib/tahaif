@@ -35,6 +35,8 @@ from app.schemas.catalog import (
     ProductRead,
     ProductSort,
     ProductUpdate,
+    ProductVariantUpdate,
+    ProductVariantWrite,
     VendorCreate,
     VendorUpdate,
 )
@@ -509,6 +511,66 @@ async def set_primary_product_image(
     assert updated is not None
     if updated.is_active:
         await meilisearch_client.index_product(_to_meili_doc(updated, vendor.name))
+    return updated
+
+
+_VARIANT_FIELDS = ["name", "price_delta_pkr", "stock_qty", "is_active"]
+
+
+async def _owned_product(db: AsyncSession, slug: str, user: User) -> tuple[Product, Vendor]:
+    product = await ProductRepository(db).get_by_slug(slug)
+    if not product:
+        raise _NOT_FOUND("Product")
+    vendor = await VendorRepository(db).get_by_id(product.vendor_id)
+    if not vendor or not _owns_vendor(user, vendor):
+        raise _FORBIDDEN
+    return product, vendor
+
+
+def _check_variant_name(product: Product, name: str, skip: uuid.UUID | None = None) -> None:
+    if any(v.name.strip().lower() == name.strip().lower() and v.id != skip for v in product.variants):
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=f"This product already has a size called '{name}'")
+
+
+async def add_product_variant(db: AsyncSession, slug: str, data: ProductVariantWrite, user: User) -> Product:
+    """A size or option (e.g. "2 lb"). Its price is the base price plus `price_delta_pkr`."""
+    product, _vendor = await _owned_product(db, slug, user)
+    _check_variant_name(product, data.name)
+    repo = ProductRepository(db)
+    variant = await repo.add_variant(product.id, **data.model_dump() | {"name": data.name.strip()})
+    await audit_service.record(
+        db, user, "product.variant_added", "product", product.id,
+        after=audit_service.snapshot(variant, _VARIANT_FIELDS),
+    )
+    db.expire(product, ["variants"])
+    updated = await repo.get_by_id(product.id)
+    assert updated is not None
+    return updated
+
+
+async def update_product_variant(
+    db: AsyncSession, slug: str, variant_id: uuid.UUID, data: ProductVariantUpdate, user: User
+) -> Product:
+    """Change a size: rename, reprice, set or clear the stock count, switch on/off.
+    An explicit `stock_qty: null` stops counting; leaving it out keeps the count."""
+    product, _vendor = await _owned_product(db, slug, user)
+    repo = ProductRepository(db)
+    variant = await repo.get_variant(variant_id)
+    if not variant or variant.product_id != product.id:
+        raise _NOT_FOUND("Variant")
+    updates = {k: v for k, v in data.model_dump(exclude_unset=True).items() if v is not None or k == "stock_qty"}
+    if "name" in updates:
+        updates["name"] = updates["name"].strip()
+        _check_variant_name(product, updates["name"], skip=variant.id)
+    before = audit_service.snapshot(variant, _VARIANT_FIELDS)
+    await repo.update_variant(variant, **updates)
+    await audit_service.record(
+        db, user, "product.variant_updated", "product", product.id,
+        before=before, after=audit_service.snapshot(variant, _VARIANT_FIELDS), context={"variant": variant.name},
+    )
+    db.expire(product, ["variants"])
+    updated = await repo.get_by_id(product.id)
+    assert updated is not None
     return updated
 
 

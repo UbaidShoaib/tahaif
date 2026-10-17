@@ -3,7 +3,7 @@
 import { useEffect, useId, useState } from "react";
 import { AlertTriangle, Clock, MapPin, ShoppingBag, Truck } from "lucide-react";
 import { Price } from "@/components/money/Price";
-import type { City, Product, ProductCity } from "@/lib/catalog";
+import { isInStock, type City, type Product, type ProductCity } from "@/lib/catalog";
 import { earliestDelivery, formatCountdown, formatDeliveryDay } from "@/lib/delivery";
 import { cityTimeToInstant, formatClock, viewerSuffix, viewerTimeZone } from "@/lib/datetime";
 import { formatMoney } from "@/lib/money";
@@ -44,7 +44,7 @@ function useMinuteClock() {
  */
 export function VariantPicker({ product, cities = [] }: Props) {
   const activeVariants = product.variants.filter((v) => v.is_active);
-  const firstInStock = activeVariants.find((v) => v.stock_qty > 0) ?? activeVariants[0] ?? null;
+  const firstInStock = activeVariants.find(isInStock) ?? activeVariants[0] ?? null;
   const [selectedId, setSelectedId] = useState<string | null>(firstInStock?.id ?? null);
   const selected = activeVariants.find((v) => v.id === selectedId) ?? null;
 
@@ -72,7 +72,7 @@ export function VariantPicker({ product, cities = [] }: Props) {
   // The chosen city's price, else the base price (the same rule as listings and the API).
   const basePrice = chosen?.pc.price_override_pkr ?? product.base_price_pkr;
   const totalPrice = basePrice + (selected?.price_delta_pkr ?? 0);
-  const inStock = selected ? selected.stock_qty > 0 : true;
+  const inStock = selected ? isInStock(selected) : true;
   const eta = chosen && now ? earliestDelivery(chosen.pc, chosen.city.timezone || DEFAULT_TZ, now) : null;
   // The cutoff as a clock time, in the city and (for buyers abroad) their own zone.
   // `now` is only set after mount, so reading the browser's zone here is hydration-safe.
@@ -156,13 +156,13 @@ export function VariantPicker({ product, cities = [] }: Props) {
             className="flex flex-wrap gap-2"
           >
             {activeVariants.map((v) => (
-              <RadioChip key={v.id} value={v.id} disabled={v.stock_qty === 0} disabledReason="Out of stock">
+              <RadioChip key={v.id} value={v.id} disabled={!isInStock(v)} disabledReason="Out of stock">
                 {v.name}
               </RadioChip>
             ))}
           </RadioGroup>
           <p className="text-sm font-medium">{selected ? `Selected: ${selected.name}` : "Choose an option"}</p>
-          {selected && selected.stock_qty > 0 && selected.stock_qty <= 5 && (
+          {selected?.stock_qty != null && selected.stock_qty > 0 && selected.stock_qty <= 5 && (
             <p className="flex items-center gap-1.5 text-sm font-medium text-warning">
               <AlertTriangle aria-hidden className="h-4 w-4" />
               Only {selected.stock_qty} left
