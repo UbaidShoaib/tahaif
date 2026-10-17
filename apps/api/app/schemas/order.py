@@ -7,11 +7,23 @@ from pydantic import BaseModel, EmailStr, Field
 
 from app.models.order import FulfillmentStatus, OrderSource, OrderStatus, PaymentMethod
 
+# Stored on the fulfillment as the label itself (delivery_slot is a free-text
+# String(50)); the web app's DELIVERY_SLOTS (apps/web/lib/delivery.ts) mirrors this.
+# Midnight is for birthday/anniversary surprises: it arrives just before midnight
+# at the end of delivery_date, so buyers pick the day before the occasion.
+DeliverySlot = Literal[
+    "Midnight (11pm–12am)",
+    "Morning (10am–1pm)",
+    "Afternoon (2pm–5pm)",
+    "Evening (6pm–9pm)",
+]
+
 
 class CheckoutPlace(BaseModel):
     payment_method: PaymentMethod = PaymentMethod.cod
     delivery_city_id: uuid.UUID
     delivery_date: date
+    delivery_slot: DeliverySlot | None = Field(default=None, description="Time of day; null means any time")
     recipient_name: str = Field(min_length=2, max_length=255)
     recipient_phone: str = Field(min_length=7, max_length=30)
     address_line1: str = Field(min_length=5, max_length=500)

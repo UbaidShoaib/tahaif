@@ -132,6 +132,18 @@ async def test_staff_places_order_without_email(client: AsyncClient, db: AsyncSe
 
 
 @pytest.mark.asyncio
+async def test_midnight_slot_is_kept_and_in_the_summary(client: AsyncClient, db: AsyncSession) -> None:
+    headers = await _staff_headers(client, db)
+    product_id, city_id = await _catalog(db)
+
+    data = await _place(client, headers, _body(product_id, city_id, delivery_slot="Midnight (11pm–12am)"))
+
+    assert data["order"]["fulfillments"][0]["delivery_slot"] == "Midnight (11pm–12am)"
+    text = unquote(_msg(data["messages"], "order_summary")["url"].split("text=", 1)[1])
+    assert "Midnight (11pm–12am)" in text
+
+
+@pytest.mark.asyncio
 async def test_customers_cannot_place_assisted_orders(client: AsyncClient, db: AsyncSession) -> None:
     customer = await _make_user(db)
     headers = {"Authorization": f"Bearer {await _login(client, customer.email)}"}

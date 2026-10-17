@@ -193,9 +193,24 @@ describe("CheckoutPage", () => {
 
     await waitFor(() => expect(cartApi.place).toHaveBeenCalled());
     expect(vi.mocked(cartApi.place).mock.calls[0]?.[0]).toMatchObject({
-      delivery_city_id: "city-lhr", coupon_code: "EID10", use_loyalty_points: false,
+      delivery_city_id: "city-lhr", delivery_slot: null, coupon_code: "EID10", use_loyalty_points: false,
     });
     await waitFor(() => expect(push).toHaveBeenCalledWith("/checkout/success/t1"));
+  });
+
+  it("sends a midnight delivery time", async () => {
+    vi.mocked(cartApi.place).mockResolvedValue({ id: "o1", public_token: "t1", total_pkr: 1, payment_method: "cod", items: [] } as never);
+    render(<CheckoutPage />);
+    await pickLahore();
+    await userEvent.click(screen.getByRole("radio", { name: /^Midnight/ }));
+    await userEvent.type(screen.getByLabelText(/^Recipient name/), "Ammi");
+    await userEvent.type(screen.getByLabelText(/^Recipient phone/), "+923001234567");
+    await userEvent.type(screen.getByLabelText(/^Address/), "12 Main Boulevard");
+
+    await userEvent.click(screen.getByRole("button", { name: "Place Order" }));
+
+    await waitFor(() => expect(cartApi.place).toHaveBeenCalled());
+    expect(vi.mocked(cartApi.place).mock.calls[0]?.[0]).toMatchObject({ delivery_slot: "Midnight (11pm–12am)" });
   });
 
   it("sends the sender name and surprise choice for the recipient messages", async () => {

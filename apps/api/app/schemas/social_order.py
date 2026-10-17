@@ -8,7 +8,7 @@ from typing import Literal
 from pydantic import BaseModel, EmailStr, Field
 
 from app.models.order import OrderSource, PaymentMethod
-from app.schemas.order import OrderRead
+from app.schemas.order import DeliverySlot, OrderRead
 
 MessageKind = Literal[
     "order_summary",
@@ -43,6 +43,7 @@ class AssistedOrderCreate(BaseModel):
     payment_method: Literal[PaymentMethod.cod, PaymentMethod.bank_transfer] = PaymentMethod.bank_transfer
     delivery_city_id: uuid.UUID
     delivery_date: date
+    delivery_slot: DeliverySlot | None = None
     recipient_name: str = Field(min_length=2, max_length=255)
     recipient_phone: str = Field(min_length=7, max_length=30)
     address_line1: str = Field(min_length=5, max_length=500)

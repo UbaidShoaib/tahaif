@@ -148,6 +148,7 @@ async def create_assisted_order(
             payment_method=body.payment_method,
             delivery_city_id=body.delivery_city_id,
             delivery_date=body.delivery_date,
+            delivery_slot=body.delivery_slot,
             recipient_name=body.recipient_name,
             recipient_phone=recipient_phone,
             address_line1=body.address_line1,
@@ -233,7 +234,10 @@ def _text(order: Order, kind: MessageKind) -> str:
         ]
         if order.fulfillments:
             f = order.fulfillments[0]
-            lines.append(f"For {f.recipient_name}, {f.delivery_date:%a %d %b}")
+            lines.append(
+                f"For {f.recipient_name}, {f.delivery_date:%a %d %b}"
+                + (f", {f.delivery_slot}" if f.delivery_slot else "")
+            )
         lines += [f"Total: {total}", "", f"Please check the details and confirm here: {link}"]
         if order.payments and order.payments[0].method == PaymentMethod.bank_transfer:
             lines.append("Our bank details are on that page; please upload your receipt there too.")

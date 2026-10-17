@@ -560,6 +560,39 @@ def _place_body(city_id: str, **overrides: object) -> dict:
 
 
 @pytest.mark.asyncio
+async def test_place_order_midnight_slot(
+    client: AsyncClient, customer: User, product: Product, city: City
+) -> None:
+    product_id, city_id = str(product.id), str(city.id)
+    token = await _login(client, customer.email)
+    await _add_item(client, token, product_id)
+
+    resp = await client.post(
+        "/api/v1/checkout/place",
+        json=_place_body(city_id, delivery_slot="Midnight (11pm–12am)"),
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert resp.status_code == 201, resp.text
+    assert resp.json()["fulfillments"][0]["delivery_slot"] == "Midnight (11pm–12am)"
+
+
+@pytest.mark.asyncio
+async def test_place_order_unknown_slot_returns_422(
+    client: AsyncClient, customer: User, product: Product, city: City
+) -> None:
+    product_id, city_id = str(product.id), str(city.id)
+    token = await _login(client, customer.email)
+    await _add_item(client, token, product_id)
+
+    resp = await client.post(
+        "/api/v1/checkout/place",
+        json=_place_body(city_id, delivery_slot="3am"),
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert resp.status_code == 422
+
+
+@pytest.mark.asyncio
 async def test_place_order_with_percent_coupon_applies_discount(
     client: AsyncClient, db: AsyncSession, customer: User, product: Product, city: City
 ) -> None:
