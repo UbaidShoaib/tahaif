@@ -15,6 +15,7 @@
 | [compliance-social-orders.md](compliance-social-orders.md) | Compliance note: WhatsApp policy, PECA, consumer protection, GDPR/PECR, PCI for chat orders |
 | [whatsapp-integration-options.md](whatsapp-integration-options.md) | Free/low-cost WhatsApp integration options, workflow value, market practice |
 | [phases/phase-8.md](phases/phase-8.md) | Phase 8 — social orders: P0 done, P1/P2 backlog |
+| [phases/phase-9-back-office.md](phases/phase-9-back-office.md) | Phase 9 — back-office evaluation and staged plan; P0 catalog editor done |
 | [decisions/0008-vendor-applications.md](decisions/0008-vendor-applications.md) | How a shop joins: application at `/sell`, staff approval (bank details + CNIC required), vendor products hidden until published |
 | [decisions/0007-single-vps-deploy.md](decisions/0007-single-vps-deploy.md) | Active deploy target: whole stack on one VPS (Docker Compose + Caddy) |
 | [phases/](phases/) | Per-phase planning notes |
