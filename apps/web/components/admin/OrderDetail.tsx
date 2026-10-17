@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, CheckCircle, ExternalLink, Eye, Phone, XCircle } from "lucide-react";
-import { ORDER_STATUSES, STATUS_BADGE, orderCode } from "@/components/admin/OrderList";
+import { STATUS_BADGE, orderCode, statusOptions } from "@/components/admin/OrderList";
 import { WhatsAppMessages } from "@/components/admin/WhatsAppMessages";
 import { Button } from "@/components/ui/button";
 import { FormField } from "@/components/ui/form-field";
@@ -60,6 +60,7 @@ export type AdminOrder = {
   id: string;
   public_token: string;
   status: string;
+  next_statuses: string[];
   currency: string;
   total_charged: number;
   subtotal_pkr: number;
@@ -205,10 +206,10 @@ export function OrderDetail({ token, orderId }: { token: string; orderId: string
               aria-label="Order status"
               className="rounded border px-2 py-1 text-sm"
               value={order.status}
-              disabled={busy}
+              disabled={busy || order.next_statuses.length === 0}
               onChange={(e) => void act(`/admin/orders/${order.id}/status`, "PATCH", { status: e.target.value })}
             >
-              {ORDER_STATUSES.map((s) => <option key={s} value={s}>{words(s)}</option>)}
+              {statusOptions(order).map((s) => <option key={s} value={s}>{words(s)}</option>)}
             </select>
             {order.buyer_phone && (
               <Button size="sm" variant="outline" aria-expanded={showMessages} onClick={() => setShowMessages((v) => !v)}>

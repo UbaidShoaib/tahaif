@@ -26,6 +26,7 @@ from app.schemas.order import (
 from app.services import (
     audit_service,
     checkout_service,
+    order_status,
     proof_service,
     social_order_service,
 )
@@ -63,6 +64,7 @@ def _summary(o: Order) -> AdminOrderSummary:
         id=o.id,
         public_token=o.public_token,
         status=o.status,
+        next_statuses=order_status.next_statuses(o.status),
         user_id=o.user_id,
         total_pkr=o.total_pkr,
         currency=o.currency,
@@ -186,6 +188,7 @@ async def get_order_detail(db: AsyncSession, order_id: uuid.UUID) -> AdminOrderD
             for f in base.fulfillments
         ],
         user_id=o.user_id,
+        next_statuses=order_status.next_statuses(o.status),
         buyer_name=_person(o.user) if o.user and o.user.full_name else o.gift_from,
         buyer_email=o.user.email if o.user else o.contact_email,
         buyer_phone=social_order_service.buyer_phone(o),
@@ -230,6 +233,13 @@ async def _get(db: AsyncSession, order_id: uuid.UUID) -> Order:
 
 async def set_status(db: AsyncSession, actor: User, order_id: uuid.UUID, new_status: OrderStatus) -> Order:
     order = await _get(db, order_id)
+    if new_status == order.status:
+        return order
+    if not order_status.can_move(order.status, new_status):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"An order that is {_words(order.status)} can't be moved to {_words(new_status)}.",
+        )
     before = audit_service.snapshot(order, ["status"])
     order.status = new_status
     await db.flush()
@@ -248,6 +258,11 @@ async def verify_payment(db: AsyncSession, actor: User, order_id: uuid.UUID, ver
     before = {"payment_status": payment.status, "status": order.status}
 
     if verified:
+        if order.status != OrderStatus.paid and not order_status.can_move(order.status, OrderStatus.paid):
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"This order is {_words(order.status)}, so its payment can't be approved.",
+            )
         payment.status = PaymentStatus.paid
         payment.verified_by = actor.id
         payment.verified_at = datetime.now(UTC)

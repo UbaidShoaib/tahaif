@@ -660,6 +660,14 @@
             "title": "Needs Confirmation",
             "type": "boolean"
           },
+          "next_statuses": {
+            "description": "Statuses staff may move this order to",
+            "items": {
+              "$ref": "#/components/schemas/OrderStatus"
+            },
+            "title": "Next Statuses",
+            "type": "array"
+          },
           "payment": {
             "anyOf": [
               {
@@ -785,6 +793,7 @@
           "fulfillments",
           "payment_method",
           "user_id",
+          "next_statuses",
           "buyer_name",
           "buyer_email",
           "buyer_phone",
@@ -1004,6 +1013,22 @@
             "title": "Id",
             "type": "string"
           },
+          "next_statuses": {
+            "description": "Statuses staff may move this order to",
+            "examples": [
+              [
+                "preparing",
+                "cancelled",
+                "refunded",
+                "on_hold"
+              ]
+            ],
+            "items": {
+              "$ref": "#/components/schemas/OrderStatus"
+            },
+            "title": "Next Statuses",
+            "type": "array"
+          },
           "payment_method": {
             "anyOf": [
               {
@@ -1088,6 +1113,7 @@
           "id",
           "public_token",
           "status",
+          "next_statuses",
           "user_id",
           "total_pkr",
           "currency",
@@ -7470,6 +7496,9 @@
               }
             },
             "description": "Successful Response"
+          },
+          "409": {
+            "description": "That status change isn't allowed from the current status"
           },
           "422": {
             "content": {

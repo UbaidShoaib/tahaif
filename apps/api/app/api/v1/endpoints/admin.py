@@ -122,7 +122,7 @@ async def add_order_note(
     return await admin_order_service.add_staff_note(db, order_id, admin, body.body)
 
 
-@router.patch("/orders/{order_id}/status")
+@router.patch("/orders/{order_id}/status", responses={409: {"description": "That status change isn't allowed from the current status"}})
 async def update_order_status(
     order_id: uuid.UUID,
     body: OrderStatusUpdate,

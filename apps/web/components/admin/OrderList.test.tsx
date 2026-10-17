@@ -14,6 +14,7 @@ const order: OrderSummary = {
   id: "o1",
   public_token: "3f9a2c1b-0000-4000-8000-000000000000",
   status: "pending_payment",
+  next_statuses: ["paid", "preparing", "cancelled", "on_hold"],
   user_id: null,
   total_pkr: 550000,
   currency: "PKR",
@@ -136,5 +137,15 @@ describe("OrderList", () => {
     await userEvent.selectOptions(select, "preparing");
 
     expect(await screen.findByRole("alert")).toHaveTextContent("Not allowed from pending payment");
+  });
+
+  it("offers only the statuses the order may move to", async () => {
+    serveOrders(page([order, { ...order, id: "o2", public_token: "aaaa1111-0000", status: "cancelled", next_statuses: [] }]));
+    render(<OrderList token="tok" />);
+    const select = await screen.findByRole("combobox", { name: "Status of order 3F9A2C1B" });
+
+    const options = Array.from(select.querySelectorAll("option")).map((o) => o.value);
+    expect(options).toEqual(["pending_payment", "paid", "preparing", "cancelled", "on_hold"]);
+    expect(screen.getByRole("combobox", { name: "Status of order AAAA1111" })).toBeDisabled();
   });
 });

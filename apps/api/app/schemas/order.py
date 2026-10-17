@@ -195,6 +195,7 @@ class AdminOrderSummary(BaseModel):
     id: uuid.UUID
     public_token: uuid.UUID
     status: OrderStatus
+    next_statuses: list[OrderStatus] = Field(description="Statuses staff may move this order to", examples=[["preparing", "cancelled", "refunded", "on_hold"]])
     user_id: uuid.UUID | None
     total_pkr: int
     currency: str
@@ -262,6 +263,7 @@ class AdminOrderDetail(OrderRead):
     items: list[AdminOrderItemRead]  # type: ignore[assignment]
     fulfillments: list[AdminFulfillmentRead]  # type: ignore[assignment]
     user_id: uuid.UUID | None
+    next_statuses: list[OrderStatus] = Field(description="Statuses staff may move this order to")
     buyer_name: str | None
     buyer_email: str | None
     buyer_phone: str | None

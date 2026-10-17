@@ -14,6 +14,7 @@ const order: AdminOrder = {
   id: "o1",
   public_token: "3f9a2c1b-0000-4000-8000-000000000000",
   status: "pending_payment",
+  next_statuses: ["paid", "preparing", "cancelled", "on_hold"],
   currency: "GBP",
   total_charged: 2450,
   subtotal_pkr: 500000,
