@@ -21,6 +21,24 @@ os.environ["TESTING"] = "1"  # disables rate limiting
 os.environ.setdefault("REQUIRE_VERIFIED_EMAIL_FOR_CHECKOUT", "false")
 os.environ.setdefault("WHATSAPP_API_ENABLED", "true")  # exercise the automatic queueing paths
 
+import uuid  # noqa: E402
+
+_BASE_DB_URL = os.environ["DATABASE_URL"]
+
+# The suite drops every table. Refuse any database not named *_test, so a
+# DATABASE_URL loaded from .env can never wipe the dev (or any real) database.
+if not _BASE_DB_URL.rsplit("/", 1)[-1].split("?", 1)[0].endswith("_test"):
+    raise RuntimeError(f"Tests drop all tables; refusing to run against non-test database {_BASE_DB_URL.rsplit('@', 1)[-1]!r}")
+
+# Each pytest run gets its own throwaway database (tahaif_test -> tahaif_<id>_test).
+# Runs used to share one database, so when two overlapped (IDE + terminal, or
+# parallel agents) one run's teardown dropped the tables the other was using.
+_server_url, _base_name = _BASE_DB_URL.split("?", 1)[0].rsplit("/", 1)
+_RUN_DB = f"{_base_name.removesuffix('_test')}_{uuid.uuid4().hex[:8]}_test"
+TEST_DB_URL = f"{_server_url}/{_RUN_DB}"
+# Anything that reads settings (and opens its own engine) must hit the same database.
+os.environ["DATABASE_URL"] = TEST_DB_URL
+
 import asyncio  # noqa: E402
 from collections.abc import AsyncIterator  # noqa: E402
 
@@ -40,33 +58,30 @@ from app.core.db import get_db  # noqa: E402
 from app.main import app as fastapi_app  # noqa: E402
 from app.models.base import Base  # noqa: E402
 
-TEST_DB_URL = os.environ["DATABASE_URL"]
-
-# The suite drops every table. Refuse any database not named *_test, so a
-# DATABASE_URL loaded from .env can never wipe the dev (or any real) database.
-if not TEST_DB_URL.rsplit("/", 1)[-1].split("?", 1)[0].endswith("_test"):
-    raise RuntimeError(f"Tests drop all tables; refusing to run against non-test database {TEST_DB_URL.rsplit('@', 1)[-1]!r}")
-
-
 # ── Table setup (sync, no pytest-asyncio event loop involved) ─────────────────
 
 def _run(coro):  # type: ignore[no-untyped-def]
     asyncio.run(coro)
 
 
+async def _admin_execute(sql: str) -> None:
+    """CREATE/DROP DATABASE: run from the server's maintenance database, outside a transaction."""
+    engine = create_async_engine(f"{_server_url}/postgres", poolclass=NullPool, isolation_level="AUTOCOMMIT")
+    async with engine.connect() as conn:
+        await conn.execute(sa.text(sql))
+    await engine.dispose()
+
+
 async def _create_tables() -> None:
+    await _admin_execute(f'CREATE DATABASE "{_RUN_DB}"')
     engine = create_async_engine(TEST_DB_URL, poolclass=NullPool)
     async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)
     await engine.dispose()
 
 
 async def _drop_tables() -> None:
-    engine = create_async_engine(TEST_DB_URL, poolclass=NullPool)
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
-    await engine.dispose()
+    await _admin_execute(f'DROP DATABASE IF EXISTS "{_RUN_DB}" WITH (FORCE)')
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -99,7 +114,7 @@ async def db(_setup_db: None) -> AsyncSession:  # type: ignore[misc]
     factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
     async with factory() as session:
         yield session  # type: ignore[misc]
-        # No rollback — each test uses unique data; _setup_db drops all between sessions
+        # No rollback — each test uses unique data; the run's database is dropped at the end
     await engine.dispose()
 
 

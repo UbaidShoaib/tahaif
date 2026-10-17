@@ -371,7 +371,9 @@ async def test_list_products(
     )
     product_slug = product.slug
 
-    resp = await client.get("/api/v1/products")
+    # Scope to this test's shop: other tests' products share the database and
+    # would push this one off the first page.
+    resp = await client.get("/api/v1/products", params={"vendor_id": str(owned_vendor.id)})
     assert resp.status_code == 200
     data = resp.json()
     assert "items" in data
