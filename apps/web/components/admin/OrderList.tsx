@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { CheckCircle, Eye, RefreshCw, Search, XCircle } from "lucide-react";
 import { WhatsAppMessages } from "@/components/admin/WhatsAppMessages";
 import { Button } from "@/components/ui/button";
@@ -39,7 +40,7 @@ interface OrderPage {
 
 export type OrderFilters = { status: string; q: string; from: string; to: string; offset: number };
 
-const STATUS_BADGE: Record<string, string> = {
+export const STATUS_BADGE: Record<string, string> = {
   pending_payment: "bg-yellow-100 text-yellow-800",
   paid: "bg-green-100 text-green-800",
   preparing: "bg-blue-100 text-blue-800",
@@ -48,7 +49,7 @@ const STATUS_BADGE: Record<string, string> = {
   cancelled: "bg-red-100 text-red-800",
 };
 
-const ORDER_STATUSES = [
+export const ORDER_STATUSES = [
   "pending_payment", "paid", "preparing", "dispatched",
   "out_for_delivery", "delivered", "completed", "cancelled", "on_hold",
 ];
@@ -199,7 +200,9 @@ export function OrderList({ token }: { token: string }) {
               <div key={order.id} className="space-y-3 rounded-xl border p-4">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="space-y-0.5">
-                    <p className="font-mono text-xs text-muted-foreground">#{orderCode(order.public_token)}</p>
+                    <Link href={`/admin/orders/${order.id}`} className="font-mono text-xs text-link hover:underline">
+                      #{orderCode(order.public_token)}
+                    </Link>
                     <p className="font-semibold">{formatPrice(order.total_pkr)}</p>
                     {order.recipients.length > 0 && (
                       <p className="text-sm">
@@ -288,6 +291,10 @@ export function OrderList({ token }: { token: string }) {
                       WhatsApp
                     </Button>
                   )}
+
+                  <Button size="sm" variant="outline" asChild>
+                    <Link href={`/admin/orders/${order.id}`} aria-label={`Open order ${orderCode(order.public_token)}`}>Open</Link>
+                  </Button>
 
                   <Button size="sm" variant="ghost" asChild>
                     <a href={`/track/${order.public_token}`} target="_blank" rel="noopener noreferrer">

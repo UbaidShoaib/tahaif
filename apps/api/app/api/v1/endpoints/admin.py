@@ -18,7 +18,13 @@ from app.repositories.loyalty_repository import CouponRepository
 from app.repositories.order_repository import OrderRepository
 from app.repositories.user_repository import UserRepository
 from app.schemas.catalog import ProductRead
-from app.schemas.order import AdminOrderPage, ReportedNoteRead
+from app.schemas.order import (
+    AdminOrderDetail,
+    AdminOrderPage,
+    ReportedNoteRead,
+    StaffNoteCreate,
+    StaffNoteRead,
+)
 from app.schemas.report import CampaignSalesReport
 from app.schemas.social_order import (
     AssistedOrderCreate,
@@ -96,6 +102,23 @@ async def list_orders(
     return await admin_order_service.list_orders(
         db, status=status, q=q, placed_from=placed_from, placed_to=placed_to, offset=offset, limit=limit
     )
+
+
+@router.get("/orders/{order_id}", response_model=AdminOrderDetail)
+async def get_order(order_id: uuid.UUID, _admin: AdminUser, db: DB) -> AdminOrderDetail:
+    """One order with everything staff need: buyer contact, each recipient's full address and shop,
+    payment and receipt, internal notes and a timeline."""
+    return await admin_order_service.get_order_detail(db, order_id)
+
+
+@router.post(
+    "/orders/{order_id}/notes", response_model=StaffNoteRead, status_code=status.HTTP_201_CREATED
+)
+async def add_order_note(
+    order_id: uuid.UUID, body: StaffNoteCreate, admin: AdminUser, db: DB
+) -> StaffNoteRead:
+    """Add an internal note. Never shown to the buyer or recipient; notes can't be edited or deleted."""
+    return await admin_order_service.add_staff_note(db, order_id, admin, body.body)
 
 
 @router.patch("/orders/{order_id}/status")

@@ -126,8 +126,17 @@ Each stage follows the Definition of Done in CLAUDE.md (tests, OpenAPI examples,
   add pg_trgm if the list gets slow.
 - Date filters are whole days in Asia/Karachi, `placed_to` inclusive.
 
+**P0 · Order page + staff notes — done (2026-10-17)**
+- `/admin/orders/[id]` (`components/admin/OrderDetail.tsx`), data from `GET /admin/orders/{id}`
+  (`AdminOrderDetail` extends the buyer-facing `OrderRead`, so both stay in step).
+- Staff notes (`order_staff_notes`, migration 0018) are **append-only**: no edit or delete, a correction is a new
+  note. They will feed the audit log later, and a note is a record of what staff were told.
+- The timeline is built from timestamps already stored (placed, confirmed, payment checked, dispatched,
+  delivered, WhatsApp sent). Status changes made in the admin are **not** on it yet — that needs the
+  status-history table from the state-machine item.
+
 **Still open in P0:** variants & stock, occasions on a product (no API yet), photo reordering, sidebar shell,
-order detail/notes, audit log, status state machine.
+audit log, status state machine with status history.
 
 ## 5. Open questions (defaults in brackets)
 

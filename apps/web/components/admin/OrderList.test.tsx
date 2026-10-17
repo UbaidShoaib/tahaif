@@ -62,7 +62,8 @@ describe("OrderList", () => {
     serveOrders(page([order]));
     render(<OrderList token="tok" />);
 
-    expect(await screen.findByText("#3F9A2C1B")).toBeInTheDocument();
+    expect(await screen.findByRole("link", { name: "#3F9A2C1B" })).toHaveAttribute("href", "/admin/orders/o1");
+    expect(screen.getByRole("link", { name: "Open order 3F9A2C1B" })).toHaveAttribute("href", "/admin/orders/o1");
     expect(screen.getByText(/To Ammi Jaan/)).toHaveTextContent("deliver Sun, 18 Oct");
     expect(screen.getByText("From Sara (London) · +447700123456")).toBeInTheDocument();
     expect(screen.getByRole("status")).toHaveTextContent("1–1 of 1 order");

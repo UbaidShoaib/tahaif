@@ -353,6 +353,565 @@
         "title": "AddressUpdate",
         "type": "object"
       },
+      "AdminFulfillmentRead": {
+        "properties": {
+          "address_line1": {
+            "title": "Address Line1",
+            "type": "string"
+          },
+          "address_line2": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Address Line2"
+          },
+          "city_name": {
+            "title": "City Name",
+            "type": "string"
+          },
+          "city_timezone": {
+            "default": "Asia/Karachi",
+            "description": "IANA zone of the delivery city; times are shown in it first",
+            "title": "City Timezone",
+            "type": "string"
+          },
+          "courier_tracking": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Courier Tracking"
+          },
+          "delivered_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Delivered At"
+          },
+          "delivery_date": {
+            "format": "date",
+            "title": "Delivery Date",
+            "type": "string"
+          },
+          "delivery_photo_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Short-lived signed link to the proof-of-delivery photo",
+            "title": "Delivery Photo Url"
+          },
+          "delivery_slot": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Delivery Slot"
+          },
+          "dispatched_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dispatched At"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "landmark": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Landmark"
+          },
+          "received_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Who accepted the gift at the door",
+            "title": "Received By"
+          },
+          "recipient_name": {
+            "title": "Recipient Name",
+            "type": "string"
+          },
+          "recipient_phone": {
+            "title": "Recipient Phone",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/FulfillmentStatus"
+          },
+          "thanks": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ThanksRead"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The recipient's thank-you, once they send one"
+          },
+          "vendor_name": {
+            "title": "Vendor Name",
+            "type": "string"
+          },
+          "vendor_phone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Shop contact number, to chase a delivery",
+            "title": "Vendor Phone"
+          }
+        },
+        "required": [
+          "id",
+          "vendor_name",
+          "status",
+          "delivery_date",
+          "delivery_slot",
+          "recipient_name",
+          "recipient_phone",
+          "address_line1",
+          "city_name",
+          "courier_tracking",
+          "dispatched_at",
+          "delivered_at",
+          "address_line2",
+          "landmark",
+          "vendor_phone"
+        ],
+        "title": "AdminFulfillmentRead",
+        "type": "object"
+      },
+      "AdminOrderDetail": {
+        "description": "Everything staff need on one order. Extends the buyer-facing order with contact\ndetails, payment, internal notes and a timeline.",
+        "properties": {
+          "buyer_email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Buyer Email"
+          },
+          "buyer_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Buyer Name"
+          },
+          "buyer_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "What the buyer wrote at checkout",
+            "title": "Buyer Note"
+          },
+          "buyer_phone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Buyer Phone"
+          },
+          "campaign": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Campaign"
+          },
+          "coupon_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Coupon Code"
+          },
+          "currency": {
+            "title": "Currency",
+            "type": "string"
+          },
+          "customer_confirmed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Customer Confirmed At"
+          },
+          "delivery_pkr": {
+            "title": "Delivery Pkr",
+            "type": "integer"
+          },
+          "discount_pkr": {
+            "title": "Discount Pkr",
+            "type": "integer"
+          },
+          "fulfillments": {
+            "items": {
+              "$ref": "#/components/schemas/AdminFulfillmentRead"
+            },
+            "title": "Fulfillments",
+            "type": "array"
+          },
+          "gift_from": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gift From"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/AdminOrderItemRead"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "needs_confirmation": {
+            "default": false,
+            "description": "Taken by staff from a chat; the buyer must check and confirm it on the order link page",
+            "title": "Needs Confirmation",
+            "type": "boolean"
+          },
+          "payment": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AdminPaymentRead"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "payment_method": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PaymentMethod"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "placed_at": {
+            "format": "date-time",
+            "title": "Placed At",
+            "type": "string"
+          },
+          "public_token": {
+            "format": "uuid",
+            "title": "Public Token",
+            "type": "string"
+          },
+          "source": {
+            "$ref": "#/components/schemas/OrderSource",
+            "default": "web",
+            "description": "Where the order came from (ADR 0009)"
+          },
+          "source_ref": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "examples": [
+              "@sara.uk"
+            ],
+            "title": "Source Ref"
+          },
+          "staff_notes": {
+            "items": {
+              "$ref": "#/components/schemas/StaffNoteRead"
+            },
+            "title": "Staff Notes",
+            "type": "array"
+          },
+          "status": {
+            "$ref": "#/components/schemas/OrderStatus"
+          },
+          "subtotal_pkr": {
+            "title": "Subtotal Pkr",
+            "type": "integer"
+          },
+          "surprise": {
+            "default": false,
+            "title": "Surprise",
+            "type": "boolean"
+          },
+          "taken_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Staff who entered a DM/WhatsApp order",
+            "title": "Taken By"
+          },
+          "timeline": {
+            "description": "Oldest first",
+            "items": {
+              "$ref": "#/components/schemas/OrderEvent"
+            },
+            "title": "Timeline",
+            "type": "array"
+          },
+          "total_charged": {
+            "description": "Total in the charge currency's minor unit",
+            "title": "Total Charged",
+            "type": "integer"
+          },
+          "total_pkr": {
+            "title": "Total Pkr",
+            "type": "integer"
+          },
+          "user_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Id"
+          }
+        },
+        "required": [
+          "id",
+          "public_token",
+          "status",
+          "currency",
+          "total_charged",
+          "subtotal_pkr",
+          "delivery_pkr",
+          "discount_pkr",
+          "total_pkr",
+          "placed_at",
+          "items",
+          "fulfillments",
+          "payment_method",
+          "user_id",
+          "buyer_name",
+          "buyer_email",
+          "buyer_phone",
+          "buyer_note",
+          "coupon_code",
+          "source_ref",
+          "campaign",
+          "taken_by",
+          "payment",
+          "staff_notes",
+          "timeline"
+        ],
+        "title": "AdminOrderDetail",
+        "type": "object"
+      },
+      "AdminOrderItemRead": {
+        "properties": {
+          "can_edit_note": {
+            "default": false,
+            "description": "The note can still be added or replaced (the card isn't printed yet)",
+            "title": "Can Edit Note",
+            "type": "boolean"
+          },
+          "customization": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Customization"
+          },
+          "greeting_message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Greeting Message"
+          },
+          "has_note": {
+            "default": false,
+            "description": "A voice/video note is attached to this item's card",
+            "title": "Has Note",
+            "type": "boolean"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "line_total_pkr": {
+            "title": "Line Total Pkr",
+            "type": "integer"
+          },
+          "note_content_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "examples": [
+              "audio/mp4"
+            ],
+            "title": "Note Content Type"
+          },
+          "product_image_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The product's primary photo",
+            "examples": [
+              "https://cdn.example.com/cake.jpg"
+            ],
+            "title": "Product Image Url"
+          },
+          "product_name": {
+            "title": "Product Name",
+            "type": "string"
+          },
+          "qty": {
+            "title": "Qty",
+            "type": "integer"
+          },
+          "unit_price_pkr": {
+            "title": "Unit Price Pkr",
+            "type": "integer"
+          },
+          "variant_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Variant Name"
+          }
+        },
+        "required": [
+          "id",
+          "product_name",
+          "variant_name",
+          "qty",
+          "unit_price_pkr",
+          "line_total_pkr",
+          "greeting_message",
+          "customization"
+        ],
+        "title": "AdminOrderItemRead",
+        "type": "object"
+      },
       "AdminOrderPage": {
         "properties": {
           "items": {
@@ -544,6 +1103,79 @@
           "customer_confirmed_at"
         ],
         "title": "AdminOrderSummary",
+        "type": "object"
+      },
+      "AdminPaymentRead": {
+        "properties": {
+          "amount_charged": {
+            "title": "Amount Charged",
+            "type": "integer"
+          },
+          "amount_pkr": {
+            "title": "Amount Pkr",
+            "type": "integer"
+          },
+          "currency": {
+            "title": "Currency",
+            "type": "string"
+          },
+          "method": {
+            "$ref": "#/components/schemas/PaymentMethod"
+          },
+          "proof_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Short-lived signed link; the receipt bucket is private",
+            "title": "Proof Url"
+          },
+          "provider_ref": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Ref"
+          },
+          "status": {
+            "examples": [
+              "awaiting_verification"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "verified_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Verified At"
+          }
+        },
+        "required": [
+          "method",
+          "status",
+          "amount_pkr",
+          "amount_charged",
+          "currency",
+          "proof_url",
+          "provider_ref",
+          "verified_at"
+        ],
+        "title": "AdminPaymentRead",
         "type": "object"
       },
       "AdminProductRead": {
@@ -3229,6 +3861,28 @@
         "title": "OrderConfirm",
         "type": "object"
       },
+      "OrderEvent": {
+        "properties": {
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "label": {
+            "examples": [
+              "Payment verified"
+            ],
+            "title": "Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "at",
+          "label"
+        ],
+        "title": "OrderEvent",
+        "type": "object"
+      },
       "OrderItemRead": {
         "properties": {
           "can_edit_note": {
@@ -4340,6 +4994,62 @@
           "created_at"
         ],
         "title": "ReviewRead",
+        "type": "object"
+      },
+      "StaffNoteCreate": {
+        "properties": {
+          "body": {
+            "examples": [
+              "Buyer called: deliver after 5pm, gate code 4412."
+            ],
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Body",
+            "type": "string"
+          }
+        },
+        "required": [
+          "body"
+        ],
+        "title": "StaffNoteCreate",
+        "type": "object"
+      },
+      "StaffNoteRead": {
+        "properties": {
+          "author_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Staff name, else email; null if the account was deleted",
+            "title": "Author Name"
+          },
+          "body": {
+            "title": "Body",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "body",
+          "author_name",
+          "created_at"
+        ],
+        "title": "StaffNoteRead",
         "type": "object"
       },
       "TestimonialRead": {
@@ -6305,6 +7015,114 @@
           }
         ],
         "summary": "Create Assisted Order",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/orders/{order_id}": {
+      "get": {
+        "description": "One order with everything staff need: buyer contact, each recipient's full address and shop,\npayment and receipt, internal notes and a timeline.",
+        "operationId": "get_order_api_v1_admin_orders__order_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "order_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Order Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminOrderDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Order",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/orders/{order_id}/notes": {
+      "post": {
+        "description": "Add an internal note. Never shown to the buyer or recipient; notes can't be edited or deleted.",
+        "operationId": "add_order_note_api_v1_admin_orders__order_id__notes_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "order_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Order Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StaffNoteCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StaffNoteRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Add Order Note",
         "tags": [
           "admin"
         ]

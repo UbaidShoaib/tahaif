@@ -30,6 +30,7 @@ from app.models.order import (
     Order,
     OrderItem,
     OrderMessage,
+    OrderStaffNote,
     Payment,
 )
 from app.models.reminder import OccasionReminderSent
@@ -58,6 +59,7 @@ __all__ = [
     "OrderItem",
     "CardNoteReport",
     "OrderMessage",
+    "OrderStaffNote",
     "PasswordResetToken",
     "Payment",
     "Product",

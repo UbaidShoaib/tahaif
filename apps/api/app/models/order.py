@@ -187,6 +187,9 @@ class Order(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     manual_messages: Mapped[list["OrderMessage"]] = relationship(
         back_populates="order", cascade="all, delete-orphan"
     )
+    staff_notes: Mapped[list["OrderStaffNote"]] = relationship(
+        back_populates="order", cascade="all, delete-orphan", order_by="OrderStaffNote.created_at"
+    )
 
 
 class OrderItem(UUIDPrimaryKeyMixin, Base):
@@ -350,3 +353,20 @@ class CardNoteReport(UUIDPrimaryKeyMixin, Base):
     resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     order_item: Mapped["OrderItem"] = relationship()
+
+
+class OrderStaffNote(UUIDPrimaryKeyMixin, Base):
+    """Internal note on an order ("buyer called, deliver after 5pm"). Never shown
+    to the buyer or recipient. Append-only: a correction is a new note."""
+
+    __tablename__ = "order_staff_notes"
+
+    order_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("orders.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    author_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    body: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
+
+    order: Mapped["Order"] = relationship(back_populates="staff_notes")
+    author: Mapped["User | None"] = relationship()

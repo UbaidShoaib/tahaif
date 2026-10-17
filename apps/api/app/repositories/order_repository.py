@@ -15,6 +15,7 @@ from app.models.order import (
     Order,
     OrderItem,
     OrderMessage,
+    OrderStaffNote,
     OrderStatus,
     Payment,
 )
@@ -136,6 +137,21 @@ class OrderRepository:
             self._with_relations().where(Order.id == order_id)
         )
         return result.scalar_one_or_none()
+
+    async def get_for_admin(self, order_id: uuid.UUID) -> Order | None:
+        """Everything the back-office order page shows, staff notes and their authors included."""
+        result = await self._db.execute(
+            self._with_relations()
+            .options(selectinload(Order.staff_notes).selectinload(OrderStaffNote.author))
+            .where(Order.id == order_id)
+        )
+        return result.scalar_one_or_none()
+
+    async def add_staff_note(self, order_id: uuid.UUID, author_id: uuid.UUID, body: str) -> OrderStaffNote:
+        note = OrderStaffNote(order_id=order_id, author_id=author_id, body=body)
+        self._db.add(note)
+        await self._db.flush()
+        return note
 
     async def list_for_user(self, user_id: uuid.UUID, limit: int = 20) -> list[Order]:
         result = await self._db.execute(

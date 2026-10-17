@@ -215,3 +215,60 @@ class AdminOrderPage(BaseModel):
     total: int = Field(examples=[134])
     offset: int
     limit: int
+
+
+class StaffNoteCreate(BaseModel):
+    body: str = Field(min_length=1, max_length=2000, examples=["Buyer called: deliver after 5pm, gate code 4412."])
+
+
+class StaffNoteRead(BaseModel):
+    id: uuid.UUID
+    body: str
+    author_name: str | None = Field(description="Staff name, else email; null if the account was deleted")
+    created_at: datetime
+
+
+class AdminFulfillmentRead(FulfillmentRead):
+    address_line2: str | None
+    landmark: str | None
+    vendor_phone: str | None = Field(description="Shop contact number, to chase a delivery")
+
+
+class AdminOrderItemRead(OrderItemRead):
+    customization: dict[str, object] | None
+
+
+class AdminPaymentRead(BaseModel):
+    method: PaymentMethod
+    status: str = Field(examples=["awaiting_verification"])
+    amount_pkr: int
+    amount_charged: int
+    currency: str
+    proof_url: str | None = Field(description="Short-lived signed link; the receipt bucket is private")
+    provider_ref: str | None
+    verified_at: datetime | None
+
+
+class OrderEvent(BaseModel):
+    at: datetime
+    label: str = Field(examples=["Payment verified"])
+
+
+class AdminOrderDetail(OrderRead):
+    """Everything staff need on one order. Extends the buyer-facing order with contact
+    details, payment, internal notes and a timeline."""
+
+    items: list[AdminOrderItemRead]  # type: ignore[assignment]
+    fulfillments: list[AdminFulfillmentRead]  # type: ignore[assignment]
+    user_id: uuid.UUID | None
+    buyer_name: str | None
+    buyer_email: str | None
+    buyer_phone: str | None
+    buyer_note: str | None = Field(description="What the buyer wrote at checkout")
+    coupon_code: str | None
+    source_ref: str | None = Field(examples=["@sara.uk"])
+    campaign: str | None
+    taken_by: str | None = Field(description="Staff who entered a DM/WhatsApp order")
+    payment: AdminPaymentRead | None
+    staff_notes: list[StaffNoteRead]
+    timeline: list[OrderEvent] = Field(description="Oldest first")

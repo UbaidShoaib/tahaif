@@ -8,6 +8,12 @@ pre-production-cutover).
 ## [Unreleased]
 
 ### Added
+- Back office (Phase 9 P0): **order page** at `/admin/orders/{id}` — every recipient's full address,
+  landmark, delivery day/slot, shop and shop phone (tap to call); items with card message and
+  customisation; totals and charged currency; buyer contact, source and who took the order; payment
+  with receipt and approve/reject; status change; WhatsApp messages; a timeline; and **internal staff
+  notes** (append-only, never shown to buyers). Orders in the list link to it.
+  API: `GET /admin/orders/{id}`, `POST /admin/orders/{id}/notes`. Migration `0018` adds `order_staff_notes`.
 - Back office (Phase 9 P0): **order search** in the admin Orders tab — by order code, any buyer
   or recipient phone in any format (0300…, +92 300…), buyer name/email or recipient name; placed-date
   range (Pakistan days) and paging. Rows now show recipients, delivery date and buyer.
