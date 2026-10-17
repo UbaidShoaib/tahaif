@@ -251,7 +251,8 @@ class AdminPaymentRead(BaseModel):
 
 class OrderEvent(BaseModel):
     at: datetime
-    label: str = Field(examples=["Payment verified"])
+    label: str = Field(examples=["Status: paid → preparing"])
+    by: str | None = Field(default=None, description="Who did it, when it was a person")
 
 
 class AdminOrderDetail(OrderRead):

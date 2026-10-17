@@ -37,7 +37,7 @@ from app.schemas.social_order import (
     WhatsAppMessageRead,
     WhatsAppQueueEntry,
 )
-from app.services import cart_service, checkout_service
+from app.services import audit_service, cart_service, checkout_service
 from app.services.cart_service import CartOwner
 from app.services.message_texts_ur import buyer_text_ur, recipient_text_ur
 
@@ -172,6 +172,10 @@ async def create_assisted_order(
     order.campaign = checkout_service.normalize_campaign(body.campaign)
     order.created_by_staff_id = staff.id
     await db.flush()
+    await audit_service.record(
+        db, staff, "order.created_by_staff", "order", order.id,
+        after={"source": order.source, "source_ref": order.source_ref, "total_pkr": order.total_pkr},
+    )
     order = await repo.reload(order)
     return AssistedOrderRead(order=checkout_service._order_to_read(order), messages=messages_for(order))
 

@@ -175,6 +175,11 @@ class NewsletterSubscriber(UUIDPrimaryKeyMixin, Base):
 # ── Audit Log ─────────────────────────────────────────────────────────────────
 
 class AuditLog(UUIDPrimaryKeyMixin, Base):
+    """Who changed what in the back office. Written by audit_service in the same
+    transaction as the change. `before`/`after` hold only the fields that changed.
+    Rows from before 2026-10-17 came from a request middleware and have only the
+    HTTP method as `action` and no actor."""
+
     __tablename__ = "audit_logs"
 
     actor_user_id: Mapped[uuid.UUID | None] = mapped_column(
@@ -189,3 +194,5 @@ class AuditLog(UUIDPrimaryKeyMixin, Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utcnow, nullable=False
     )
+
+    actor: Mapped["User | None"] = relationship()

@@ -22,7 +22,9 @@ const report: CampaignSalesReport = {
 };
 
 describe("CampaignReport", () => {
-  beforeEach(() => vi.mocked(reportsApi.campaigns).mockReset());
+  beforeEach(() => {
+    vi.mocked(reportsApi.campaigns).mockReset();
+  });
 
   it("shows a row per channel and campaign with totals", async () => {
     vi.mocked(reportsApi.campaigns).mockResolvedValue(report);

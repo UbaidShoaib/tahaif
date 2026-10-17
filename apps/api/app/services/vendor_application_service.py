@@ -28,7 +28,7 @@ from app.schemas.vendor import (
     VendorApplicationRead,
     VendorDocumentRead,
 )
-from app.services import proof_service
+from app.services import audit_service, proof_service
 
 logger = structlog.get_logger()
 
@@ -186,6 +186,7 @@ async def approve(db: AsyncSession, reviewer: User, vendor_id: uuid.UUID) -> Adm
     if owner and owner.role == UserRole.customer:
         await UserRepository(db).update(owner, role=UserRole.vendor)
 
+    await audit_service.record(db, reviewer, "vendor.approved", "vendor", vendor_id, after={"name": vendor.name})
     await logger.ainfo("vendor_application_approved", vendor_id=str(vendor_id), reviewer_id=str(reviewer.id))
     refreshed = await repo.get_application(vendor_id)
     assert refreshed is not None
@@ -203,6 +204,9 @@ async def reject(
         is_active=False,
         review_note=(note or "").strip() or None,
         reviewed_at=datetime.now(UTC),
+    )
+    await audit_service.record(
+        db, reviewer, "vendor.rejected", "vendor", vendor_id, after={"name": vendor.name, "note": vendor.review_note}
     )
     await logger.ainfo("vendor_application_rejected", vendor_id=str(vendor_id), reviewer_id=str(reviewer.id))
     refreshed = await repo.get_application(vendor_id)

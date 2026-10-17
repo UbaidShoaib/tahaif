@@ -139,8 +139,9 @@ def create_app() -> FastAPI:
 
     app.add_middleware(SecurityHeadersMiddleware)
 
-    # Audit log middleware — logs mutating requests to /admin/* and /vendor/*
-    class AuditLogMiddleware:
+    # Client IP for the audit log. Entries are written by audit_service inside the
+    # change's own transaction; this only makes the caller's address available to it.
+    class ClientIPMiddleware:
         def __init__(self, inner: ASGIApp) -> None:
             self._inner = inner
 
@@ -150,49 +151,17 @@ def create_app() -> FastAPI:
                 return
 
             from starlette.requests import Request as StarletteRequest
-            req = StarletteRequest(scope)
-            method = req.method
-            path = req.url.path
-            should_audit = method in {"POST", "PATCH", "PUT", "DELETE"} and (
-                "/admin/" in path or "/vendor/" in path
-            )
 
-            if not should_audit:
+            from app.core.client_ip import client_ip
+            from app.core.request_context import client_ip_var
+
+            token = client_ip_var.set(client_ip(StarletteRequest(scope)))
+            try:
                 await self._inner(scope, receive, send)
-                return
+            finally:
+                client_ip_var.reset(token)
 
-            import asyncio
-
-            from app.core.db import get_db
-
-            async def run_audit() -> None:
-                try:
-                    import uuid as _uuid
-
-                    import sqlalchemy as _sa
-
-                    from app.core.client_ip import client_ip
-                    ip = client_ip(req)
-
-                    async for _db in get_db():
-                        await _db.execute(_sa.text("""
-                            INSERT INTO audit_logs (id, action, entity, entity_id, ip_address, created_at)
-                            VALUES (:id, :action, :entity, :entity_id, :ip, NOW())
-                        """), {
-                            "id": _uuid.uuid4(),
-                            "action": method,
-                            "entity": path.split("/")[-2] if len(path.split("/")) > 1 else path,
-                            "entity_id": path.split("/")[-1],
-                            "ip": ip,
-                        })
-                        await _db.commit()
-                except Exception:
-                    pass  # audit must never break the request
-
-            asyncio.ensure_future(run_audit())
-            await self._inner(scope, receive, send)
-
-    app.add_middleware(AuditLogMiddleware)
+    app.add_middleware(ClientIPMiddleware)
 
     from app.api.v1.router import api_router
 

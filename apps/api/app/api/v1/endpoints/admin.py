@@ -12,11 +12,11 @@ from sqlalchemy import select
 from app.core.deps import DB, require_roles
 from app.models.catalog import FxRate, FxRateSource, VendorApprovalStatus
 from app.models.loyalty import Coupon, CouponType
-from app.models.order import OrderSource, OrderStatus, PaymentStatus
+from app.models.order import OrderSource, OrderStatus
 from app.models.user import User, UserRole
 from app.repositories.loyalty_repository import CouponRepository
-from app.repositories.order_repository import OrderRepository
 from app.repositories.user_repository import UserRepository
+from app.schemas.audit import AuditPage
 from app.schemas.catalog import ProductRead
 from app.schemas.order import (
     AdminOrderDetail,
@@ -40,6 +40,7 @@ from app.schemas.vendor import (
 )
 from app.services import (
     admin_order_service,
+    audit_service,
     catalog_service,
     note_service,
     report_service,
@@ -125,15 +126,10 @@ async def add_order_note(
 async def update_order_status(
     order_id: uuid.UUID,
     body: OrderStatusUpdate,
-    _admin: AdminUser,
+    admin: AdminUser,
     db: DB,
 ) -> dict[str, Any]:
-    repo = OrderRepository(db)
-    order = await repo.get_by_id(order_id)
-    if not order:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Order not found")
-    order.status = body.status
-    await db.flush()
+    order = await admin_order_service.set_status(db, admin, order_id, body.status)
     return {"id": str(order.id), "status": order.status}
 
 
@@ -144,24 +140,8 @@ async def verify_payment(
     admin: AdminUser,
     db: DB,
 ) -> dict[str, Any]:
-    repo = OrderRepository(db)
-    order = await repo.get_by_id(order_id)
-    if not order or not order.payments:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Order not found")
-
-    payment = order.payments[0]
-    now = datetime.now(UTC)
-
-    if body.verified:
-        payment.status = PaymentStatus.paid
-        payment.verified_by = admin.id
-        payment.verified_at = now
-        order.status = OrderStatus.paid
-    else:
-        payment.status = PaymentStatus.failed
-
-    await db.flush()
-    return {"payment_status": payment.status, "order_status": order.status}
+    order = await admin_order_service.verify_payment(db, admin, order_id, body.verified)
+    return {"payment_status": order.payments[0].status, "order_status": order.status}
 
 
 # ── Orders from Instagram / WhatsApp chats (ADR 0009) ─────────────────────────
@@ -310,10 +290,10 @@ async def get_product(product_id: uuid.UUID, _admin: AdminUser, db: DB) -> Produ
 async def set_product_active(
     product_id: uuid.UUID,
     body: ProductActiveUpdate,
-    _admin: AdminUser,
+    admin: AdminUser,
     db: DB,
 ) -> dict[str, Any]:
-    product = await catalog_service.set_product_active(db, product_id, body.is_active)
+    product = await catalog_service.set_product_active(db, product_id, body.is_active, admin)
     return {"id": str(product.id), "is_active": product.is_active}
 
 
@@ -345,6 +325,10 @@ async def override_fx_rate(body: FxRateOverride, admin: AdminUser, db: DB) -> di
     )).scalar_one_or_none()
 
     now = datetime.now(UTC)
+    await audit_service.record(
+        db, admin, "fx_rate.overridden", "fx_rate", body.quote_currency.upper(),
+        before={"rate": existing.rate} if existing else None, after={"rate": body.rate},
+    )
     if existing:
         existing.rate = body.rate
         existing.fetched_at = now
@@ -383,7 +367,7 @@ async def list_coupons(_admin: AdminUser, db: DB) -> list[dict[str, Any]]:
 
 
 @router.post("/coupons", status_code=status.HTTP_201_CREATED)
-async def create_coupon(body: CouponCreate, _admin: AdminUser, db: DB) -> dict[str, Any]:
+async def create_coupon(body: CouponCreate, admin: AdminUser, db: DB) -> dict[str, Any]:
     repo = CouponRepository(db)
     coupon = await repo.create(
         code=body.code.upper(),
@@ -393,6 +377,10 @@ async def create_coupon(body: CouponCreate, _admin: AdminUser, db: DB) -> dict[s
         usage_limit=body.usage_limit,
         ends_at=body.ends_at,
     )
+    await audit_service.record(
+        db, admin, "coupon.created", "coupon", coupon.id,
+        after={"code": coupon.code, **body.model_dump(exclude={"code"})},
+    )
     return {"id": str(coupon.id), "code": coupon.code}
 
 
@@ -400,13 +388,17 @@ async def create_coupon(body: CouponCreate, _admin: AdminUser, db: DB) -> dict[s
 async def set_coupon_active(
     coupon_id: uuid.UUID,
     body: ProductActiveUpdate,
-    _admin: AdminUser,
+    admin: AdminUser,
     db: DB,
 ) -> dict[str, Any]:
     result = await db.execute(select(Coupon).where(Coupon.id == coupon_id))
     coupon = result.scalar_one_or_none()
     if not coupon:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Coupon not found")
+    await audit_service.record(
+        db, admin, "coupon.enabled" if body.is_active else "coupon.disabled", "coupon", coupon.id,
+        before={"is_active": coupon.is_active}, after={"is_active": body.is_active}, context={"code": coupon.code},
+    )
     coupon.is_active = body.is_active
     await db.flush()
     return {"id": str(coupon.id), "is_active": coupon.is_active}
@@ -445,5 +437,33 @@ async def update_user_role(
     user = await repo.get_by_id(user_id)
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    await audit_service.record(
+        db, admin, "user.role_changed", "user", user.id,
+        before={"role": user.role}, after={"role": role}, context={"email": user.email},
+    )
     await repo.update(user, role=role)
     return {"id": str(user.id), "role": user.role}
+
+
+# ── Audit log ─────────────────────────────────────────────────────────────────
+
+@router.get("/audit-log", response_model=AuditPage)
+async def list_audit_log(
+    admin: AdminUser,
+    db: DB,
+    entity: str | None = Query(default=None, examples=["order"]),  # noqa: B008
+    entity_id: str | None = Query(default=None, max_length=255),  # noqa: B008
+    actor_user_id: uuid.UUID | None = None,
+    action: str | None = Query(  # noqa: B008
+        default=None, max_length=100, description="Action or prefix, e.g. `payment.` or `product.updated`"
+    ),
+    offset: int = Query(default=0, ge=0),  # noqa: B008
+    limit: int = Query(default=50, ge=1, le=100),  # noqa: B008
+) -> AuditPage:
+    """Who changed what in the back office, newest first. Admins only: it shows every staff
+    member's actions and IP addresses."""
+    if admin.role != UserRole.admin:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only admins can see the activity log")
+    return await audit_service.search(
+        db, entity=entity, entity_id=entity_id, actor_user_id=actor_user_id, action=action, offset=offset, limit=limit
+    )

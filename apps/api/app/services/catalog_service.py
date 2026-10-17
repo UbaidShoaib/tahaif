@@ -38,6 +38,7 @@ from app.schemas.catalog import (
     VendorCreate,
     VendorUpdate,
 )
+from app.services import audit_service
 
 logger = structlog.get_logger()
 
@@ -199,6 +200,10 @@ def _to_meili_doc(product: Product, vendor_name: str | None = None) -> dict[str,
     }
 
 
+# What a product edit can change, for the audit log.
+_PRODUCT_FIELDS = ["name", "description", "base_price_pkr", "category_id", "is_active"]
+
+
 async def list_products(
     db: AsyncSession,
     city_id: uuid.UUID | None = None,
@@ -262,13 +267,18 @@ async def get_admin_product(db: AsyncSession, product_id: uuid.UUID) -> Product:
     return product
 
 
-async def set_product_active(db: AsyncSession, product_id: uuid.UUID, is_active: bool) -> Product:
+async def set_product_active(db: AsyncSession, product_id: uuid.UUID, is_active: bool, actor: User) -> Product:
     """Admin toggle. Keeps the search index in step with the storefront."""
     repo = ProductRepository(db)
     product = await repo.get_by_id(product_id)
     if not product:
         raise _NOT_FOUND("Product")
+    before = audit_service.snapshot(product, ["is_active"])
     product = await repo.update(product, is_active=is_active)
+    await audit_service.record(
+        db, actor, "product.published" if is_active else "product.hidden", "product", product_id,
+        before=before, after={"is_active": is_active},
+    )
     if is_active:
         refreshed = await repo.get_by_id(product_id)
         assert refreshed is not None
@@ -328,12 +338,17 @@ async def create_product(db: AsyncSession, data: ProductCreate, user: User) -> P
     if _is_staff(user):
         product = await product_repo.create(**data.model_dump())
         await meilisearch_client.index_product(_to_meili_doc(product, vendor.name))
-        return product
-    # A vendor's own listing starts hidden; staff publish it from the admin panel
-    # (docs/questions.md, "Vendor product approval").
-    if not vendor.is_active:
-        raise _STAFF_ONLY("Your shop has not been approved yet")
-    return await product_repo.create(**data.model_dump(), is_active=False)
+    else:
+        # A vendor's own listing starts hidden; staff publish it from the admin panel
+        # (docs/questions.md, "Vendor product approval").
+        if not vendor.is_active:
+            raise _STAFF_ONLY("Your shop has not been approved yet")
+        product = await product_repo.create(**data.model_dump(), is_active=False)
+    await audit_service.record(
+        db, user, "product.created", "product", product.id,
+        after={"slug": product.slug, **audit_service.snapshot(product, _PRODUCT_FIELDS)},
+    )
+    return product
 
 
 async def update_product(
@@ -356,8 +371,13 @@ async def update_product(
     if updates.get("is_active") and not product.is_active and not _is_staff(user):
         # Vendors may hide their own product, but publishing one is staff's call.
         raise _STAFF_ONLY("Only staff can publish a product")
+    before = audit_service.snapshot(product, _PRODUCT_FIELDS)
     if updates:
         product = await repo.update(product, **updates)
+    await audit_service.record(
+        db, user, "product.updated", "product", product.id,
+        before=before, after=audit_service.snapshot(product, _PRODUCT_FIELDS),
+    )
     if product.is_active:
         await meilisearch_client.index_product(_to_meili_doc(product, vendor.name))
     else:
@@ -375,7 +395,9 @@ async def soft_delete_product(db: AsyncSession, slug: str, user: User) -> None:
     if not vendor or not _owns_vendor(user, vendor):
         raise _FORBIDDEN
 
+    before = audit_service.snapshot(product, ["is_active"])
     await repo.update(product, is_active=False)
+    await audit_service.record(db, user, "product.hidden", "product", product.id, before=before, after={"is_active": False})
     await meilisearch_client.delete_product(str(product.id))
 
 
@@ -396,7 +418,9 @@ async def add_product_image(
     if not vendor or not _owns_vendor(user, vendor):
         raise _FORBIDDEN
 
-    return await _attach_image(repo, product, url, alt_text, is_primary)
+    image = await _attach_image(repo, product, url, alt_text, is_primary)
+    await audit_service.record(db, user, "product.photo_added", "product", product.id, after={"url": image.url})
+    return image
 
 
 async def upload_product_image(
@@ -418,7 +442,9 @@ async def upload_product_image(
         raise _FORBIDDEN
 
     url = await s3_client.upload_product_image(str(product.id), await file.read(), file.content_type or "")
-    return await _attach_image(repo, product, url, alt_text, is_primary)
+    image = await _attach_image(repo, product, url, alt_text, is_primary)
+    await audit_service.record(db, user, "product.photo_added", "product", product.id, after={"url": image.url})
+    return image
 
 
 async def _attach_image(
@@ -450,6 +476,7 @@ async def remove_product_image(
     if not image or image.product_id != product.id:
         raise _NOT_FOUND("Image")
     was_primary = image.is_primary
+    await audit_service.record(db, user, "product.photo_removed", "product", product.id, before={"url": image.url})
     await repo.delete_image(image)
     if was_primary:
         # Promote the next photo so the product never loses its main image.
@@ -474,6 +501,8 @@ async def set_primary_product_image(
     image = await repo.get_image(image_id)
     if not image or image.product_id != product.id:
         raise _NOT_FOUND("Image")
+    if not image.is_primary:
+        await audit_service.record(db, user, "product.main_photo_changed", "product", product.id, after={"url": image.url})
     await repo.set_primary_image(product.id, image_id)
     db.expire(product, ["images"])
     updated = await repo.get_by_id(product.id)
@@ -495,6 +524,15 @@ async def set_product_city_availability(
     if not vendor or not _owns_vendor(user, vendor):
         raise _FORBIDDEN
 
+    def cities_snapshot(p: Product) -> dict[str, object]:
+        return {
+            str(pc.city_id): audit_service.snapshot(
+                pc, ["is_available", "price_override_pkr", "delivery_fee_pkr", "lead_time_hours", "same_day_cutoff"]
+            )
+            for pc in p.product_cities
+        }
+
+    before = cities_snapshot(product)
     city_repo = CityRepository(db)
     for entry in entries:
         if not await city_repo.get_by_id(entry.city_id):
@@ -506,6 +544,9 @@ async def set_product_city_availability(
     db.expire(product, ["product_cities"])
     updated = await repo.get_by_id(product.id)
     assert updated is not None
+    await audit_service.record(
+        db, user, "product.cities_changed", "product", product.id, before=before, after=cities_snapshot(updated)
+    )
     await meilisearch_client.index_product(_to_meili_doc(updated, vendor.name))
     return updated
 

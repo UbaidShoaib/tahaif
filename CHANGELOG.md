@@ -8,6 +8,11 @@ pre-production-cutover).
 ## [Unreleased]
 
 ### Added
+- Back office (Phase 9 P0): **audit log** (ADR 0012). Order status changes, payment approve/reject,
+  staff notes and DM orders; product create/edit/publish/hide/photos/cities; vendor delivery updates;
+  shop approvals; card-note take-downs; coupons; exchange-rate overrides; and role changes record who,
+  what changed (before → after) and the IP. Admin-only **Activity** tab (`GET /admin/audit-log`); the
+  order page timeline now shows status changes and who made them.
 - Back office (Phase 9 P0): **order page** at `/admin/orders/{id}` — every recipient's full address,
   landmark, delivery day/slot, shop and shop phone (tap to call); items with card message and
   customisation; totals and charged currency; buyer contact, source and who took the order; payment
@@ -62,6 +67,8 @@ pre-production-cutover).
   SOP, compliance note and integration options in `docs/`.
 
 ### Changed
+- Order status change and payment verification moved from the admin router into `admin_order_service`.
+- Removed the request-level audit middleware (it logged only the HTTP method and URL, no actor).
 - Cart and checkout redesigned to match: cart items as hairline rows (bigger photo, serif name, price
   in ink) with a soft tinted summary panel and a proper empty state (no emoji); checkout sections
   (your details, recipient & delivery, payment) as open sections divided by hairlines, the order

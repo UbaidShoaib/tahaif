@@ -135,8 +135,11 @@ Each stage follows the Definition of Done in CLAUDE.md (tests, OpenAPI examples,
   delivered, WhatsApp sent). Status changes made in the admin are **not** on it yet — that needs the
   status-history table from the state-machine item.
 
+**P0 · Audit log — done (2026-10-17)** — see ADR 0012. Activity tab (admin only), order timeline shows
+status changes with who. The status-history part of the state-machine item is now covered by the log.
+
 **Still open in P0:** variants & stock, occasions on a product (no API yet), photo reordering, sidebar shell,
-audit log, status state machine with status history.
+status state machine (allowed transitions).
 
 ## 5. Open questions (defaults in brackets)
 

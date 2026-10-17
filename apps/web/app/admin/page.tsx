@@ -10,10 +10,14 @@ import { AssistedOrderForm } from "@/components/admin/AssistedOrderForm";
 import { MessageQueue } from "@/components/admin/MessageQueue";
 import { CampaignReport } from "@/components/admin/CampaignReport";
 import { OrderList } from "@/components/admin/OrderList";
+import { ActivityLog } from "@/components/admin/ActivityLog";
 import { Button } from "@/components/ui/button";
 import { useStaffSession } from "@/hooks/use-staff-session";
+import { useAuthStore } from "@/stores/auth.store";
 
-type Section = "orders" | "new-order" | "messages" | "campaigns" | "applications" | "add-product" | "products" | "note-reports";
+type Section =
+  | "orders" | "new-order" | "messages" | "campaigns" | "applications" | "add-product" | "products" | "note-reports"
+  | "activity";
 
 const SECTIONS: { key: Section; label: string }[] = [
   { key: "orders", label: "Orders" },
@@ -26,15 +30,20 @@ const SECTIONS: { key: Section; label: string }[] = [
   { key: "note-reports", label: "Reported notes" },
 ];
 
+// Shows every staff member's actions and IPs, so admins only (the API enforces it too).
+const ADMIN_SECTIONS: { key: Section; label: string }[] = [{ key: "activity", label: "Activity" }];
+
 export default function AdminDashboard() {
   const token = useStaffSession("/admin");
+  const isAdmin = useAuthStore((s) => s.user?.role === "admin");
   const [section, setSection] = useState<Section>("orders");
+  const sections = isAdmin ? [...SECTIONS, ...ADMIN_SECTIONS] : SECTIONS;
 
   // Other admin pages link back to a tab with ?section=…
   useEffect(() => {
     const wanted = new URLSearchParams(window.location.search).get("section");
-    if (SECTIONS.some((s) => s.key === wanted)) setSection(wanted as Section);
-  }, []);
+    if (sections.some((s) => s.key === wanted)) setSection(wanted as Section);
+  }, [isAdmin]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -46,7 +55,7 @@ export default function AdminDashboard() {
       </div>
 
       <nav aria-label="Admin sections" className="mb-6 flex flex-wrap gap-2 border-b pb-3">
-        {SECTIONS.map((s) => (
+        {sections.map((s) => (
           <Button
             key={s.key}
             variant={section === s.key ? "default" : "ghost"}
@@ -69,6 +78,7 @@ export default function AdminDashboard() {
           {section === "new-order" && <AssistedOrderForm token={token} />}
           {section === "messages" && <MessageQueue token={token} />}
           {section === "campaigns" && <CampaignReport token={token} />}
+          {section === "activity" && isAdmin && <ActivityLog token={token} />}
         </>
       )}
     </div>

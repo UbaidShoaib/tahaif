@@ -65,7 +65,9 @@ function serve(overrides: Record<string, unknown> = {}) {
 const section = (name: string) => screen.getByRole("region", { name });
 
 describe("OrderDetail", () => {
-  beforeEach(() => vi.mocked(apiFetch).mockReset());
+  beforeEach(() => {
+    vi.mocked(apiFetch).mockReset();
+  });
 
   it("shows recipient address, shop, items, buyer and payment", async () => {
     serve();

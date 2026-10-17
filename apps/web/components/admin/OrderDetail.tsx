@@ -82,7 +82,7 @@ export type AdminOrder = {
   taken_by: string | null;
   payment: Payment | null;
   staff_notes: StaffNote[];
-  timeline: { at: string; label: string }[];
+  timeline: { at: string; label: string; by?: string | null }[];
 };
 
 const when = (iso: string) => new Date(iso).toLocaleString("en-PK", { dateStyle: "medium", timeStyle: "short" });
@@ -376,7 +376,7 @@ export function OrderDetail({ token, orderId }: { token: string; orderId: string
               {order.timeline.map((ev, i) => (
                 <li key={`${ev.at}-${i}`} className="text-sm">
                   <p>{ev.label}</p>
-                  <p className="text-xs text-muted-foreground">{when(ev.at)}</p>
+                  <p className="text-xs text-muted-foreground">{when(ev.at)}{ev.by ? ` · ${ev.by}` : ""}</p>
                 </li>
               ))}
             </ol>

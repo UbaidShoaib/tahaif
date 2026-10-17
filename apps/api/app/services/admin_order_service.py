@@ -2,16 +2,17 @@
 
 import re
 import uuid
-from datetime import date, datetime, time, timedelta
+from datetime import UTC, date, datetime, time, timedelta
 from zoneinfo import ZoneInfo
 
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.order import Order, OrderStatus
+from app.models.order import Order, OrderStatus, PaymentStatus
 from app.models.user import User
 from app.repositories.order_repository import OrderRepository
 from app.repositories.user_repository import UserRepository
+from app.schemas.audit import AuditEntryRead
 from app.schemas.order import (
     AdminFulfillmentRead,
     AdminOrderDetail,
@@ -22,7 +23,12 @@ from app.schemas.order import (
     OrderEvent,
     StaffNoteRead,
 )
-from app.services import checkout_service, proof_service, social_order_service
+from app.services import (
+    audit_service,
+    checkout_service,
+    proof_service,
+    social_order_service,
+)
 
 # Staff pick dates as they see them in Pakistan, not UTC.
 _STAFF_TZ = ZoneInfo("Asia/Karachi")
@@ -110,7 +116,33 @@ def _person(user: User | None) -> str | None:
     return (user.full_name or user.email) if user else None
 
 
-def _timeline(o: Order) -> list[OrderEvent]:
+def _words(value: object) -> str:
+    return str(value).replace("_", " ")
+
+
+def _audit_events(entries: list[AuditEntryRead]) -> list[OrderEvent]:
+    """Logged actions that the order's own timestamps don't already show."""
+    events = []
+    for e in entries:
+        before, after = e.before or {}, e.after or {}
+        if e.action == "order.status_changed":
+            label = f"Status: {_words(before.get('status'))} → {_words(after.get('status'))}"
+        elif e.action == "payment.rejected":
+            label = "Payment rejected"
+        elif e.action == "fulfillment.updated" and "status" in before:
+            # Dispatched and delivered already come from the delivery's own timestamps.
+            if after.get("status") in ("dispatched", "delivered"):
+                continue
+            label = f"Delivery to {after.get('recipient')}: {_words(after.get('status'))}"
+        elif e.action.startswith("card_note."):
+            label = e.label
+        else:
+            continue
+        events.append(OrderEvent(at=e.at, label=label, by=e.actor_name))
+    return events
+
+
+def _timeline(o: Order, logged: list[AuditEntryRead]) -> list[OrderEvent]:
     events = [OrderEvent(at=o.placed_at, label=f"Placed ({o.source})")]
     if o.customer_confirmed_at:
         events.append(OrderEvent(at=o.customer_confirmed_at, label="Buyer confirmed the order"))
@@ -125,7 +157,7 @@ def _timeline(o: Order) -> list[OrderEvent]:
             events.append(OrderEvent(at=f.delivered_at, label=f"Delivered to {f.recipient_name}{who}"))
     for m in o.manual_messages:
         events.append(OrderEvent(at=m.sent_at, label=_MESSAGE_LABELS.get(m.kind, f"{m.kind} sent on WhatsApp")))
-    return sorted(events, key=lambda e: e.at)
+    return sorted(events + _audit_events(logged), key=lambda e: e.at)
 
 
 async def get_order_detail(db: AsyncSession, order_id: uuid.UUID) -> AdminOrderDetail:
@@ -176,7 +208,7 @@ async def get_order_detail(db: AsyncSession, order_id: uuid.UUID) -> AdminOrderD
             StaffNoteRead(id=n.id, body=n.body, author_name=_person(n.author), created_at=n.created_at)
             for n in o.staff_notes
         ],
-        timeline=_timeline(o),
+        timeline=_timeline(o, await audit_service.for_entity(db, "order", o.id)),
     )
 
 
@@ -185,4 +217,47 @@ async def add_staff_note(db: AsyncSession, order_id: uuid.UUID, author: User, bo
     if not await repo.get_by_id(order_id):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Order not found")
     note = await repo.add_staff_note(order_id, author.id, body.strip())
+    await audit_service.record(db, author, "order.note_added", "order", order_id, after={"note": note.body})
     return StaffNoteRead(id=note.id, body=note.body, author_name=_person(author), created_at=note.created_at)
+
+
+async def _get(db: AsyncSession, order_id: uuid.UUID) -> Order:
+    order = await OrderRepository(db).get_by_id(order_id)
+    if not order:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Order not found")
+    return order
+
+
+async def set_status(db: AsyncSession, actor: User, order_id: uuid.UUID, new_status: OrderStatus) -> Order:
+    order = await _get(db, order_id)
+    before = audit_service.snapshot(order, ["status"])
+    order.status = new_status
+    await db.flush()
+    await audit_service.record(
+        db, actor, "order.status_changed", "order", order.id, before=before, after=audit_service.snapshot(order, ["status"])
+    )
+    return order
+
+
+async def verify_payment(db: AsyncSession, actor: User, order_id: uuid.UUID, verified: bool) -> Order:
+    """Staff checked a bank-transfer receipt: approve marks the order paid, reject fails the payment."""
+    order = await _get(db, order_id)
+    if not order.payments:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Order not found")
+    payment = order.payments[0]
+    before = {"payment_status": payment.status, "status": order.status}
+
+    if verified:
+        payment.status = PaymentStatus.paid
+        payment.verified_by = actor.id
+        payment.verified_at = datetime.now(UTC)
+        order.status = OrderStatus.paid
+    else:
+        payment.status = PaymentStatus.failed
+    await db.flush()
+
+    await audit_service.record(
+        db, actor, "payment.verified" if verified else "payment.rejected", "order", order.id,
+        before=before, after={"payment_status": payment.status, "status": order.status},
+    )
+    return order

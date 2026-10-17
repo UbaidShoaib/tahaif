@@ -26,7 +26,7 @@ from app.schemas.vendor import (
     VendorFulfillmentRead,
     VendorLineItem,
 )
-from app.services import proof_service
+from app.services import audit_service, proof_service
 from app.workers.notification_tasks import (
     enqueue_fulfillment_update,
     enqueue_recipient_update,
@@ -137,7 +137,7 @@ async def update_fulfillment(
     extra: dict[str, object] = {}
     if data.courier_tracking is not None:
         extra["courier_tracking"] = data.courier_tracking
-    fulfillment = await _move_fulfillment(db, repo, fulfillment, parent, data.status, extra)
+    fulfillment = await _move_fulfillment(db, user, repo, fulfillment, parent, data.status, extra)
     return _fulfillment_to_read(fulfillment)
 
 
@@ -183,12 +183,13 @@ async def confirm_delivery_with_photo(
         # Delivered is final: just swap the photo, no status move or re-notification.
         fulfillment = await repo.update_fulfillment(fulfillment, **extra)
     else:
-        fulfillment = await _move_fulfillment(db, repo, fulfillment, parent, FulfillmentStatus.delivered, extra)
+        fulfillment = await _move_fulfillment(db, user, repo, fulfillment, parent, FulfillmentStatus.delivered, extra)
     return _fulfillment_to_read(fulfillment)
 
 
 async def _move_fulfillment(
     db: AsyncSession,
+    actor: User,
     repo: OrderRepository,
     fulfillment: Fulfillment,
     parent: Order,
@@ -209,7 +210,15 @@ async def _move_fulfillment(
         kwargs["delivered_at"] = datetime.now(UTC)
 
     status_changed = new_status != fulfillment.status
+    before = {"status": fulfillment.status, "courier_tracking": fulfillment.courier_tracking}
     fulfillment = await repo.update_fulfillment(fulfillment, **kwargs)
+    # Logged against the order so it shows on the order's timeline.
+    await audit_service.record(
+        db, actor, "fulfillment.updated", "order", fulfillment.order_id,
+        before=before,
+        after={"status": fulfillment.status, "courier_tracking": fulfillment.courier_tracking},
+        context={"recipient": fulfillment.recipient_name},
+    )
     if status_changed:
         await _notify(db, parent, fulfillment)
 
