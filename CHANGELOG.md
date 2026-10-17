@@ -8,6 +8,11 @@ pre-production-cutover).
 ## [Unreleased]
 
 ### Added
+- Back office (Phase 9 P0): **order search** in the admin Orders tab — by order code, any buyer
+  or recipient phone in any format (0300…, +92 300…), buyer name/email or recipient name; placed-date
+  range (Pakistan days) and paging. Rows now show recipients, delivery date and buyer.
+  API: `GET /admin/orders` takes `q`, `placed_from`, `placed_to`, `offset` and returns
+  `{items, total, offset, limit}` (was a bare list) with `buyer_name`, `recipients`, `delivery_date`.
 - Back office (Phase 9 P0): admin **Products** tab replaces "Hidden products" — the whole
   catalog with name search, shop filter and All/Live/Hidden, publish/hide, and an **editor** at
   `/admin/products/{id}` (details & price, photos with main-photo choice and remove, per-city

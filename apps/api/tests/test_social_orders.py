@@ -365,7 +365,7 @@ async def test_admin_order_list_shows_source(client: AsyncClient, db: AsyncSessi
     product_id, city_id = await _catalog(db)
     body = _body(product_id, city_id, source="whatsapp")
     oid = (await _place(client, headers, body))["order"]["id"]
-    rows = (await client.get("/api/v1/admin/orders", headers=headers)).json()
+    rows = (await client.get("/api/v1/admin/orders", headers=headers)).json()["items"]
     row = next(r for r in rows if r["id"] == oid)
     assert row["source"] == "whatsapp"
     assert row["buyer_phone"] == normalize_phone(body["buyer_phone"])

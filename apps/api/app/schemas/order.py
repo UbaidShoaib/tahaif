@@ -189,3 +189,29 @@ class OrderRead(BaseModel):
         default=False,
         description="Taken by staff from a chat; the buyer must check and confirm it on the order link page",
     )
+
+
+class AdminOrderSummary(BaseModel):
+    id: uuid.UUID
+    public_token: uuid.UUID
+    status: OrderStatus
+    user_id: uuid.UUID | None
+    total_pkr: int
+    currency: str
+    placed_at: datetime
+    payment_method: str | None
+    payment_status: str | None
+    proof_url: str | None = Field(description="Short-lived signed link; the receipt bucket is private")
+    source: str
+    buyer_name: str | None
+    buyer_phone: str | None
+    recipients: list[str] = Field(examples=[["Ammi (Lahore)"]])
+    delivery_date: date | None = Field(description="Earliest delivery date across the order's recipients")
+    customer_confirmed_at: datetime | None
+
+
+class AdminOrderPage(BaseModel):
+    items: list[AdminOrderSummary]
+    total: int = Field(examples=[134])
+    offset: int
+    limit: int

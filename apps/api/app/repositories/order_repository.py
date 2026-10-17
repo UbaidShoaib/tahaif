@@ -2,7 +2,7 @@ import uuid
 from datetime import date, datetime
 from typing import Any
 
-from sqlalchemy import Date, case, cast, func, select
+from sqlalchemy import Date, String, case, cast, exists, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from sqlalchemy.sql import Select
@@ -18,6 +18,7 @@ from app.models.order import (
     OrderStatus,
     Payment,
 )
+from app.models.user import User
 
 
 class OrderRepository:
@@ -47,6 +48,61 @@ class OrderRepository:
             stmt = stmt.where(Fulfillment.vendor_id == vendor_id)
         delivered, on_time = (await self._db.execute(stmt)).one()
         return int(delivered), int(on_time)
+
+    async def search_for_admin(
+        self,
+        *,
+        status: OrderStatus | None = None,
+        text: str | None = None,
+        digits: str | None = None,
+        token_prefix: str | None = None,
+        placed_from: datetime | None = None,
+        placed_before: datetime | None = None,
+        offset: int = 0,
+        limit: int = 50,
+    ) -> tuple[list[Order], int]:
+        """Admin order search, newest first, with the total for paging.
+
+        ``text`` matches buyer name/email, recipient name and "gift from";
+        ``digits`` matches any buyer or recipient phone ignoring formatting;
+        ``token_prefix`` matches the order code. The three are OR-ed.
+        """
+        q = self._with_relations().outerjoin(User, Order.user_id == User.id)
+        if status:
+            q = q.where(Order.status == status)
+        if placed_from:
+            q = q.where(Order.placed_at >= placed_from)
+        if placed_before:
+            q = q.where(Order.placed_at < placed_before)
+
+        def phone_digits(col: Any) -> Any:
+            return func.regexp_replace(col, r"\D", "", "g")
+
+        matches: list[Any] = []
+        if text:
+            pattern = f"%{text}%"
+            matches += [
+                User.full_name.ilike(pattern),
+                User.email.ilike(pattern),
+                Order.contact_email.ilike(pattern),
+                Order.gift_from.ilike(pattern),
+                exists().where(Fulfillment.order_id == Order.id, Fulfillment.recipient_name.ilike(pattern)),
+            ]
+        if digits:
+            pattern = f"%{digits}%"
+            matches += [
+                phone_digits(Order.contact_phone).like(pattern),
+                phone_digits(User.phone).like(pattern),
+                exists().where(Fulfillment.order_id == Order.id, phone_digits(Fulfillment.recipient_phone).like(pattern)),
+            ]
+        if token_prefix:
+            matches.append(cast(Order.public_token, String).like(f"{token_prefix}%"))
+        if matches:
+            q = q.where(or_(*matches))
+
+        total = (await self._db.execute(select(func.count()).select_from(q.order_by(None).subquery()))).scalar_one()
+        q = q.order_by(Order.placed_at.desc(), Order.id).offset(offset).limit(limit)
+        return list((await self._db.execute(q)).scalars().unique().all()), int(total)
 
     def _with_relations(self) -> Select[tuple[Order]]:
         return select(Order).options(

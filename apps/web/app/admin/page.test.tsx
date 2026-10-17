@@ -14,7 +14,11 @@ describe("AdminDashboard session handling", () => {
 
   beforeEach(() => {
     push.mockReset();
-    global.fetch = vi.fn<typeof fetch>().mockResolvedValue({ ok: true, json: () => Promise.resolve([]) } as Response);
+    global.fetch = vi.fn<typeof fetch>().mockImplementation((url) => Promise.resolve({
+      ok: true,
+      // The order list is paged; every other admin list is a plain array.
+      json: () => Promise.resolve(String(url).includes("/admin/orders?") ? { items: [], total: 0, offset: 0, limit: 25 } : []),
+    } as Response));
   });
 
   afterEach(() => {
@@ -58,7 +62,11 @@ describe("AdminDashboard sections", () => {
   const originalFetch = global.fetch;
 
   beforeEach(() => {
-    global.fetch = vi.fn<typeof fetch>().mockResolvedValue({ ok: true, json: () => Promise.resolve([]) } as Response);
+    global.fetch = vi.fn<typeof fetch>().mockImplementation((url) => Promise.resolve({
+      ok: true,
+      // The order list is paged; every other admin list is a plain array.
+      json: () => Promise.resolve(String(url).includes("/admin/orders?") ? { items: [], total: 0, offset: 0, limit: 25 } : []),
+    } as Response));
     useAuthStore.setState({ user: { ...admin } as never, accessToken: "tok", isLoading: false });
   });
 

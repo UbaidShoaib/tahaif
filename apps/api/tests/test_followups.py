@@ -115,7 +115,7 @@ async def test_admin_order_list_serves_signed_receipt_links(client: AsyncClient,
     await db.execute(update(Payment).where(Payment.order_id == uuid.UUID(order["id"])).values(proof_url=stored))
     await db.commit()
 
-    rows = (await client.get("/api/v1/admin/orders?status=pending_payment&limit=200", headers=await login(f"pa_{tag}@example.com"))).json()
+    rows = (await client.get("/api/v1/admin/orders?status=pending_payment&limit=100", headers=await login(f"pa_{tag}@example.com"))).json()["items"]
     row = next(r for r in rows if r["id"] == order["id"])
 
     assert row["proof_url"] != stored

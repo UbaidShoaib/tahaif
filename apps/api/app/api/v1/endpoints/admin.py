@@ -1,7 +1,7 @@
 """Admin API: order management, payment verification, product CRUD, FX override, coupons, users."""
 
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from decimal import Decimal
 from typing import Annotated, Any
 
@@ -12,13 +12,13 @@ from sqlalchemy import select
 from app.core.deps import DB, require_roles
 from app.models.catalog import FxRate, FxRateSource, VendorApprovalStatus
 from app.models.loyalty import Coupon, CouponType
-from app.models.order import Order, OrderSource, OrderStatus, PaymentStatus
+from app.models.order import OrderSource, OrderStatus, PaymentStatus
 from app.models.user import User, UserRole
 from app.repositories.loyalty_repository import CouponRepository
 from app.repositories.order_repository import OrderRepository
 from app.repositories.user_repository import UserRepository
 from app.schemas.catalog import ProductRead
-from app.schemas.order import ReportedNoteRead
+from app.schemas.order import AdminOrderPage, ReportedNoteRead
 from app.schemas.report import CampaignSalesReport
 from app.schemas.social_order import (
     AssistedOrderCreate,
@@ -33,9 +33,9 @@ from app.schemas.vendor import (
     VendorApplicationReject,
 )
 from app.services import (
+    admin_order_service,
     catalog_service,
     note_service,
-    proof_service,
     report_service,
     social_order_service,
     vendor_application_service,
@@ -76,39 +76,26 @@ class CouponCreate(BaseModel):
 
 # ── Orders ────────────────────────────────────────────────────────────────────
 
-@router.get("/orders")
+@router.get("/orders", response_model=AdminOrderPage)
 async def list_orders(
     _admin: AdminUser,
     db: DB,
     status: OrderStatus | None = None,
-    limit: int = 50,
-) -> list[dict[str, Any]]:
-    repo = OrderRepository(db)
-    q = repo._with_relations()
-    if status:
-        q = q.where(Order.status == status)
-    q = q.order_by(Order.placed_at.desc()).limit(limit)
-    result = await db.execute(q)
-    orders = list(result.scalars().unique().all())
-    return [
-        {
-            "id": str(o.id),
-            "public_token": str(o.public_token),
-            "status": o.status,
-            "user_id": str(o.user_id) if o.user_id else None,
-            "total_pkr": o.total_pkr,
-            "currency": o.currency,
-            "placed_at": o.placed_at.isoformat(),
-            "payment_method": o.payments[0].method if o.payments else None,
-            "payment_status": o.payments[0].status if o.payments else None,
-            # Short-lived signed link; the receipt bucket is private.
-            "proof_url": proof_service.signed_proof_url(o.payments[0].proof_url) if o.payments else None,
-            "source": o.source,
-            "buyer_phone": social_order_service.buyer_phone(o),
-            "customer_confirmed_at": o.customer_confirmed_at.isoformat() if o.customer_confirmed_at else None,
-        }
-        for o in orders
-    ]
+    q: str | None = Query(  # noqa: B008
+        default=None,
+        max_length=100,
+        description="Order code (as on the receipt, e.g. 3F9A2C1B), any buyer or recipient phone "
+        "in any format, buyer name or email, or recipient name",
+        examples=["0300 1234567"],
+    ),
+    placed_from: date | None = Query(default=None, description="First day, Pakistan time"),  # noqa: B008
+    placed_to: date | None = Query(default=None, description="Last day (inclusive), Pakistan time"),  # noqa: B008
+    offset: int = Query(default=0, ge=0),  # noqa: B008
+    limit: int = Query(default=50, ge=1, le=100),  # noqa: B008
+) -> AdminOrderPage:
+    return await admin_order_service.list_orders(
+        db, status=status, q=q, placed_from=placed_from, placed_to=placed_to, offset=offset, limit=limit
+    )
 
 
 @router.patch("/orders/{order_id}/status")

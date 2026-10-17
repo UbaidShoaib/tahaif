@@ -116,8 +116,18 @@ Each stage follows the Definition of Done in CLAUDE.md (tests, OpenAPI examples,
 - `hooks/use-staff-session.ts` is the auth guard for new admin routes; `/admin` itself still has its own copy
   until the sidebar/routes refactor.
 
+**P0 · Order search — done (2026-10-17)**
+- `components/admin/OrderList.tsx` (moved out of `app/admin/page.tsx`): one search box, status chips, placed-date
+  range, 25 per page, 30 s polling kept. Logic in `services/admin_order_service.py`; the router no longer queries
+  the DB for this list.
+- Search is one box, split server-side (`parse_query`): phone-looking input matches the **last 10 digits** of every
+  buyer/recipient phone with formatting stripped (so 0300…, +92 300… and 92300… all hit); hex-looking input also
+  matches the order-code prefix; anything else matches names/emails (ILIKE). No index yet — fine at today's volume;
+  add pg_trgm if the list gets slow.
+- Date filters are whole days in Asia/Karachi, `placed_to` inclusive.
+
 **Still open in P0:** variants & stock, occasions on a product (no API yet), photo reordering, sidebar shell,
-order search/detail/notes, audit log, status state machine.
+order detail/notes, audit log, status state machine.
 
 ## 5. Open questions (defaults in brackets)
 

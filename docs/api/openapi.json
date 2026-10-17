@@ -353,6 +353,199 @@
         "title": "AddressUpdate",
         "type": "object"
       },
+      "AdminOrderPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/AdminOrderSummary"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "offset": {
+            "title": "Offset",
+            "type": "integer"
+          },
+          "total": {
+            "examples": [
+              134
+            ],
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "offset",
+          "limit"
+        ],
+        "title": "AdminOrderPage",
+        "type": "object"
+      },
+      "AdminOrderSummary": {
+        "properties": {
+          "buyer_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Buyer Name"
+          },
+          "buyer_phone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Buyer Phone"
+          },
+          "currency": {
+            "title": "Currency",
+            "type": "string"
+          },
+          "customer_confirmed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Customer Confirmed At"
+          },
+          "delivery_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Earliest delivery date across the order's recipients",
+            "title": "Delivery Date"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "payment_method": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Payment Method"
+          },
+          "payment_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Payment Status"
+          },
+          "placed_at": {
+            "format": "date-time",
+            "title": "Placed At",
+            "type": "string"
+          },
+          "proof_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Short-lived signed link; the receipt bucket is private",
+            "title": "Proof Url"
+          },
+          "public_token": {
+            "format": "uuid",
+            "title": "Public Token",
+            "type": "string"
+          },
+          "recipients": {
+            "examples": [
+              [
+                "Ammi (Lahore)"
+              ]
+            ],
+            "items": {
+              "type": "string"
+            },
+            "title": "Recipients",
+            "type": "array"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/OrderStatus"
+          },
+          "total_pkr": {
+            "title": "Total Pkr",
+            "type": "integer"
+          },
+          "user_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Id"
+          }
+        },
+        "required": [
+          "id",
+          "public_token",
+          "status",
+          "user_id",
+          "total_pkr",
+          "currency",
+          "placed_at",
+          "payment_method",
+          "payment_status",
+          "proof_url",
+          "source",
+          "buyer_name",
+          "buyer_phone",
+          "recipients",
+          "delivery_date",
+          "customer_confirmed_at"
+        ],
+        "title": "AdminOrderSummary",
+        "type": "object"
+      },
       "AdminProductRead": {
         "properties": {
           "base_price_pkr": {
@@ -5936,11 +6129,84 @@
             }
           },
           {
+            "description": "Order code (as on the receipt, e.g. 3F9A2C1B), any buyer or recipient phone in any format, buyer name or email, or recipient name",
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 100,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Order code (as on the receipt, e.g. 3F9A2C1B), any buyer or recipient phone in any format, buyer name or email, or recipient name",
+              "examples": [
+                "0300 1234567"
+              ],
+              "title": "Q"
+            }
+          },
+          {
+            "description": "First day, Pakistan time",
+            "in": "query",
+            "name": "placed_from",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "First day, Pakistan time",
+              "title": "Placed From"
+            }
+          },
+          {
+            "description": "Last day (inclusive), Pakistan time",
+            "in": "query",
+            "name": "placed_to",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Last day (inclusive), Pakistan time",
+              "title": "Placed To"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          },
+          {
             "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
               "default": 50,
+              "maximum": 100,
+              "minimum": 1,
               "title": "Limit",
               "type": "integer"
             }
@@ -5951,12 +6217,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "items": {
-                    "additionalProperties": true,
-                    "type": "object"
-                  },
-                  "title": "Response List Orders Api V1 Admin Orders Get",
-                  "type": "array"
+                  "$ref": "#/components/schemas/AdminOrderPage"
                 }
               }
             },
