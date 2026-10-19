@@ -13,6 +13,7 @@ from app.api.v1.endpoints import (
     reviews,
     stats,
     vendor,
+    whatsapp,
 )
 
 api_router = APIRouter()
@@ -28,3 +29,4 @@ api_router.include_router(reviews.router)
 api_router.include_router(marketing.router)
 api_router.include_router(stats.router)
 api_router.include_router(admin.router)
+api_router.include_router(whatsapp.router)

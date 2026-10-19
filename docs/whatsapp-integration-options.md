@@ -13,6 +13,10 @@
 | 5 | SaaS inboxes (WATI, Interakt, SleekFlow, respond.io) | ~$40–100+/month | Shared inbox, chatbot builder, broadcasts, Shopify-style plugins | Monthly fee; another place where order data lives |
 | ✗ | Unofficial libraries (whatsapp-web.js, Baileys, "WhatsApp automation" tools) | Free | Automate a normal account | **Breaks WhatsApp's terms; number bans are common.** Don't use |
 
+**Update 2026-10-19:** option 3 is built as an ordering bot (ADR 0013): customers order inside the
+chat through the website's checkout, without staff. It's off until a Cloud API number is set up
+(`docs/runbook.md`, "WhatsApp ordering bot"); options 1 and 2 keep working beside it.
+
 **Recommendation:** stay on 1 + 2 now (done, zero cost). Move to **3 (Cloud API
 directly)** once messages per day make the manual queue painful, roughly 30–50 orders a day.
 Because most of our messages are replies within 24 hours of the customer writing to us,

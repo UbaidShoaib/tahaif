@@ -86,6 +86,19 @@ class Settings(BaseSettings):
     # queue via wa.me links (ADR 0009). Turn on only with a paid WhatsApp API.
     whatsapp_api_enabled: bool = False
 
+    # WhatsApp ordering bot (ADR 0013): customers order in the chat, through
+    # Meta's WhatsApp Cloud API directly (no Twilio). Off until a number is set up.
+    whatsapp_bot_enabled: bool = False
+    whatsapp_phone_number_id: str = ""
+    whatsapp_access_token: str = ""
+    # App secret signs every webhook call (X-Hub-Signature-256); calls without a valid signature are refused.
+    whatsapp_app_secret: str = ""
+    # Any string you choose; Meta echoes it when you register the webhook URL.
+    whatsapp_verify_token: str = ""
+    whatsapp_graph_version: str = "v21.0"
+    # The team's own WhatsApp (Business app) number, offered when a customer asks for a person.
+    whatsapp_team_number: str = ""
+
     # FX rates
     open_exchange_rates_app_id: str = ""
 

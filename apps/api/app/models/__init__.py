@@ -35,6 +35,7 @@ from app.models.order import (
 )
 from app.models.reminder import OccasionReminderSent
 from app.models.user import OAuthAccount, PasswordResetToken, RefreshToken, User
+from app.models.whatsapp import WhatsAppConversation, WhatsAppInboundMessage
 
 __all__ = [
     "Address",
@@ -71,4 +72,6 @@ __all__ = [
     "Testimonial",
     "User",
     "Vendor",
+    "WhatsAppConversation",
+    "WhatsAppInboundMessage",
 ]

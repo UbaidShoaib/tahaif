@@ -338,6 +338,39 @@ while `REQUIRE_VERIFIED_EMAIL_FOR_CHECKOUT=true`.
 Until a domain is verified, `REQUIRE_VERIFIED_EMAIL_FOR_CHECKOUT=false` keeps
 signed-in checkout open.
 
+## WhatsApp ordering bot
+
+Customers order inside WhatsApp (ADR 0013). One-time setup, about an hour plus Meta's review:
+
+1. **Meta Business account** (business.facebook.com), verified with the business documents.
+2. **App**: developers.facebook.com → Create app → *Business* → add the **WhatsApp** product.
+3. **Phone number**: WhatsApp → API Setup → add the number the bot will use. It must
+   not be registered in the WhatsApp phone app, unless you onboard the Business app
+   number with Meta's coexistence option so staff keep the app on the same number.
+   Copy its **Phone number ID** → `WHATSAPP_PHONE_NUMBER_ID`.
+4. **Permanent token**: Business settings → System users → add an admin system user →
+   assign the app and the WhatsApp account → *Generate token* with
+   `whatsapp_business_messaging` and `whatsapp_business_management`, never expiring →
+   `WHATSAPP_ACCESS_TOKEN`. (The 24-hour token on the API Setup page is for testing only.)
+5. **App secret**: App settings → Basic → App secret → `WHATSAPP_APP_SECRET`.
+6. **Webhook**: pick any long random string → `WHATSAPP_VERIFY_TOKEN`, set
+   `WHATSAPP_BOT_ENABLED=true`, deploy, then WhatsApp → Configuration → Webhook:
+   callback URL `https://<api-domain>/api/v1/whatsapp/webhook`, the same verify token,
+   *Verify and save*, then subscribe to the **messages** field.
+7. Optional: `WHATSAPP_TEAM_NUMBER` = the team's WhatsApp Business app number, sent to
+   customers who type *help*.
+8. Test: message the number "hi" from your phone and place a COD order to a test city;
+   cancel it in the admin afterwards.
+
+Point the website's `NEXT_PUBLIC_SUPPORT_WHATSAPP` at the bot number so "Order on
+WhatsApp" on product pages starts the bot with that gift already chosen.
+
+**Bot not replying:** check API logs for `whatsapp_send_failed` (bad or expired
+token: status 401; number not registered: 400) and `whatsapp_message_failed`
+(an error in the bot; the customer was told to try again). A 401 on the webhook
+itself means `WHATSAPP_APP_SECRET` doesn't match the app. Turn the bot off with
+`WHATSAPP_BOT_ENABLED=false`; orders already placed are unaffected.
+
 ## Card note reports
 
 Reported voice/video notes appear in **Admin → Reported notes** (log event `card_note_reported`).

@@ -45,6 +45,12 @@ Orders from the website's **Order on WhatsApp** button arrive with the product, 
 city, card message and link already in the first message. If it ends with `(ref: …)`, copy
 that into **Reel / campaign**.
 
+Orders the **WhatsApp bot** took (ADR 0013) show source *WhatsApp* with "WhatsApp bot" in the
+chat reference. The customer has already confirmed them in the chat and been sent the order link;
+don't enter them again. Handle their payment and delivery messages as for any other order. When a
+customer types *help*, the bot sends them the team number (or stops replying, so you can answer in
+that chat, until the customer types *menu* or the chat is quiet for 12 hours).
+
 From Instagram: take the order in the DM if the customer prefers, but **send the
 order link on WhatsApp**. If the customer won't use WhatsApp, paste the
 link into the DM. The link is the same.

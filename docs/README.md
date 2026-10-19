@@ -11,6 +11,7 @@
 | [decisions/0010-card-note-safety.md](decisions/0010-card-note-safety.md) | Card voice/video notes: consent before upload, public report link, admin review/take-down, play/report rate limits, 90-day expiry after delivery |
 | [decisions/0011-public-product-images.md](decisions/0011-public-product-images.md) | Product photos uploaded to `products/` in the media bucket, the only publicly readable prefix |
 | [decisions/0012-audit-log.md](decisions/0012-audit-log.md) | Audit log: services record who/what/before→after/IP in the change's transaction; admin-only Activity tab |
+| [decisions/0013-whatsapp-ordering-bot.md](decisions/0013-whatsapp-ordering-bot.md) | Customers order inside WhatsApp: Cloud API bot runs the website's checkout as a chat; signed webhook, state in Postgres, payment on the order link |
 | [questions.md](questions.md) | Open questions with defaults (legal review of card-note rules, retention) |
 | [whatsapp-order-sop.md](whatsapp-order-sop.md) | SOP for staff taking orders in Instagram DMs and WhatsApp |
 | [compliance-social-orders.md](compliance-social-orders.md) | Compliance note: WhatsApp policy, PECA, consumer protection, GDPR/PECR, PCI for chat orders |

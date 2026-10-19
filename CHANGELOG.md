@@ -8,6 +8,15 @@ pre-production-cutover).
 ## [Unreleased]
 
 ### Added
+- **Order inside WhatsApp** (ADR 0013). A bot on Meta's WhatsApp Cloud API takes customers through
+  the website's checkout in the chat: city, gift (with photo and price), option, delivery date, card
+  message, recipient, address or location pin, surprise, "from" name and payment, then a summary
+  with the total and **Place order**. Orders go through the normal checkout with `source=whatsapp`
+  and are already confirmed; bank-transfer customers get the order link for account details and the
+  receipt. *menu* restarts, *cancel* clears, *help* hands over to the team. The website's "Order on
+  WhatsApp" message starts the bot with that gift. Webhook `GET/POST /api/v1/whatsapp/webhook`
+  (signed by Meta). Off until `WHATSAPP_BOT_ENABLED=true`; setup in `docs/runbook.md`. Migration
+  `0020` adds `whatsapp_conversations` and `whatsapp_inbound_messages`.
 - Back office (Phase 9 P0): **photo order**. Move a product's photos earlier or later from its admin page.
   API: `PUT /products/{slug}/images/order`.
 - Back office (Phase 9 P0): **occasions on a product**. Tick which occasion pages (Eid, Mother's Day…) list a
