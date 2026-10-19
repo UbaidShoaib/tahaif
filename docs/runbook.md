@@ -359,11 +359,30 @@ Customers order inside WhatsApp (ADR 0013). One-time setup, about an hour plus M
    *Verify and save*, then subscribe to the **messages** field.
 7. Optional: `WHATSAPP_TEAM_NUMBER` = the team's WhatsApp Business app number, sent to
    customers who type *help*.
-8. Test: message the number "hi" from your phone and place a COD order to a test city;
-   cancel it in the admin afterwards.
+8. **Bank details in the chat**: `BANK_ACCOUNT_NAME` and `BANK_IBAN` (the same account as
+   the website's `NEXT_PUBLIC_BANK_*`). Without them the bot points to the order page.
+9. **Catalog** (optional but recommended):
+   1. business.facebook.com → Commerce Manager → *Add catalog* → *E-commerce* → upload
+      product info yourself.
+   2. Catalog → *Data sources* → *Data feed* → *Scheduled feed*, URL
+      `https://<api-domain>/api/v1/whatsapp/catalog.csv`, **hourly**, currency PKR.
+      Prices, stock and new products then follow the admin within an hour.
+   3. WhatsApp Manager → your number → *Catalog* → choose this catalog and turn on
+      *Show catalog* and *Show cart*.
+   4. Copy the catalog's ID (Commerce Manager → Settings) → `WHATSAPP_CATALOG_ID`, deploy.
+   Products need a photo to be listed (Meta requires one). Meta reviews new items; a
+   rejected item shows in Commerce Manager → *Issues*.
+10. Test: message the number "hi" from your phone, add two gifts to the cart, place a
+    bank-transfer order, send a photo as the receipt, then approve it in the admin and
+    check the "payment received" message arrives. Cancel the order afterwards.
 
 Point the website's `NEXT_PUBLIC_SUPPORT_WHATSAPP` at the bot number so "Order on
 WhatsApp" on product pages starts the bot with that gift already chosen.
+
+**Receipts in WhatsApp:** a photo or PDF the customer sends is attached to their latest
+bot order still waiting for a receipt, and the order shows *awaiting verification* in
+the admin as for website uploads. Verify it against the bank app as usual (SOP §3); the
+customer is told the result in the chat.
 
 **Bot not replying:** check API logs for `whatsapp_send_failed` (bad or expired
 token: status 401; number not registered: 400) and `whatsapp_message_failed`

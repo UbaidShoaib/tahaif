@@ -4,6 +4,8 @@ Register ``{API}/api/v1/whatsapp/webhook`` in the Meta app (WhatsApp →
 Configuration) with ``WHATSAPP_VERIFY_TOKEN``, and subscribe to ``messages``.
 """
 
+import csv
+import io
 import json
 from typing import Annotated, Any
 
@@ -17,7 +19,7 @@ from fastapi import (
     Request,
     status,
 )
-from fastapi.responses import PlainTextResponse
+from fastapi.responses import PlainTextResponse, Response
 
 from app.core.config import get_settings
 from app.core.deps import DB
@@ -38,6 +40,19 @@ async def _send_all(outgoing: list[tuple[str, list[Reply]]]) -> None:
             await whatsapp_cloud.send(to, replies)
         except Exception:
             await logger.aexception("whatsapp_reply_failed", to=to)
+
+
+@router.get("/catalog.csv", include_in_schema=False)
+async def catalog_feed(db: DB) -> Response:
+    """Product feed for our WhatsApp catalog. In Commerce Manager: Catalog → Data
+    sources → Data feed → scheduled, with this URL, refreshed hourly."""
+    if not get_settings().whatsapp_bot_enabled:
+        raise _OFF
+    out = io.StringIO()
+    writer = csv.DictWriter(out, fieldnames=whatsapp_bot_service.FEED_COLUMNS)
+    writer.writeheader()
+    writer.writerows(await whatsapp_bot_service.catalog_feed(db))
+    return Response(out.getvalue(), media_type="text/csv; charset=utf-8")
 
 
 @router.get("/webhook", response_class=PlainTextResponse, include_in_schema=False)

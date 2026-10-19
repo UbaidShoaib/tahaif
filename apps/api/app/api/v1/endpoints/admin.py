@@ -5,7 +5,7 @@ from datetime import UTC, date, datetime
 from decimal import Decimal
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Header, HTTPException, Query, status
+from fastapi import APIRouter, BackgroundTasks, Header, HTTPException, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 
@@ -46,6 +46,7 @@ from app.services import (
     report_service,
     social_order_service,
     vendor_application_service,
+    whatsapp_bot_service,
 )
 
 AdminUser = Annotated[User, require_roles(UserRole.admin, UserRole.staff)]
@@ -139,8 +140,13 @@ async def verify_payment(
     body: PaymentVerify,
     admin: AdminUser,
     db: DB,
+    background: BackgroundTasks,
 ) -> dict[str, Any]:
     order = await admin_order_service.verify_payment(db, admin, order_id, body.verified)
+    # Orders placed in the WhatsApp bot hear back in the chat (ADR 0013), once committed.
+    if notice := whatsapp_bot_service.payment_notice(order, body.verified):
+        to, replies = notice
+        background.add_task(whatsapp_bot_service.send_payment_notice, order.id, to, replies, body.verified)
     return {"payment_status": order.payments[0].status, "order_status": order.status}
 
 

@@ -1,11 +1,12 @@
 """Ordering inside WhatsApp (ADR 0013): the website's checkout as a chat.
 
-The customer picks a city, a gift, an option, a delivery date, writes the card,
-gives the recipient's details and chooses how to pay, by tapping buttons and
-lists or typing. The order goes through the same cart and checkout as the
-website (prices, city availability, cutoffs, stock), with source ``whatsapp``.
-Payment and the bank receipt stay on the order link page, as for chat orders
-staff enter (ADR 0009).
+The customer picks a city and gifts (from our WhatsApp catalog, adding to the
+WhatsApp cart, or from a plain list), a delivery date, writes the card, gives
+the recipient's details and chooses how to pay, by tapping or typing. The order
+goes through the same cart and checkout as the website (prices, city
+availability, cutoffs, stock), with source ``whatsapp``. Bank-transfer customers
+get our account details in the chat and send the receipt as a photo; staff
+verify it in the admin and the customer hears back here.
 
 ``handle`` takes one incoming message and returns the replies; the endpoint
 sends them once the transaction has committed.
@@ -26,10 +27,19 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
+from app.core.db import AsyncSessionLocal
 from app.core.phone import InvalidPhoneError, normalize_phone
-from app.integrations.whatsapp_cloud import Reply, Row
+from app.integrations import whatsapp_cloud
+from app.integrations.whatsapp_cloud import MediaDownloadError, Reply, Row
 from app.models.catalog import Product, ProductCity, ProductVariant
-from app.models.order import OrderMessage, OrderSource, PaymentMethod
+from app.models.order import (
+    Order,
+    OrderMessage,
+    OrderSource,
+    OrderStatus,
+    PaymentMethod,
+    PaymentStatus,
+)
 from app.models.whatsapp import WhatsAppConversation, WhatsAppInboundMessage
 from app.repositories.catalog_repository import CityRepository, ProductRepository
 from app.repositories.order_repository import OrderRepository
@@ -66,6 +76,8 @@ class Inbound:
     text: str | None = None  # what they typed
     choice: str | None = None  # id of the button or list row they tapped
     location: dict[str, Any] | None = None
+    cart: list[tuple[str, int]] | None = None  # (catalog item id, qty) from the WhatsApp cart
+    media: dict[str, Any] | None = None  # a photo or document: id, mime_type, filename
 
 
 def parse_webhook(payload: dict[str, Any]) -> list[Inbound]:
@@ -80,7 +92,8 @@ def parse_webhook(payload: dict[str, Any]) -> list[Inbound]:
                 if not sender or not m.get("id"):
                     continue
                 text = choice = None
-                location = None
+                location = media = None
+                cart: list[tuple[str, int]] | None = None
                 if kind == "text":
                     text = (m.get("text") or {}).get("body")
                 elif kind == "interactive":
@@ -90,10 +103,20 @@ def parse_webhook(payload: dict[str, Any]) -> list[Inbound]:
                     text = (m.get("button") or {}).get("text")
                 elif kind == "location":
                     location = m.get("location") or {}
+                elif kind == "order":
+                    cart = [
+                        (str(i.get("product_retailer_id")), int(i.get("quantity") or 1))
+                        for i in (m.get("order") or {}).get("product_items") or []
+                        if i.get("product_retailer_id")
+                    ]
+                    text = (m.get("order") or {}).get("text")
+                elif kind in ("image", "document"):
+                    media = m.get(kind) or {}
+                    text = media.get("caption")
                 out.append(
                     Inbound(
                         message_id=m["id"], phone=sender, profile_name=names.get(sender),
-                        text=text, choice=choice, location=location,
+                        text=text, choice=choice, location=location, cart=cart, media=media,
                     )
                 )
     return out
@@ -153,9 +176,60 @@ async def _product(db: AsyncSession, conv: WhatsAppConversation) -> Product | No
     return product if product and product.is_active else None
 
 
-def _variant(product: Product, conv: WhatsAppConversation) -> ProductVariant | None:
-    variant_id = _uuid(conv.data.get("variant_id"))
-    return next((v for v in product.variants if v.id == variant_id), None) if variant_id else None
+Line = tuple[Product, ProductVariant | None, int]
+
+
+def _item(product: Product, variant: ProductVariant | None, qty: int = 1) -> dict[str, Any]:
+    return {"product_id": str(product.id), "variant_id": str(variant.id) if variant else None, "qty": qty}
+
+
+async def _lines(db: AsyncSession, conv: WhatsAppConversation) -> list[Line]:
+    """The gifts chosen so far, as (product, option, qty). Ones that went away are dropped."""
+    repo = ProductRepository(db)
+    out: list[Line] = []
+    for item in conv.data.get("items") or []:
+        product = await repo.get_by_id(uuid.UUID(item["product_id"]))
+        if not product or not product.is_active:
+            continue
+        variant = next((v for v in product.variants if str(v.id) == item.get("variant_id")), None)
+        if item.get("variant_id") and (variant is None or not variant.is_active):
+            continue
+        out.append((product, variant, int(item.get("qty") or 1)))
+    return out
+
+
+def _line_name(product: Product, variant: ProductVariant | None) -> str:
+    return f"{product.name} ({variant.name})" if variant else product.name
+
+
+def catalog_id(product: Product, variant: ProductVariant | None) -> str:
+    """The item's id in our Meta catalog: the option's id, or the product's when it has none."""
+    return str(variant.id) if variant else str(product.id)
+
+
+def _in_catalog(product: Product) -> bool:
+    """Meta needs a photo, and there's no point listing what no city can get."""
+    return product.is_active and _image(product) is not None and any(pc.is_available for pc in product.product_cities)
+
+
+def _catalog_items(product: Product) -> list[tuple[ProductVariant | None, bool]]:
+    """(option, in stock) for each catalog entry of a product."""
+    variants = [v for v in product.variants if v.is_active]
+    return [(v, v.has_stock(1)) for v in variants] if variants else [(None, True)]
+
+
+async def _from_catalog_id(db: AsyncSession, raw: str) -> tuple[Product, ProductVariant | None] | None:
+    item_id = _uuid(raw)
+    if item_id is None:
+        return None
+    variant = (await db.execute(select(ProductVariant).where(ProductVariant.id == item_id))).scalar_one_or_none()
+    product = await ProductRepository(db).get_by_id(variant.product_id if variant else item_id)
+    if product is None or not product.is_active:
+        return None
+    if variant is not None:
+        variant = next((v for v in product.variants if v.id == variant.id and v.is_active), None)
+        return (product, variant) if variant else None
+    return None if any(v.is_active for v in product.variants) else (product, None)
 
 
 def _paged(rows: list[Row], page: int, more_id: str) -> list[Row]:
@@ -203,6 +277,10 @@ async def _route(db: AsyncSession, conv: WhatsAppConversation, msg: Inbound, now
     said = _norm(msg.text)
     idle = now - conv.updated_at
 
+    if msg.media is not None:
+        return await _on_receipt(db, conv, msg)
+    if msg.cart is not None:
+        return await _from_cart(db, conv, msg.cart, now)
     if msg.text and (match := _PRODUCT_LINK.search(msg.text)):
         return await _from_website(db, conv, msg.text, match.group(1), now)
     if said in _RESTART or msg.choice == "restart":
@@ -278,8 +356,8 @@ async def _from_website(db: AsyncSession, conv: WhatsAppConversation, text: str,
     if card := _SITE_CARD.search(text):
         _set(conv, greeting=card.group(1).strip()[:500])
     variant = next((v for v in product.variants if v.is_active and f"({v.name})" in text), None)
-    if variant:
-        _set(conv, variant_id=str(variant.id))
+    if variant or not any(v.is_active for v in product.variants):
+        _set(conv, items=[_item(product, variant)])
 
     greeting = [Reply(f"Assalam-o-Alaikum! Great choice: *{product.name}*{f' ({variant.name})' if variant else ''}. Let's get it delivered.")]
     city_match = _SITE_CITY.search(text)
@@ -289,9 +367,36 @@ async def _from_website(db: AsyncSession, conv: WhatsAppConversation, text: str,
     if city is None:
         return greeting + await _ask_city(db, conv)
     _set(conv, city_id=str(city.id), city_name=city.name)
-    if variant is None and any(v.is_active for v in product.variants):
+    if not conv.data.get("items"):
         return greeting + await _ask(db, conv, "variant", now)
     return greeting + await _ask(db, conv, "date", now)
+
+
+# ── WhatsApp cart (catalog) ────────────────────────────────────────────────────
+
+
+async def _from_cart(db: AsyncSession, conv: WhatsAppConversation, cart: list[tuple[str, int]], now: datetime) -> list[Reply]:
+    """They filled the WhatsApp cart from our catalog and sent it: those are the gifts."""
+    items: list[dict[str, Any]] = []
+    missing = 0
+    for item_id, qty in cart:
+        found = await _from_catalog_id(db, item_id)
+        if found is None:
+            missing += 1
+            continue
+        product, variant = found
+        if variant is not None and not variant.has_stock(qty):
+            missing += 1
+            continue
+        items.append(_item(product, variant, max(1, min(qty, 20))))
+    if not items:
+        return await _start(db, conv, "Sorry, the gifts in that cart aren't available any more. Here's what we can deliver:")
+    city = {k: conv.data[k] for k in ("city_id", "city_name") if conv.data.get(k)}
+    conv.data = {**city, "items": items[:20]}
+    replies = [Reply("Thank you! Got your cart 🛒" + (f" ({missing} item(s) aren't available any more and were left out.)" if missing else ""))]
+    if "city_id" in city:
+        return replies + await _check_city(db, conv, now)
+    return replies + await _ask_city(db, conv)
 
 
 # ── Asking ─────────────────────────────────────────────────────────────────────
@@ -315,13 +420,15 @@ async def _ask(db: AsyncSession, conv: WhatsAppConversation, step: str, now: dat
 async def _ask_city(db: AsyncSession, conv: WhatsAppConversation) -> list[Reply]:
     conv.step = "city"
     cities = await CityRepository(db).list_active()
-    product = await _product(db, conv)
-    if product:
+    chosen = [p for p, _, _ in await _lines(db, conv)]
+    if (pending := await _product(db, conv)) is not None:
+        chosen.append(pending)
+    for product in chosen:
         available = {pc.city_id for pc in product.product_cities if pc.is_available}
         cities = [c for c in cities if c.id in available]
     if not cities:
         conv.step, conv.data = "start", {}
-        return [Reply("Sorry, we can't deliver that right now. Type *help* to talk to our team.")]
+        return [Reply("Sorry, we can't deliver all of that to one city. Type *menu* to start again or *help* to talk to our team.")]
     rows = [Row(f"city:{c.id}", c.name) for c in cities]
     page = int(conv.data.get("page") or 0)
     return [Reply("Which city should we deliver to?", rows=_paged(rows, page, f"more:{page + 1}"), list_button="Choose city")]
@@ -331,6 +438,18 @@ async def _ask_product(db: AsyncSession, conv: WhatsAppConversation) -> list[Rep
     conv.step = "product"
     city_id = _uuid(conv.data.get("city_id"))
     page = int(conv.data.get("page") or 0)
+    if get_settings().whatsapp_catalog_id:
+        shown, _ = await ProductRepository(db).list(city_id=city_id, page=1, page_size=100)
+        ids = [catalog_id(p, v) for p in shown if _in_catalog(p) for v, in_stock in _catalog_items(p) if in_stock]
+        if ids:
+            more = "\nType a gift's name to find others." if len(ids) > whatsapp_cloud.MAX_PRODUCTS else ""
+            return [
+                Reply(
+                    "Tap a gift to see photos and details, add what you like to your cart 🛒 and send the cart here."
+                    + more,
+                    products=ids, header=f"Gifts in {conv.data.get('city_name', 'your city')}", list_button="Gifts",
+                )
+            ]
     products, total = await ProductRepository(db).list(city_id=city_id, page=page + 1, page_size=PAGE_SIZE)
     if not products:
         conv.step = "city"
@@ -364,12 +483,11 @@ async def _ask_variant(db: AsyncSession, conv: WhatsAppConversation) -> list[Rep
 
 async def _ask_date(db: AsyncSession, conv: WhatsAppConversation, now: datetime) -> list[Reply]:
     conv.step = "date"
-    product = await _product(db, conv)
-    city_id = _uuid(conv.data.get("city_id"))
-    pc = _city_link(product, city_id) if product and city_id else None
-    if pc is None:
+    links = await _city_links(db, conv)
+    if not links:
         return await _ask_city(db, conv)
-    earliest = delivery_service.get_earliest_delivery_date(pc, now)
+    # The gift that takes longest to prepare decides the first possible day.
+    earliest = max(delivery_service.get_earliest_delivery_date(pc, now) for _, pc in links)
     rows = [
         Row(f"date:{d.isoformat()}", f"{d:%a %d %b}", "Earliest possible" if i == 0 else None)
         for i, d in enumerate(earliest + timedelta(days=n) for n in range(DATE_CHOICES))
@@ -377,39 +495,54 @@ async def _ask_date(db: AsyncSession, conv: WhatsAppConversation, now: datetime)
     return [Reply("When should it be delivered?", rows=rows, list_button="Choose date")]
 
 
+async def _city_links(db: AsyncSession, conv: WhatsAppConversation) -> list[tuple[Product, ProductCity]]:
+    """Each chosen gift with its delivery terms in the chosen city; empty if any can't go there."""
+    city_id = _uuid(conv.data.get("city_id"))
+    lines = await _lines(db, conv)
+    links = [(p, _city_link(p, city_id)) for p, _, _ in lines] if city_id else []
+    if not links or any(pc is None for _, pc in links):
+        return []
+    return [(p, pc) for p, pc in links if pc is not None]
+
+
 async def _ask_review(db: AsyncSession, conv: WhatsAppConversation) -> list[Reply]:
     conv.step = "review"
     d = conv.data
-    product = await _product(db, conv)
+    chosen = await _lines(db, conv)
     city_id = _uuid(d.get("city_id"))
-    if product is None or city_id is None:
-        return await _start(db, conv, "Sorry, something changed with that gift. Let's start again.")
-    variant = _variant(product, conv)
+    if not chosen or city_id is None:
+        return await _start(db, conv, "Sorry, something changed with those gifts. Let's start again.")
 
     # A fresh guest cart each time, so the totals are exactly what checkout will charge.
+    # One card per order: it goes with the first gift.
     try:
-        cart = await cart_service.add_item(
-            db,
-            CartOwner(),
-            CartItemAdd(
-                product_id=product.id,
-                variant_id=variant.id if variant else None,
-                qty=1,
-                greeting_message=d.get("greeting"),
-            ),
-        )
+        token: str | None = None
+        for i, (product, variant, qty) in enumerate(chosen):
+            cart = await cart_service.add_item(
+                db,
+                CartOwner(guest_token=token),
+                CartItemAdd(
+                    product_id=product.id,
+                    variant_id=variant.id if variant else None,
+                    qty=qty,
+                    greeting_message=d.get("greeting") if i == 0 else None,
+                ),
+            )
+            token = cart.guest_token
         method = PaymentMethod(d["payment"])
-        quote = await checkout_service.quote(db, None, city_id, payment_method=method, guest_token=cart.guest_token)
+        quote = await checkout_service.quote(db, None, city_id, payment_method=method, guest_token=token)
     except HTTPException as exc:
-        conv.step = "product"
-        return [Reply(f"Sorry, {exc.detail}"), *await _ask_product(db, conv)]
-    _set(conv, cart_token=cart.guest_token)
+        return [Reply(f"Sorry, {exc.detail}"), *await _start(db, conv, "Let's start again.")]
+    _set(conv, cart_token=token)
 
     delivery = date.fromisoformat(d["date"])
     lines = [
         "Please check your order:",
         "",
-        f"🎁 {product.name}{f' ({variant.name})' if variant else ''}: {_pkr(quote.subtotal_pkr)}",
+        *(
+            f"🎁 {li.qty} × {li.product_name}{f' ({li.variant_name})' if li.variant_name else ''}: {_pkr(li.line_total_pkr)}"
+            for li in quote.items
+        ),
         f"📅 {delivery:%A %d %B}, {d.get('city_name', '')}",
         f"👤 For {d['recipient_name']}, {d['recipient_phone']}",
         f"🏠 {d['address']}" + (f" (near {d['landmark']})" if d.get("landmark") else ""),
@@ -417,7 +550,7 @@ async def _ask_review(db: AsyncSession, conv: WhatsAppConversation) -> list[Repl
         f"From: {d['gift_from']}" + (" · 🤫 surprise" if d.get("surprise") else ""),
         f"💳 {'Cash on delivery' if method == PaymentMethod.cod else 'Bank transfer'}",
         "",
-        f"Gift: {_pkr(quote.subtotal_pkr)}",
+        f"Gifts: {_pkr(quote.subtotal_pkr)}",
         f"Delivery: {_pkr(quote.delivery_pkr)}",
         f"*Total: {_pkr(quote.total_pkr)}*",
     ]
@@ -490,15 +623,24 @@ async def _on_city(db: AsyncSession, conv: WhatsAppConversation, msg: Inbound, n
     if city is None:
         return _again("Please choose a city from the list.", await _ask_city(db, conv))
     _set(conv, city_id=str(city.id), city_name=city.name, page=0)
-    product = await _product(db, conv)
-    if product is None:
+    return await _check_city(db, conv, now)
+
+
+async def _check_city(db: AsyncSession, conv: WhatsAppConversation, now: datetime) -> list[Reply]:
+    """City chosen: on to the gifts, the option, or the date, depending on what's chosen already."""
+    city_id, city_name = uuid.UUID(conv.data["city_id"]), conv.data.get("city_name", "that city")
+    chosen = await _lines(db, conv)
+    pending = await _product(db, conv)
+    if not chosen and pending is None:
         return await _ask_product(db, conv)
-    if _city_link(product, city.id) is None:
-        _set(conv, product_id=None, variant_id=None)
-        return _again(f"Sorry, {product.name} isn't delivered in {city.name}.", await _ask_product(db, conv))
-    if conv.data.get("variant_id") or not any(v.is_active for v in product.variants):
-        return await _ask(db, conv, "date", now)
-    return await _ask(db, conv, "variant", now)
+    away = [_line_name(p, v) for p, v, _ in chosen if _city_link(p, city_id) is None]
+    if pending is not None and _city_link(pending, city_id) is None:
+        away.append(pending.name)
+    if away:
+        return _again(f"Sorry, we can't deliver {', '.join(away)} in {city_name}. Please choose another city.", await _ask_city(db, conv))
+    if not chosen:
+        return await _ask(db, conv, "variant", now)
+    return await _ask(db, conv, "date", now)
 
 
 async def _on_product(db: AsyncSession, conv: WhatsAppConversation, msg: Inbound, now: datetime) -> list[Reply]:
@@ -512,14 +654,14 @@ async def _on_product(db: AsyncSession, conv: WhatsAppConversation, msg: Inbound
         product = next((p for p in products if said in p.name.lower()), None)
     if product is None or not product.is_active or city_id is None or _city_link(product, city_id) is None:
         return _again("I couldn't find that gift. Please pick one from the list.", await _ask_product(db, conv))
-    _set(conv, product_id=str(product.id), variant_id=None, page=0)
+    has_options = any(v.is_active for v in product.variants)
+    _set(conv, product_id=str(product.id), page=0, items=[] if has_options else [_item(product, None)])
 
     blurb = f"*{product.name}*\nFrom {_pkr(product.base_price_pkr)}"
     if product.description:
         blurb += f"\n\n{product.description[:300]}"
     card = Reply(blurb, image_url=_image(product))
-    nxt = "variant" if any(v.is_active for v in product.variants) else "date"
-    return [card, *await _ask(db, conv, nxt, now)]
+    return [card, *await _ask(db, conv, "variant" if has_options else "date", now)]
 
 
 async def _on_variant(db: AsyncSession, conv: WhatsAppConversation, msg: Inbound, now: datetime) -> list[Reply]:
@@ -533,19 +675,18 @@ async def _on_variant(db: AsyncSession, conv: WhatsAppConversation, msg: Inbound
     )
     if variant is None or not variant.has_stock(1):
         return _again("Please choose an option from the list.", await _ask_variant(db, conv))
-    _set(conv, variant_id=str(variant.id))
+    _set(conv, items=[_item(product, variant)])
     return await _ask(db, conv, "date", now)
 
 
 async def _on_date(db: AsyncSession, conv: WhatsAppConversation, msg: Inbound, now: datetime) -> list[Reply]:
-    product = await _product(db, conv)
-    city_id = _uuid(conv.data.get("city_id"))
-    pc = _city_link(product, city_id) if product and city_id else None
-    if product is None or pc is None:
+    links = await _city_links(db, conv)
+    if not links:
         return await _ask_city(db, conv)
     try:
         chosen = date.fromisoformat(_picked(msg, "date") or "")
-        delivery_service.validate_delivery_date(pc, chosen, product.name, now)
+        for product, pc in links:
+            delivery_service.validate_delivery_date(pc, chosen, product.name, now)
     except (ValueError, HTTPException):
         return _again("Please choose a date from the list.", await _ask_date(db, conv, now))
     _set(conv, date=chosen.isoformat())
@@ -682,16 +823,162 @@ async def _on_review(db: AsyncSession, conv: WhatsAppConversation, msg: Inbound,
     conv.step, conv.data, conv.last_order_id = "done", {"track_link": link}, order.id
     lines = [f"✅ Order #{order_ref(order)} placed! Total: *{_pkr(order.total_pkr)}*", ""]
     if d["payment"] == PaymentMethod.bank_transfer:
-        lines += [
-            "Please pay by bank transfer. Our account details are on your order page; upload the receipt there too:",
-            link,
-            "",
-            "We'll start preparing the gift as soon as the payment is confirmed.",
-        ]
+        lines += [*_bank_details(order.total_pkr), "", f"Track your order: {link}"]
     else:
         lines += ["Please pay the rider in cash at delivery.", "", f"Track your order: {link}"]
     lines += ["", "We'll keep you posted here. Thank you! 🎁"]
     return [Reply("\n".join(lines))]
+
+
+def _bank_details(total_pkr: int) -> list[str]:
+    settings = get_settings()
+    if not settings.bank_iban:
+        # No account configured for the API: the order page shows it.
+        return [
+            "Please pay by bank transfer. Our account details are on your order page, linked below.",
+            "Then send a photo or screenshot of the receipt here 📸",
+        ]
+    lines = [f"Please transfer *{_pkr(total_pkr)}* to:"]
+    if settings.bank_account_name:
+        lines.append(settings.bank_account_name)
+    lines += [
+        f"IBAN: {settings.bank_iban}",
+        "",
+        "Then send a photo or screenshot of the receipt here 📸 We'll start preparing the gift once it's confirmed.",
+    ]
+    return lines
+
+
+# ── Bank-transfer receipts ─────────────────────────────────────────────────────
+
+# A receipt is still welcome while staff haven't approved one: a first upload,
+# a clearer photo, or a new one after a rejection.
+_RECEIPT_OPEN = (PaymentStatus.pending_proof, PaymentStatus.awaiting_verification, PaymentStatus.failed)
+_RECEIPT_TYPES = {"image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp", "application/pdf": ".pdf"}
+
+
+async def _awaiting_receipt(db: AsyncSession, conv: WhatsAppConversation) -> Order | None:
+    """Their latest bot order that still needs a bank-transfer receipt."""
+    ids = (
+        await db.execute(
+            select(Order.id)
+            .where(Order.contact_phone == _buyer_phone(conv), Order.source == OrderSource.whatsapp)
+            .order_by(Order.placed_at.desc())
+            .limit(5)
+        )
+    ).scalars().all()
+    repo = OrderRepository(db)
+    for order_id in ids:
+        order = await repo.get_by_id(order_id)
+        if order is None or order.status in (OrderStatus.cancelled, OrderStatus.refunded) or not order.payments:
+            continue
+        payment = order.payments[0]
+        if payment.method == PaymentMethod.bank_transfer and payment.status in _RECEIPT_OPEN:
+            return order
+    return None
+
+
+async def _on_receipt(db: AsyncSession, conv: WhatsAppConversation, msg: Inbound) -> list[Reply]:
+    """A photo or PDF: the receipt for their bank transfer, attached to the order for staff to verify."""
+    order = await _awaiting_receipt(db, conv)
+    if order is None:
+        return [Reply(f"Thanks! I can only use photos for bank-transfer receipts, and none of your orders is waiting for one. {_hint()}")]
+    media = msg.media or {}
+    try:
+        data, mime = await whatsapp_cloud.download_media(str(media.get("id")))
+        mime = str(media.get("mime_type") or mime).split(";")[0].strip()
+        if mime not in _RECEIPT_TYPES:
+            return [Reply("Please send the receipt as a photo (JPG or PNG) or a PDF.")]
+        ext = _RECEIPT_TYPES[mime]
+        await checkout_service.attach_transfer_proof(db, order, data, str(media.get("filename") or f"receipt{ext}"), mime)
+    except MediaDownloadError:
+        return [Reply("Sorry, I couldn't open that file. Please send the receipt again.")]
+    except HTTPException as exc:
+        if exc.status_code == 415:
+            return [Reply("Please send the receipt as a photo (JPG or PNG) or a PDF.")]
+        if exc.status_code == 413:
+            return [Reply("That file is too big; please send a screenshot instead.")]
+        return [Reply("Sorry, we couldn't save the receipt just now. Please send it again in a few minutes.")]
+    return [
+        Reply(
+            f"Thank you! We've got your receipt for order #{order_ref(order)} 🙏 "
+            "We'll check the payment and confirm here shortly."
+        )
+    ]
+
+
+# ── Payment checked by staff (admin) ───────────────────────────────────────────
+
+
+def payment_notice(order: Order, verified: bool) -> tuple[str, list[Reply]] | None:
+    """What to tell a bot customer once staff approve or reject their transfer:
+    (number as digits, replies). None for orders that didn't come through the bot."""
+    if order.source != OrderSource.whatsapp or not (order.source_ref or "").startswith("WhatsApp bot") or not order.contact_phone:
+        return None
+    ref = order_ref(order)
+    recipient = order.fulfillments[0].recipient_name if order.fulfillments else "your loved one"
+    if verified:
+        link = f"{get_settings().frontend_url}/track/{order.public_token}"
+        text = f"✅ Payment received for order #{ref}, thank you! We're getting {recipient}'s gift ready. Track it: {link}"
+    else:
+        text = (
+            f"We couldn't confirm the payment for order #{ref} ({_pkr(order.total_pkr)}). "
+            "Please send a clear photo of the transfer receipt here, or type *help* to talk to our team."
+        )
+    return order.contact_phone.lstrip("+"), [Reply(text)]
+
+
+async def send_payment_notice(order_id: uuid.UUID, to: str, replies: list[Reply], verified: bool) -> None:
+    """Send it after the approval has committed. When an approval notice gets through,
+    record it so the staff queue doesn't ask for "payment received" too; if it
+    doesn't (past WhatsApp's 24-hour window), the queue still lists it."""
+    try:
+        sent = await whatsapp_cloud.send(to, replies)
+    except Exception:
+        sent = False
+    if not (sent and verified):
+        return
+    async with AsyncSessionLocal() as db:
+        try:
+            db.add(OrderMessage(order_id=order_id, kind="payment_received", sent_by=None, sent_at=datetime.now(UTC)))
+            await db.commit()
+        except IntegrityError:
+            await db.rollback()  # staff already sent it by hand
+
+
+# ── Catalog feed for Meta ──────────────────────────────────────────────────────
+
+FEED_COLUMNS = [
+    "id", "item_group_id", "title", "description", "availability", "condition",
+    "price", "link", "image_link", "brand",
+]
+
+
+async def catalog_feed(db: AsyncSession) -> list[dict[str, str]]:
+    """One row per catalog item (each option of a product, or the product itself),
+    in the columns Meta Commerce Manager reads from a scheduled data feed."""
+    settings = get_settings()
+    rows: list[dict[str, str]] = []
+    for product in await ProductRepository(db).list_all_active():
+        if not _in_catalog(product):
+            continue
+        options = _catalog_items(product)
+        for variant, in_stock in options:
+            rows.append(
+                {
+                    "id": catalog_id(product, variant),
+                    "item_group_id": str(product.id) if variant else "",
+                    "title": _line_name(product, variant)[:150],
+                    "description": (product.description or product.name)[:5000],
+                    "availability": "in stock" if in_stock else "out of stock",
+                    "condition": "new",
+                    "price": f"{_unit_price(product, variant) / 100:.2f} PKR",
+                    "link": f"{settings.frontend_url}/p/{product.slug}",
+                    "image_link": _image(product) or "",
+                    "brand": settings.brand_name,
+                }
+            )
+    return rows
 
 
 _HANDLERS: dict[str, Callable[[AsyncSession, WhatsAppConversation, Inbound, datetime], Awaitable[list[Reply]]]] = {

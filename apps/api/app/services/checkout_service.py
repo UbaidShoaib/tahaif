@@ -534,7 +534,16 @@ async def upload_transfer_proof(
         order = None
     if not order:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Order not found")
+    data = await file.read(MAX_PROOF_BYTES + 1)
+    return await attach_transfer_proof(
+        db, order, data, file.filename or "receipt.jpg", file.content_type or "image/jpeg"
+    )
 
+
+async def attach_transfer_proof(
+    db: AsyncSession, order: Order, data: bytes, filename: str, content_type: str
+) -> str:
+    """Store a receipt (uploaded on the order page, or sent in WhatsApp) and queue it for staff to verify."""
     if not order.payments:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No payment record found")
     payment = order.payments[0]
@@ -544,13 +553,7 @@ async def upload_transfer_proof(
             detail="Proof upload is only for bank transfer orders",
         )
 
-    data = await file.read(MAX_PROOF_BYTES + 1)
-    url = await upload_proof(
-        order_id=str(order.id),
-        filename=file.filename or "receipt.jpg",
-        data=data,
-        content_type=file.content_type or "image/jpeg",
-    )
+    url = await upload_proof(order_id=str(order.id), filename=filename, data=data, content_type=content_type)
     payment.proof_url = url
     payment.status = PaymentStatus.awaiting_verification
     await db.flush()

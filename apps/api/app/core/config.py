@@ -98,6 +98,14 @@ class Settings(BaseSettings):
     whatsapp_graph_version: str = "v21.0"
     # The team's own WhatsApp (Business app) number, offered when a customer asks for a person.
     whatsapp_team_number: str = ""
+    # Meta Commerce catalog fed from /api/v1/whatsapp/catalog.csv. Set it to show
+    # gifts as a WhatsApp catalog (photos, cart); empty = a plain list in the chat.
+    whatsapp_catalog_id: str = ""
+
+    # Our bank account, sent in the chat to customers paying by bank transfer.
+    # Same account as the website's NEXT_PUBLIC_BANK_* values.
+    bank_account_name: str = ""
+    bank_iban: str = ""
 
     # FX rates
     open_exchange_rates_app_id: str = ""

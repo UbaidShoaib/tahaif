@@ -8,12 +8,16 @@ pre-production-cutover).
 ## [Unreleased]
 
 ### Added
-- **Order inside WhatsApp** (ADR 0013). A bot on Meta's WhatsApp Cloud API takes customers through
-  the website's checkout in the chat: city, gift (with photo and price), option, delivery date, card
-  message, recipient, address or location pin, surprise, "from" name and payment, then a summary
-  with the total and **Place order**. Orders go through the normal checkout with `source=whatsapp`
-  and are already confirmed; bank-transfer customers get the order link for account details and the
-  receipt. *menu* restarts, *cancel* clears, *help* hands over to the team. The website's "Order on
+- **Shop inside WhatsApp** (ADR 0013). A bot on Meta's WhatsApp Cloud API takes customers through
+  the website's checkout in the chat: city, gifts from our **WhatsApp catalog** (photos, quantities,
+  the WhatsApp cart) or a plain list, option, delivery date, card message, recipient, address or
+  location pin, surprise, "from" name and payment, then a summary with the total and **Place order**.
+  Orders go through the normal checkout with `source=whatsapp` and are already confirmed.
+  **Payment in the chat:** bank-transfer customers get the amount and our IBAN and send the receipt
+  as a photo or PDF, which is attached to the order; staff approve or reject it in the admin as
+  before and the customer is told in WhatsApp. Catalog feed for Meta Commerce Manager:
+  `GET /api/v1/whatsapp/catalog.csv`. New settings `WHATSAPP_CATALOG_ID`, `BANK_ACCOUNT_NAME`,
+  `BANK_IBAN`. *menu* restarts, *cancel* clears, *help* hands over to the team. The website's "Order on
   WhatsApp" message starts the bot with that gift. Webhook `GET/POST /api/v1/whatsapp/webhook`
   (signed by Meta). Off until `WHATSAPP_BOT_ENABLED=true`; setup in `docs/runbook.md`. Migration
   `0020` adds `whatsapp_conversations` and `whatsapp_inbound_messages`.

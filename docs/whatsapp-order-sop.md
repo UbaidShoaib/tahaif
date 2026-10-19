@@ -46,8 +46,11 @@ city, card message and link already in the first message. If it ends with `(ref:
 that into **Reel / campaign**.
 
 Orders the **WhatsApp bot** took (ADR 0013) show source *WhatsApp* with "WhatsApp bot" in the
-chat reference. The customer has already confirmed them in the chat and been sent the order link;
-don't enter them again. Handle their payment and delivery messages as for any other order. When a
+chat reference. The customer has already confirmed them in the chat; don't enter them again.
+Bank-transfer customers send the receipt photo to the bot, so it's already on the order: verify it
+against the bank app as usual. Pressing **Verify payment** (approve or reject) tells the customer in
+WhatsApp automatically; if "Payment received" still shows in **Messages to send** afterwards, the
+automatic message didn't get through (customer silent for over 24 hours), so send it by hand. When a
 customer types *help*, the bot sends them the team number (or stops replying, so you can answer in
 that chat, until the customer types *menu* or the chat is quiet for 12 hours).
 
