@@ -53,6 +53,21 @@ server-ordered multiplayer and DoorDash-style shared group orders.
    path); drag-and-drop (`@dnd-kit/core`, with pointer, touch and keyboard sensors)
    is the extra on bigger screens.
 
+8. **Set up in the admin** (Catalog → Build-your-own, and the Build-your-own
+   section of any product): make a product a hamper or bouquet builder, set
+   least/most items, and add, edit, reorder, switch off or remove items. Each
+   change is audit-logged (`builder.*`). Rules enforced on the server: items come
+   from the builder's shop, a builder can't contain itself or another builder,
+   least ≤ most.
+9. **Items may be hidden products.** A single stem or a ribbon isn't sold on its
+   own: it can stay hidden from the shop and search and still be offered in a
+   builder, where the item's own switch decides. A builder with no items can't be
+   started and isn't listed.
+10. **A builder base isn't sold on its own.** Adding it to the cart directly is a
+    409 pointing at `/build/{slug}`; its product page shows *Start building*
+    instead of sizes and Add to cart; it's left out of the WhatsApp catalog and
+    bot. Live builders with items are listed at `GET /builders` and on the home page.
+
 ## Consequences
 
 - Component prices are fixed when the bucket enters the cart (a price change

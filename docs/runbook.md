@@ -400,9 +400,9 @@ live updates. REST edits still work without it.
 
 - **"Connecting…" never turns Live:** check `wss://<domain>/api/v1/buckets/<id>/ws?t=…`
   in the browser devtools; a 4404 close means a wrong link or a bucket past its 30 days.
-- **Set up a builder:** set `builder_kind` (`hamper`/`bouquet`), `builder_min_items`,
-  `builder_max_items` on the base product and add `builder_components` rows (components
-  from the same vendor). `scripts/seed.py` has two examples.
+- **Set up a builder:** in the admin, *Catalog → Build-your-own* has the steps; the work is
+  done in the *Build-your-own* section of the basket/wrap product. `scripts/seed.py` has two
+  examples for local use.
 
 ## Card note reports
 

@@ -16,9 +16,8 @@ GDPR request from staff. Payment-related entries likely need ≥ 5 years for tax
 
 - **Can a bucket mix vendors** (a Layers cake in a florist's hamper)? **Default:** no,
   components come from the base's vendor so one bucket is one delivery.
-- **Should component products appear in the normal catalog?** A single stem at PKR 250 is
-  odd on its own. **Default:** they're ordinary products for now; add a hidden-from-listing
-  flag if vendors complain.
+- ~~Should component products appear in the normal catalog?~~ **Answered 2026-10-20:**
+  make them hidden products; builders can still offer them (ADR 0014 §9).
 - **Split payment** (each sibling pays a share, like Shareagift)? **Default:** one payer
   checks out; revisit with Stripe in the diaspora phase.
 - **Reopening a bucket** after removing it from the cart. **Default:** not supported;

@@ -8,6 +8,16 @@ pre-production-cutover).
 ## [Unreleased]
 
 ### Added
+- **Set up build-your-own hampers and bouquets in the admin** (ADR 0014). New *Catalog →
+  Build-your-own* page lists every builder with its items and how many buckets were started, plus
+  set-up steps. On any product, the new *Build-your-own* section makes it a hamper or bouquet
+  builder (least/most items) and manages its items: add from the same shop, role, most per bucket,
+  reorder, switch off, remove. Changes are in the activity log. Items can be hidden products (single
+  stems), offered only inside builders. The home page shows a *Build your own* strip once a builder
+  is live with items, and a builder's product page shows *Start building* instead of Add to cart.
+  A builder base can no longer be added to the cart on its own or appear in the WhatsApp catalog.
+  API: `GET /builders`, `GET /admin/builders`, `GET|PUT /admin/products/{id}/builder`,
+  `POST /admin/products/{id}/builder/components`, `PATCH|DELETE …/components/{component_id}`.
 - **Build your own hamper or bouquet, together** (ADR 0014). Drag items into a basket, or stems,
   filler, wrap and ribbon onto a bouquet (or tap + on phones). The price updates as you go. Share
   the link (copy or WhatsApp) and family can edit the same bucket live, with each person's name
