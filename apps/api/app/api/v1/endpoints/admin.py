@@ -17,6 +17,13 @@ from app.models.user import User, UserRole
 from app.repositories.loyalty_repository import CouponRepository
 from app.repositories.user_repository import UserRepository
 from app.schemas.audit import AuditPage
+from app.schemas.bucket import (
+    AdminBuilderConfig,
+    AdminBuilderSummary,
+    BuilderComponentCreate,
+    BuilderComponentUpdate,
+    BuilderSettingsUpdate,
+)
 from app.schemas.catalog import AdminProductDetail
 from app.schemas.order import (
     AdminOrderDetail,
@@ -41,6 +48,7 @@ from app.schemas.vendor import (
 from app.services import (
     admin_order_service,
     audit_service,
+    builder_admin_service,
     catalog_service,
     note_service,
     report_service,
@@ -301,6 +309,57 @@ async def set_product_active(
 ) -> dict[str, Any]:
     product = await catalog_service.set_product_active(db, product_id, body.is_active, admin)
     return {"id": str(product.id), "is_active": product.is_active}
+
+
+# ── Build-your-own builders (ADR 0014) ──────────────────────────────────────
+
+@router.get("/builders", response_model=list[AdminBuilderSummary])
+async def list_builders(_admin: AdminUser, db: DB) -> list[AdminBuilderSummary]:
+    """Every product set up as a builder, hidden ones included, with how many items buyers can add."""
+    return await builder_admin_service.list_for_admin(db)
+
+
+@router.get("/products/{product_id}/builder", response_model=AdminBuilderConfig)
+async def get_builder_config(product_id: uuid.UUID, _admin: AdminUser, db: DB) -> AdminBuilderConfig:
+    """The product's builder settings and items (an ordinary product has `builder_kind` null)."""
+    return await builder_admin_service.get_config(db, product_id)
+
+
+@router.put("/products/{product_id}/builder", response_model=AdminBuilderConfig)
+async def update_builder_settings(
+    product_id: uuid.UUID, body: BuilderSettingsUpdate, admin: AdminUser, db: DB
+) -> AdminBuilderConfig:
+    """Turn a product into a hamper or bouquet builder (or back), and set how many items it holds."""
+    return await builder_admin_service.update_settings(db, admin, product_id, body)
+
+
+@router.post(
+    "/products/{product_id}/builder/components",
+    response_model=AdminBuilderConfig,
+    status_code=status.HTTP_201_CREATED,
+    responses={409: {"description": "Not a builder yet, another shop's product, or already added"}},
+)
+async def add_builder_component(
+    product_id: uuid.UUID, body: BuilderComponentCreate, admin: AdminUser, db: DB
+) -> AdminBuilderConfig:
+    """Let buyers put this product in the builder. It must be from the builder's own shop."""
+    return await builder_admin_service.add_component(db, admin, product_id, body)
+
+
+@router.patch("/products/{product_id}/builder/components/{component_id}", response_model=AdminBuilderConfig)
+async def update_builder_component(
+    product_id: uuid.UUID, component_id: uuid.UUID, body: BuilderComponentUpdate, admin: AdminUser, db: DB
+) -> AdminBuilderConfig:
+    """Change an item's role, most allowed, position in the list, or switch it off."""
+    return await builder_admin_service.update_component(db, admin, product_id, component_id, body)
+
+
+@router.delete("/products/{product_id}/builder/components/{component_id}", response_model=AdminBuilderConfig)
+async def remove_builder_component(
+    product_id: uuid.UUID, component_id: uuid.UUID, admin: AdminUser, db: DB
+) -> AdminBuilderConfig:
+    """Take the item out. Buckets already in carts keep their copy of it."""
+    return await builder_admin_service.remove_component(db, admin, product_id, component_id)
 
 
 # ── FX rates ──────────────────────────────────────────────────────────────────

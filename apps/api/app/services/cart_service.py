@@ -188,6 +188,12 @@ async def add_item(db: AsyncSession, owner: CartOwner | uuid.UUID, body: CartIte
     product = await prod_repo.get_by_id(body.product_id)
     if not product or not product.is_active:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Product not found")
+    if product.builder_kind:
+        # On its own it's an empty basket; it reaches the cart through a bucket (ADR 0014).
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Build your {product.builder_kind} first at /build/{product.slug}",
+        )
 
     variant: ProductVariant | None = None
     if body.variant_id:

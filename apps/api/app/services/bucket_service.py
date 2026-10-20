@@ -57,8 +57,10 @@ class _Builder:
     components: dict[uuid.UUID, BuilderComponent]
 
     def usable(self, component_id: uuid.UUID) -> BuilderComponent | None:
+        # The item's own switch decides; its product may be hidden from the catalog
+        # (a single stem isn't sold on its own) and still go in buckets.
         c = self.components.get(component_id)
-        return c if c and c.is_active and c.component.is_active else None
+        return c if c and c.is_active else None
 
     def to_read(self) -> BuilderRead:
         return BuilderRead(
@@ -133,6 +135,9 @@ async def create_bucket(db: AsyncSession, owner: CartOwner, builder_slug: str) -
     base = await BuilderRepository(db).get_base_by_slug(builder_slug)
     if not base or not base.is_active:
         raise _BUILDER_NOT_FOUND
+    builder = await _load_builder(db, base)
+    if not builder.to_read().components:
+        raise _conflict("This builder isn't ready yet: it has nothing to put in it")
     token = secrets.token_urlsafe(24)
     bucket = await BucketRepository(db).create(
         builder_product_id=base.id,
@@ -143,7 +148,7 @@ async def create_bucket(db: AsyncSession, owner: CartOwner, builder_slug: str) -
         status=BucketStatus.DRAFT,
         expires_at=datetime.now(UTC) + BUCKET_TTL,
     )
-    return _bucket_to_read(bucket, await _load_builder(db, base), share_token=token)
+    return _bucket_to_read(bucket, builder, share_token=token)
 
 
 async def _authorized(
@@ -218,6 +223,8 @@ async def apply_edit(db: AsyncSession, bucket_id: uuid.UUID, token: str, edit: B
     bucket = await _authorized(db, bucket_id, token, for_update=True)
     if bucket.status != BucketStatus.DRAFT:
         raise _conflict("This bucket is already in a cart and can't be changed")
+    if not bucket.builder_product.builder_kind or not bucket.builder_product.is_active:
+        raise _conflict("This builder isn't available any more")
     builder = await _load_builder(db, bucket.builder_product)
     bucket.state = _apply(builder, bucket.state, edit)
     bucket.version += 1
@@ -240,7 +247,7 @@ async def add_to_cart(db: AsyncSession, owner: CartOwner, bucket_id: uuid.UUID, 
             detail="Only the person who started this bucket can check it out",
         )
     builder = await _load_builder(db, bucket.builder_product)
-    if not builder.base.is_active:
+    if not builder.base.is_active or not builder.base.builder_kind:
         raise _BUILDER_NOT_FOUND
     read = _bucket_to_read(bucket, builder)
     if any(not builder.usable(p.component_id) for p in read.pieces):

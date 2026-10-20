@@ -21,9 +21,15 @@ from app.core import realtime
 from app.core.db import get_session_factory
 from app.core.deps import DB
 from app.core.guest import Owner
-from app.schemas.bucket import BucketCreate, BucketOpRequest, BucketRead, BuilderRead
+from app.schemas.bucket import (
+    BucketCreate,
+    BucketOpRequest,
+    BucketRead,
+    BuilderRead,
+    BuilderSummary,
+)
 from app.schemas.cart import CartRead
-from app.services import bucket_service
+from app.services import bucket_service, builder_admin_service
 
 router = APIRouter(tags=["buckets"])
 
@@ -34,6 +40,12 @@ router = APIRouter(tags=["buckets"])
 
 SessionFactory = Annotated[async_sessionmaker[AsyncSession], Depends(get_session_factory)]
 ShareToken = Annotated[str, Query(alias="t", min_length=16, max_length=64)]
+
+
+@router.get("/builders", response_model=list[BuilderSummary])
+async def list_builders(db: DB) -> list[BuilderSummary]:
+    """Builders buyers can start: live, with at least one item to add."""
+    return await builder_admin_service.list_public(db)
 
 
 @router.get("/builders/{slug}", response_model=BuilderRead)

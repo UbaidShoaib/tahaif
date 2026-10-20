@@ -101,3 +101,79 @@ BucketOp = Annotated[AddOp | MoveOp | SetQtyOp | RemoveOp | ClearOp, Field(discr
 
 class BucketOpRequest(BaseModel):
     edit: BucketOp
+
+
+# ── Admin: setting up builders ────────────────────────────────────────────────
+
+BuilderKindValue = Literal["hamper", "bouquet"]
+RoleValue = Literal["item", "stem", "filler", "wrap", "ribbon"]
+
+
+class BuilderSettingsUpdate(BaseModel):
+    builder_kind: BuilderKindValue | None = Field(
+        description="null turns the product back into an ordinary one", examples=["bouquet"]
+    )
+    min_items: int = Field(default=1, ge=1, le=100)
+    max_items: int | None = Field(default=None, ge=1, le=200, description="null = no limit")
+
+
+class BuilderComponentCreate(BaseModel):
+    component_product_id: uuid.UUID
+    role: RoleValue = "item"
+    max_qty: int = Field(default=10, ge=1, le=100)
+
+
+class BuilderComponentUpdate(BaseModel):
+    role: RoleValue | None = None
+    max_qty: int | None = Field(default=None, ge=1, le=100)
+    sort_order: int | None = Field(default=None, ge=0, le=1000)
+    is_active: bool | None = None
+
+
+class AdminBuilderComponentRead(BaseModel):
+    id: uuid.UUID
+    component_product_id: uuid.UUID
+    name: str
+    slug: str
+    image: str | None
+    price_pkr: int
+    product_is_active: bool = Field(
+        description="False = hidden from the catalog; buyers can still add it here while the item is switched on"
+    )
+    role: str
+    max_qty: int
+    sort_order: int
+    is_active: bool
+
+
+class AdminBuilderConfig(BaseModel):
+    product_id: uuid.UUID
+    vendor_id: uuid.UUID
+    builder_kind: str | None
+    min_items: int
+    max_items: int | None
+    components: list[AdminBuilderComponentRead]
+
+
+class AdminBuilderSummary(BaseModel):
+    product_id: uuid.UUID
+    name: str
+    slug: str
+    vendor_name: str
+    builder_kind: str
+    is_active: bool
+    base_price_pkr: int
+    min_items: int
+    max_items: int | None
+    component_count: int = Field(description="Switched-on items buyers can add")
+    bucket_count: int = Field(description="Buckets ever started from this builder")
+
+
+class BuilderSummary(BaseModel):
+    """A builder buyers can start, for listing on the storefront."""
+
+    slug: str
+    name: str
+    kind: str
+    image: str | None
+    base_price_pkr: int

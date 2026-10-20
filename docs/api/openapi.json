@@ -394,6 +394,209 @@
         "title": "AddressUpdate",
         "type": "object"
       },
+      "AdminBuilderComponentRead": {
+        "properties": {
+          "component_product_id": {
+            "format": "uuid",
+            "title": "Component Product Id",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "image": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Image"
+          },
+          "is_active": {
+            "title": "Is Active",
+            "type": "boolean"
+          },
+          "max_qty": {
+            "title": "Max Qty",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "price_pkr": {
+            "title": "Price Pkr",
+            "type": "integer"
+          },
+          "product_is_active": {
+            "description": "False = hidden from the catalog; buyers can still add it here while the item is switched on",
+            "title": "Product Is Active",
+            "type": "boolean"
+          },
+          "role": {
+            "title": "Role",
+            "type": "string"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          },
+          "sort_order": {
+            "title": "Sort Order",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "component_product_id",
+          "name",
+          "slug",
+          "image",
+          "price_pkr",
+          "product_is_active",
+          "role",
+          "max_qty",
+          "sort_order",
+          "is_active"
+        ],
+        "title": "AdminBuilderComponentRead",
+        "type": "object"
+      },
+      "AdminBuilderConfig": {
+        "properties": {
+          "builder_kind": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Builder Kind"
+          },
+          "components": {
+            "items": {
+              "$ref": "#/components/schemas/AdminBuilderComponentRead"
+            },
+            "title": "Components",
+            "type": "array"
+          },
+          "max_items": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Items"
+          },
+          "min_items": {
+            "title": "Min Items",
+            "type": "integer"
+          },
+          "product_id": {
+            "format": "uuid",
+            "title": "Product Id",
+            "type": "string"
+          },
+          "vendor_id": {
+            "format": "uuid",
+            "title": "Vendor Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "product_id",
+          "vendor_id",
+          "builder_kind",
+          "min_items",
+          "max_items",
+          "components"
+        ],
+        "title": "AdminBuilderConfig",
+        "type": "object"
+      },
+      "AdminBuilderSummary": {
+        "properties": {
+          "base_price_pkr": {
+            "title": "Base Price Pkr",
+            "type": "integer"
+          },
+          "bucket_count": {
+            "description": "Buckets ever started from this builder",
+            "title": "Bucket Count",
+            "type": "integer"
+          },
+          "builder_kind": {
+            "title": "Builder Kind",
+            "type": "string"
+          },
+          "component_count": {
+            "description": "Switched-on items buyers can add",
+            "title": "Component Count",
+            "type": "integer"
+          },
+          "is_active": {
+            "title": "Is Active",
+            "type": "boolean"
+          },
+          "max_items": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Items"
+          },
+          "min_items": {
+            "title": "Min Items",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "product_id": {
+            "format": "uuid",
+            "title": "Product Id",
+            "type": "string"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          },
+          "vendor_name": {
+            "title": "Vendor Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "product_id",
+          "name",
+          "slug",
+          "vendor_name",
+          "builder_kind",
+          "is_active",
+          "base_price_pkr",
+          "min_items",
+          "max_items",
+          "component_count",
+          "bucket_count"
+        ],
+        "title": "AdminBuilderSummary",
+        "type": "object"
+      },
       "AdminFulfillmentRead": {
         "properties": {
           "address_line1": {
@@ -1265,6 +1468,21 @@
           "base_price_pkr": {
             "title": "Base Price Pkr",
             "type": "integer"
+          },
+          "builder_kind": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Set on a build-your-own base (hamper or bouquet): send buyers to /build/{slug} instead of adding it to the cart",
+            "examples": [
+              "bouquet"
+            ],
+            "title": "Builder Kind"
           },
           "category_id": {
             "anyOf": [
@@ -2454,6 +2672,39 @@
         "title": "BucketRead",
         "type": "object"
       },
+      "BuilderComponentCreate": {
+        "properties": {
+          "component_product_id": {
+            "format": "uuid",
+            "title": "Component Product Id",
+            "type": "string"
+          },
+          "max_qty": {
+            "default": 10,
+            "maximum": 100.0,
+            "minimum": 1.0,
+            "title": "Max Qty",
+            "type": "integer"
+          },
+          "role": {
+            "default": "item",
+            "enum": [
+              "item",
+              "stem",
+              "filler",
+              "wrap",
+              "ribbon"
+            ],
+            "title": "Role",
+            "type": "string"
+          }
+        },
+        "required": [
+          "component_product_id"
+        ],
+        "title": "BuilderComponentCreate",
+        "type": "object"
+      },
       "BuilderComponentRead": {
         "properties": {
           "image": {
@@ -2498,6 +2749,67 @@
           "max_qty"
         ],
         "title": "BuilderComponentRead",
+        "type": "object"
+      },
+      "BuilderComponentUpdate": {
+        "properties": {
+          "is_active": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Active"
+          },
+          "max_qty": {
+            "anyOf": [
+              {
+                "maximum": 100.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Qty"
+          },
+          "role": {
+            "anyOf": [
+              {
+                "enum": [
+                  "item",
+                  "stem",
+                  "filler",
+                  "wrap",
+                  "ribbon"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Role"
+          },
+          "sort_order": {
+            "anyOf": [
+              {
+                "maximum": 1000.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sort Order"
+          }
+        },
+        "title": "BuilderComponentUpdate",
         "type": "object"
       },
       "BuilderRead": {
@@ -2569,6 +2881,96 @@
           "components"
         ],
         "title": "BuilderRead",
+        "type": "object"
+      },
+      "BuilderSettingsUpdate": {
+        "properties": {
+          "builder_kind": {
+            "anyOf": [
+              {
+                "enum": [
+                  "hamper",
+                  "bouquet"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "null turns the product back into an ordinary one",
+            "examples": [
+              "bouquet"
+            ],
+            "title": "Builder Kind"
+          },
+          "max_items": {
+            "anyOf": [
+              {
+                "maximum": 200.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "null = no limit",
+            "title": "Max Items"
+          },
+          "min_items": {
+            "default": 1,
+            "maximum": 100.0,
+            "minimum": 1.0,
+            "title": "Min Items",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "builder_kind"
+        ],
+        "title": "BuilderSettingsUpdate",
+        "type": "object"
+      },
+      "BuilderSummary": {
+        "description": "A builder buyers can start, for listing on the storefront.",
+        "properties": {
+          "base_price_pkr": {
+            "title": "Base Price Pkr",
+            "type": "integer"
+          },
+          "image": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Image"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          }
+        },
+        "required": [
+          "slug",
+          "name",
+          "kind",
+          "image",
+          "base_price_pkr"
+        ],
+        "title": "BuilderSummary",
         "type": "object"
       },
       "CampaignSalesReport": {
@@ -5228,6 +5630,21 @@
             "title": "Base Price Pkr",
             "type": "integer"
           },
+          "builder_kind": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Set on a build-your-own base (hamper or bouquet): send buyers to /build/{slug} instead of adding it to the cart",
+            "examples": [
+              "bouquet"
+            ],
+            "title": "Builder Kind"
+          },
           "category_id": {
             "anyOf": [
               {
@@ -7526,6 +7943,37 @@
         ]
       }
     },
+    "/api/v1/admin/builders": {
+      "get": {
+        "description": "Every product set up as a builder, hidden ones included, with how many items buyers can add.",
+        "operationId": "list_builders_api_v1_admin_builders_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/AdminBuilderSummary"
+                  },
+                  "title": "Response List Builders Api V1 Admin Builders Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Builders",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
     "/api/v1/admin/coupons": {
       "get": {
         "operationId": "list_coupons_api_v1_admin_coupons_get",
@@ -8681,6 +9129,300 @@
         ]
       }
     },
+    "/api/v1/admin/products/{product_id}/builder": {
+      "get": {
+        "description": "The product's builder settings and items (an ordinary product has `builder_kind` null).",
+        "operationId": "get_builder_config_api_v1_admin_products__product_id__builder_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "product_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Product Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminBuilderConfig"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Builder Config",
+        "tags": [
+          "admin"
+        ]
+      },
+      "put": {
+        "description": "Turn a product into a hamper or bouquet builder (or back), and set how many items it holds.",
+        "operationId": "update_builder_settings_api_v1_admin_products__product_id__builder_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "product_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Product Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BuilderSettingsUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminBuilderConfig"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Update Builder Settings",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/products/{product_id}/builder/components": {
+      "post": {
+        "description": "Let buyers put this product in the builder. It must be from the builder's own shop.",
+        "operationId": "add_builder_component_api_v1_admin_products__product_id__builder_components_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "product_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Product Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BuilderComponentCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminBuilderConfig"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "409": {
+            "description": "Not a builder yet, another shop's product, or already added"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Add Builder Component",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/products/{product_id}/builder/components/{component_id}": {
+      "delete": {
+        "description": "Take the item out. Buckets already in carts keep their copy of it.",
+        "operationId": "remove_builder_component_api_v1_admin_products__product_id__builder_components__component_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "product_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Product Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "component_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Component Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminBuilderConfig"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Remove Builder Component",
+        "tags": [
+          "admin"
+        ]
+      },
+      "patch": {
+        "description": "Change an item's role, most allowed, position in the list, or switch it off.",
+        "operationId": "update_builder_component_api_v1_admin_products__product_id__builder_components__component_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "product_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Product Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "component_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Component Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BuilderComponentUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminBuilderConfig"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Update Builder Component",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
     "/api/v1/admin/reports/campaigns": {
       "get": {
         "description": "Sales by channel and reel/campaign over the last `days` days. \"Paid\" means the\norder moved past payment; revenue counts only those. Cancelled/refunded excluded.",
@@ -9829,6 +10571,32 @@
           }
         },
         "summary": "Edit Bucket",
+        "tags": [
+          "buckets"
+        ]
+      }
+    },
+    "/api/v1/builders": {
+      "get": {
+        "description": "Builders buyers can start: live, with at least one item to add.",
+        "operationId": "list_builders_api_v1_builders_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/BuilderSummary"
+                  },
+                  "title": "Response List Builders Api V1 Builders Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Builders",
         "tags": [
           "buckets"
         ]

@@ -173,7 +173,7 @@ def _hint() -> str:
 async def _product(db: AsyncSession, conv: WhatsAppConversation) -> Product | None:
     product_id = _uuid(conv.data.get("product_id"))
     product = await ProductRepository(db).get_by_id(product_id) if product_id else None
-    return product if product and product.is_active else None
+    return product if product and product.is_active and not product.builder_kind else None
 
 
 Line = tuple[Product, ProductVariant | None, int]
@@ -208,8 +208,14 @@ def catalog_id(product: Product, variant: ProductVariant | None) -> str:
 
 
 def _in_catalog(product: Product) -> bool:
-    """Meta needs a photo, and there's no point listing what no city can get."""
-    return product.is_active and _image(product) is not None and any(pc.is_available for pc in product.product_cities)
+    """Meta needs a photo, and there's no point listing what no city can get. Build-your-own
+    bases are left out: on their own they're an empty basket (ADR 0014)."""
+    return (
+        product.is_active
+        and not product.builder_kind
+        and _image(product) is not None
+        and any(pc.is_available for pc in product.product_cities)
+    )
 
 
 def _catalog_items(product: Product) -> list[tuple[ProductVariant | None, bool]]:
@@ -451,6 +457,7 @@ async def _ask_product(db: AsyncSession, conv: WhatsAppConversation) -> list[Rep
                 )
             ]
     products, total = await ProductRepository(db).list(city_id=city_id, page=page + 1, page_size=PAGE_SIZE)
+    products = [p for p in products if not p.builder_kind]
     if not products:
         conv.step = "city"
         return [Reply(f"Sorry, we have no gifts for {conv.data.get('city_name', 'that city')} right now."), *await _ask_city(db, conv)]

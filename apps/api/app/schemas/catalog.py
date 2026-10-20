@@ -177,6 +177,12 @@ class ProductRead(BaseModel):
     product_cities: list[ProductCityRead] = []
     variants: list[ProductVariantRead] = []
     vendor: VendorSummary | None = None
+    builder_kind: str | None = Field(
+        default=None,
+        description="Set on a build-your-own base (hamper or bouquet): send buyers to /build/{slug} "
+        "instead of adding it to the cart",
+        examples=["bouquet"],
+    )
 
 
 class OccasionSummary(BaseModel):
