@@ -1,5 +1,6 @@
 from app.models.address import Address
 from app.models.base import Base
+from app.models.bucket import BuilderComponent, CustomBucket
 from app.models.catalog import (
     Category,
     City,
@@ -42,11 +43,13 @@ __all__ = [
     "AuditLog",
     "Banner",
     "Base",
+    "BuilderComponent",
     "Cart",
     "CartItem",
     "Category",
     "City",
     "Coupon",
+    "CustomBucket",
     "CustomizationField",
     "Fulfillment",
     "FxRate",

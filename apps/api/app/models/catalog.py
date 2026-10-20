@@ -179,6 +179,10 @@ class Product(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     base_price_pkr: Mapped[int] = mapped_column(BigInteger, nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    # Set on a builder base (basket, wrap): buyers fill it with components (ADR 0014).
+    builder_kind: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    builder_min_items: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    builder_max_items: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     vendor: Mapped["Vendor"] = relationship(back_populates="products")
     images: Mapped[list["ProductImage"]] = relationship(back_populates="product", cascade="all, delete-orphan", order_by="ProductImage.sort_order")
