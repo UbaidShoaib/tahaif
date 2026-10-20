@@ -27,6 +27,7 @@ from app.schemas.vendor import (
     VendorLineItem,
 )
 from app.services import audit_service, proof_service
+from app.services.cart_service import bucket_contents
 from app.workers.notification_tasks import (
     enqueue_fulfillment_update,
     enqueue_recipient_update,
@@ -310,6 +311,7 @@ def _fulfillment_to_read(f: Fulfillment) -> VendorFulfillmentRead:
                 qty=i.qty,
                 greeting_message=i.greeting_message,
                 note_token=i.note_token if i.note_key else None,
+                bucket_contents=bucket_contents(i.customization),
             )
             for i in f.order_items
         ],

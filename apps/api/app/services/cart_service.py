@@ -47,16 +47,30 @@ def _clean_greeting(message: str | None) -> str | None:
         return None
     return message.strip() or None
 
-def _unit_price(product: Product, variant: ProductVariant | None) -> int:
+def _unit_price(
+    product: Product, variant: ProductVariant | None, customization: dict[str, object] | None = None
+) -> int:
     base = product.base_price_pkr
     delta = variant.price_delta_pkr if variant else 0
-    return base + delta
+    return base + delta + bucket_extra_pkr(customization)
+
+
+def bucket_extra_pkr(customization: dict[str, object] | None) -> int:
+    """What a custom bucket's components add to its base price (ADR 0014).
+
+    The bucket service writes this total when the bucket goes into the cart, from
+    prices it read on the server; the client never supplies it.
+    """
+    if not customization:
+        return 0
+    extra = customization.get("components_total_pkr")
+    return extra if isinstance(extra, int) else 0
 
 
 def _item_to_read(item: CartItem) -> CartItemRead:
     product = item.product
     variant = item.variant
-    unit = _unit_price(product, variant)
+    unit = _unit_price(product, variant, item.customization)
     image = next(
         (img.url for img in product.images if img.is_primary),
         product.images[0].url if product.images else None,
@@ -93,6 +107,18 @@ def cart_to_read(cart: Cart | None, guest_token: str | None = None) -> CartRead:
     )
 
 
+def bucket_contents(customization: dict[str, object] | None) -> list[str]:
+    """A custom bucket's components as lines to read or pack, e.g. "2 × Red Rose"."""
+    components = (customization or {}).get("components")
+    if not isinstance(components, list):
+        return []
+    return [f"{c['qty']} × {c['name']}" for c in components if isinstance(c, dict)]
+
+
+def _is_bucket(item: CartItem) -> bool:
+    return bool(item.customization and "bucket_id" in item.customization)
+
+
 def _as_owner(owner: CartOwner | uuid.UUID) -> CartOwner:
     return owner if isinstance(owner, CartOwner) else CartOwner(user_id=owner)
 
@@ -100,13 +126,16 @@ def _as_owner(owner: CartOwner | uuid.UUID) -> CartOwner:
 async def _merge_guest_cart(repo: CartRepository, guest: Cart, user_cart: Cart) -> Cart:
     """Move a guest cart's lines into the user's cart, then delete the guest cart."""
     for item in list(guest.items):
-        same = next(
-            (i for i in user_cart.items if i.product_id == item.product_id and i.variant_id == item.variant_id),
+        same = None if _is_bucket(item) else next(
+            (
+                i for i in user_cart.items
+                if i.product_id == item.product_id and i.variant_id == item.variant_id and not _is_bucket(i)
+            ),
             None,
         )
         if same:
             same.qty += item.qty
-            same.line_total_pkr = _unit_price(same.product, same.variant) * same.qty
+            same.line_total_pkr = _unit_price(same.product, same.variant, same.customization) * same.qty
             if not same.greeting_message and item.greeting_message:
                 same.greeting_message = item.greeting_message
             await repo.delete_item(item)
@@ -173,7 +202,10 @@ async def add_item(db: AsyncSession, owner: CartOwner | uuid.UUID, body: CartIte
 
     # If same product+variant already in cart, increase qty
     existing = next(
-        (i for i in cart.items if i.product_id == body.product_id and i.variant_id == body.variant_id),
+        (
+            i for i in cart.items
+            if i.product_id == body.product_id and i.variant_id == body.variant_id and not _is_bucket(i)
+        ),
         None,
     )
     if existing:
@@ -204,6 +236,23 @@ async def add_item(db: AsyncSession, owner: CartOwner | uuid.UUID, body: CartIte
     return cart_to_read(await repo.reload(cart), token)
 
 
+async def add_bucket_line(
+    db: AsyncSession, owner: CartOwner | uuid.UUID, product: Product, customization: dict[str, object]
+) -> CartRead:
+    """Add a finished custom bucket as its own cart line (never merged with another)."""
+    repo = CartRepository(db)
+    cart, token = await resolve_cart(db, owner, create=True)
+    assert cart is not None
+    await repo.add_item(
+        cart,
+        product_id=product.id,
+        qty=1,
+        customization=customization,
+        line_total_pkr=_unit_price(product, None, customization),
+    )
+    return cart_to_read(await repo.reload(cart), token)
+
+
 async def update_item(
     db: AsyncSession, owner: CartOwner | uuid.UUID, item_id: uuid.UUID, body: CartItemUpdate
 ) -> CartRead:
@@ -221,7 +270,7 @@ async def update_item(
         product = await prod_repo.get_by_id(item.product_id)
         if product:
             variant = next((v for v in product.variants if v.id == item.variant_id), None) if item.variant_id else None
-            unit = _unit_price(product, variant)
+            unit = _unit_price(product, variant, item.customization)
             item.qty = body.qty
             item.line_total_pkr = unit * body.qty
             if body.delivery_date is not None:

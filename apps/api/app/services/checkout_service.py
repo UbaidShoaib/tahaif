@@ -41,7 +41,7 @@ from app.services import (
     proof_service,
     thanks_service,
 )
-from app.services.cart_service import CartOwner, _unit_price
+from app.services.cart_service import CartOwner, _unit_price, bucket_contents
 
 logger = structlog.get_logger()
 settings = get_settings()
@@ -286,7 +286,7 @@ async def place_order(
         if pc:
             delivery_service.validate_delivery_date(pc, body.delivery_date, product.name, now)
 
-        unit = _unit_price(product, variant)
+        unit = _unit_price(product, variant, cart_item.customization)
         item_details.append((cart_item, product, variant, unit, pc))
 
     # ── Calculate totals ───────────────────────────────────────────────────────
@@ -354,6 +354,7 @@ async def place_order(
             unit_price_pkr=unit,
             line_total_pkr=unit * cart_item.qty,
             greeting_message=cart_item.greeting_message,
+            customization=cart_item.customization,
         )
         if variant and variant.stock_qty is not None:
             # Sold out stays switched on: restocking brings it straight back.
@@ -453,6 +454,7 @@ def _order_to_read(order: Order) -> OrderRead:
             has_note=i.note_key is not None,
             note_content_type=i.note_content_type,
             can_edit_note=note_service.can_edit_note(order, i),
+            bucket_contents=bucket_contents(i.customization),
         )
         for i in order.items
     ]

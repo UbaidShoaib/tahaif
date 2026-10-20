@@ -1,6 +1,47 @@
 {
   "components": {
     "schemas": {
+      "AddOp": {
+        "properties": {
+          "component_id": {
+            "format": "uuid",
+            "title": "Component Id",
+            "type": "string"
+          },
+          "op": {
+            "const": "add",
+            "title": "Op",
+            "type": "string"
+          },
+          "qty": {
+            "default": 1,
+            "maximum": 50.0,
+            "minimum": 1.0,
+            "title": "Qty",
+            "type": "integer"
+          },
+          "x": {
+            "default": 0.5,
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "X",
+            "type": "number"
+          },
+          "y": {
+            "default": 0.5,
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Y",
+            "type": "number"
+          }
+        },
+        "required": [
+          "op",
+          "component_id"
+        ],
+        "title": "AddOp",
+        "type": "object"
+      },
       "AddressCreate": {
         "properties": {
           "alt_phone": {
@@ -811,6 +852,20 @@
       },
       "AdminOrderItemRead": {
         "properties": {
+          "bucket_contents": {
+            "description": "For a build-your-own hamper or bouquet: what goes in it",
+            "examples": [
+              [
+                "6 \u00d7 Red Rose (stem)",
+                "1 \u00d7 Kraft Paper Wrap"
+              ]
+            ],
+            "items": {
+              "type": "string"
+            },
+            "title": "Bucket Contents",
+            "type": "array"
+          },
           "can_edit_note": {
             "default": false,
             "description": "The note can still be added or replaced (the card isn't printed yet)",
@@ -2217,6 +2272,305 @@
         "title": "Body_upload_transfer_proof_by_token_api_v1_orders_by_token__public_token__proof_post",
         "type": "object"
       },
+      "BucketCreate": {
+        "properties": {
+          "builder_slug": {
+            "maxLength": 255,
+            "title": "Builder Slug",
+            "type": "string"
+          }
+        },
+        "required": [
+          "builder_slug"
+        ],
+        "title": "BucketCreate",
+        "type": "object"
+      },
+      "BucketOpRequest": {
+        "properties": {
+          "edit": {
+            "discriminator": {
+              "mapping": {
+                "add": "#/components/schemas/AddOp",
+                "clear": "#/components/schemas/ClearOp",
+                "move": "#/components/schemas/MoveOp",
+                "remove": "#/components/schemas/RemoveOp",
+                "set_qty": "#/components/schemas/SetQtyOp"
+              },
+              "propertyName": "op"
+            },
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/AddOp"
+              },
+              {
+                "$ref": "#/components/schemas/MoveOp"
+              },
+              {
+                "$ref": "#/components/schemas/SetQtyOp"
+              },
+              {
+                "$ref": "#/components/schemas/RemoveOp"
+              },
+              {
+                "$ref": "#/components/schemas/ClearOp"
+              }
+            ],
+            "title": "Edit"
+          }
+        },
+        "required": [
+          "edit"
+        ],
+        "title": "BucketOpRequest",
+        "type": "object"
+      },
+      "BucketPiece": {
+        "properties": {
+          "component_id": {
+            "format": "uuid",
+            "title": "Component Id",
+            "type": "string"
+          },
+          "image": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Image"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "qty": {
+            "title": "Qty",
+            "type": "integer"
+          },
+          "rotation": {
+            "default": 0,
+            "title": "Rotation",
+            "type": "number"
+          },
+          "unit_price_pkr": {
+            "title": "Unit Price Pkr",
+            "type": "integer"
+          },
+          "x": {
+            "title": "X",
+            "type": "number"
+          },
+          "y": {
+            "title": "Y",
+            "type": "number"
+          },
+          "z": {
+            "default": 0,
+            "title": "Z",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "key",
+          "component_id",
+          "qty",
+          "x",
+          "y",
+          "name",
+          "image",
+          "unit_price_pkr"
+        ],
+        "title": "BucketPiece",
+        "type": "object"
+      },
+      "BucketRead": {
+        "properties": {
+          "builder": {
+            "$ref": "#/components/schemas/BuilderRead"
+          },
+          "components_total_pkr": {
+            "title": "Components Total Pkr",
+            "type": "integer"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "item_count": {
+            "title": "Item Count",
+            "type": "integer"
+          },
+          "pieces": {
+            "items": {
+              "$ref": "#/components/schemas/BucketPiece"
+            },
+            "title": "Pieces",
+            "type": "array"
+          },
+          "share_token": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Only returned when the bucket is created. It is the edit link's secret; anyone holding it can edit the bucket.",
+            "title": "Share Token"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "total_pkr": {
+            "title": "Total Pkr",
+            "type": "integer"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "builder",
+          "status",
+          "version",
+          "pieces",
+          "item_count",
+          "components_total_pkr",
+          "total_pkr"
+        ],
+        "title": "BucketRead",
+        "type": "object"
+      },
+      "BuilderComponentRead": {
+        "properties": {
+          "image": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Image"
+          },
+          "max_qty": {
+            "title": "Max Qty",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "price_pkr": {
+            "title": "Price Pkr",
+            "type": "integer"
+          },
+          "product_id": {
+            "format": "uuid",
+            "title": "Product Id",
+            "type": "string"
+          },
+          "role": {
+            "title": "Role",
+            "type": "string"
+          }
+        },
+        "required": [
+          "product_id",
+          "name",
+          "image",
+          "role",
+          "price_pkr",
+          "max_qty"
+        ],
+        "title": "BuilderComponentRead",
+        "type": "object"
+      },
+      "BuilderRead": {
+        "properties": {
+          "base_price_pkr": {
+            "title": "Base Price Pkr",
+            "type": "integer"
+          },
+          "components": {
+            "items": {
+              "$ref": "#/components/schemas/BuilderComponentRead"
+            },
+            "title": "Components",
+            "type": "array"
+          },
+          "image": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Image"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "max_items": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Items"
+          },
+          "min_items": {
+            "title": "Min Items",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "product_id": {
+            "format": "uuid",
+            "title": "Product Id",
+            "type": "string"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          }
+        },
+        "required": [
+          "product_id",
+          "slug",
+          "name",
+          "kind",
+          "image",
+          "base_price_pkr",
+          "min_items",
+          "max_items",
+          "components"
+        ],
+        "title": "BuilderRead",
+        "type": "object"
+      },
       "CampaignSalesReport": {
         "properties": {
           "days": {
@@ -3199,6 +3553,20 @@
         "title": "CityUpdate",
         "type": "object"
       },
+      "ClearOp": {
+        "properties": {
+          "op": {
+            "const": "clear",
+            "title": "Op",
+            "type": "string"
+          }
+        },
+        "required": [
+          "op"
+        ],
+        "title": "ClearOp",
+        "type": "object"
+      },
       "CouponCreate": {
         "properties": {
           "code": {
@@ -3713,6 +4081,54 @@
         "title": "MonthDay",
         "type": "object"
       },
+      "MoveOp": {
+        "properties": {
+          "key": {
+            "maxLength": 32,
+            "title": "Key",
+            "type": "string"
+          },
+          "op": {
+            "const": "move",
+            "title": "Op",
+            "type": "string"
+          },
+          "rotation": {
+            "default": 0,
+            "maximum": 360.0,
+            "minimum": -360.0,
+            "title": "Rotation",
+            "type": "number"
+          },
+          "x": {
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "X",
+            "type": "number"
+          },
+          "y": {
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Y",
+            "type": "number"
+          },
+          "z": {
+            "default": 0,
+            "maximum": 1000.0,
+            "minimum": 0.0,
+            "title": "Z",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "op",
+          "key",
+          "x",
+          "y"
+        ],
+        "title": "MoveOp",
+        "type": "object"
+      },
       "NewsletterSubscribeRequest": {
         "properties": {
           "email": {
@@ -4215,6 +4631,20 @@
       },
       "OrderItemRead": {
         "properties": {
+          "bucket_contents": {
+            "description": "For a build-your-own hamper or bouquet: what goes in it",
+            "examples": [
+              [
+                "6 \u00d7 Red Rose (stem)",
+                "1 \u00d7 Kraft Paper Wrap"
+              ]
+            ],
+            "items": {
+              "type": "string"
+            },
+            "title": "Bucket Contents",
+            "type": "array"
+          },
           "can_edit_note": {
             "default": false,
             "description": "The note can still be added or replaced (the card isn't printed yet)",
@@ -5198,6 +5628,26 @@
         "title": "RegisterRequest",
         "type": "object"
       },
+      "RemoveOp": {
+        "properties": {
+          "key": {
+            "maxLength": 32,
+            "title": "Key",
+            "type": "string"
+          },
+          "op": {
+            "const": "remove",
+            "title": "Op",
+            "type": "string"
+          }
+        },
+        "required": [
+          "op",
+          "key"
+        ],
+        "title": "RemoveOp",
+        "type": "object"
+      },
       "ReportedNoteRead": {
         "description": "Admin: a reported card note with everything needed to decide on it.",
         "properties": {
@@ -5473,6 +5923,33 @@
           "created_at"
         ],
         "title": "ReviewRead",
+        "type": "object"
+      },
+      "SetQtyOp": {
+        "properties": {
+          "key": {
+            "maxLength": 32,
+            "title": "Key",
+            "type": "string"
+          },
+          "op": {
+            "const": "set_qty",
+            "title": "Op",
+            "type": "string"
+          },
+          "qty": {
+            "maximum": 50.0,
+            "minimum": 1.0,
+            "title": "Qty",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "op",
+          "key",
+          "qty"
+        ],
+        "title": "SetQtyOp",
         "type": "object"
       },
       "StaffNoteCreate": {
@@ -6539,6 +7016,20 @@
       "VendorLineItem": {
         "description": "One product in a fulfillment, with the card to print for it.",
         "properties": {
+          "bucket_contents": {
+            "description": "For a build-your-own hamper or bouquet: what goes in it",
+            "examples": [
+              [
+                "6 \u00d7 Red Rose (stem)",
+                "1 \u00d7 Kraft Paper Wrap"
+              ]
+            ],
+            "items": {
+              "type": "string"
+            },
+            "title": "Bucket Contents",
+            "type": "array"
+          },
           "greeting_message": {
             "anyOf": [
               {
@@ -9078,6 +9569,311 @@
         "summary": "List Banners",
         "tags": [
           "marketing"
+        ]
+      }
+    },
+    "/api/v1/buckets": {
+      "post": {
+        "description": "Start an empty bucket. The response's `share_token` is the only copy of the edit link's secret.",
+        "operationId": "create_bucket_api_v1_buckets_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-cart-token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 128,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Cart-Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BucketCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BucketRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Create Bucket",
+        "tags": [
+          "buckets"
+        ]
+      }
+    },
+    "/api/v1/buckets/{bucket_id}": {
+      "get": {
+        "operationId": "get_bucket_api_v1_buckets__bucket_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "bucket_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Bucket Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "t",
+            "required": true,
+            "schema": {
+              "maxLength": 64,
+              "minLength": 16,
+              "title": "T",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BucketRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Bucket",
+        "tags": [
+          "buckets"
+        ]
+      }
+    },
+    "/api/v1/buckets/{bucket_id}/cart": {
+      "post": {
+        "description": "Put the bucket in the caller's cart as one line priced base + components, and lock it.",
+        "operationId": "add_bucket_to_cart_api_v1_buckets__bucket_id__cart_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "bucket_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Bucket Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "t",
+            "required": true,
+            "schema": {
+              "maxLength": 64,
+              "minLength": 16,
+              "title": "T",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-cart-token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 128,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Cart-Token"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CartRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Add Bucket To Cart",
+        "tags": [
+          "buckets"
+        ]
+      }
+    },
+    "/api/v1/buckets/{bucket_id}/edits": {
+      "post": {
+        "description": "Apply one edit. 409 when it breaks a limit or targets a piece someone else removed.",
+        "operationId": "edit_bucket_api_v1_buckets__bucket_id__edits_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "bucket_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Bucket Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "t",
+            "required": true,
+            "schema": {
+              "maxLength": 64,
+              "minLength": 16,
+              "title": "T",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BucketOpRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BucketRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Edit Bucket",
+        "tags": [
+          "buckets"
+        ]
+      }
+    },
+    "/api/v1/builders/{slug}": {
+      "get": {
+        "description": "A builder base and the components that can go in it.",
+        "operationId": "get_builder_api_v1_builders__slug__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BuilderRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Builder",
+        "tags": [
+          "buckets"
         ]
       }
     },

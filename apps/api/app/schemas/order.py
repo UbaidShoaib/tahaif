@@ -121,6 +121,11 @@ class OrderItemRead(BaseModel):
     can_edit_note: bool = Field(
         default=False, description="The note can still be added or replaced (the card isn't printed yet)"
     )
+    bucket_contents: list[str] = Field(
+        default_factory=list,
+        description="For a build-your-own hamper or bouquet: what goes in it",
+        examples=[["6 × Red Rose (stem)", "1 × Kraft Paper Wrap"]],
+    )
 
 
 class CardNoteRead(BaseModel):
