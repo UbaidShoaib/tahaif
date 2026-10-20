@@ -87,7 +87,12 @@ export const serverMessageSchema = z.discriminatedUnion("type", [
 ]);
 export type ServerMessage = z.infer<typeof serverMessageSchema>;
 
+export type BuilderSummary = { slug: string; name: string; kind: "hamper" | "bouquet"; image: string | null; base_price_pkr: number };
+
 export const bucketsApi = {
+  /** Live builders with items, for the home page. */
+  list: () => apiFetch<BuilderSummary[]>("/builders"),
+
   builder: (slug: string) => apiFetch<unknown>(`/builders/${encodeURIComponent(slug)}`).then((b) => builderSchema.parse(b)),
 
   create: (builderSlug: string, token?: string | null) =>

@@ -8,7 +8,7 @@ import { useAuthStore } from "@/stores/auth.store";
 
 export type Section =
   | "orders" | "new-order" | "messages" | "campaigns" | "applications" | "add-product" | "products" | "note-reports"
-  | "activity";
+  | "builders" | "activity";
 
 type Item = { key: Section; label: string; adminOnly?: boolean };
 
@@ -26,6 +26,7 @@ export const NAV: { group: string; items: Item[] }[] = [
     items: [
       { key: "products", label: "Products" },
       { key: "add-product", label: "Add product" },
+      { key: "builders", label: "Build-your-own" },
     ],
   },
   {

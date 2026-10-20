@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, ChevronLeft, ChevronRight, ExternalLink, Eye, EyeOff, Star, Trash2, Upload } from "lucide-react";
 import { toPaisa } from "@/components/admin/AddProductForm";
+import { BuilderEditor } from "@/components/admin/BuilderEditor";
 import { VariantsEditor, type Variant } from "@/components/admin/VariantsEditor";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -409,6 +410,14 @@ export function ProductEditor({ token, productId }: { token: string; productId: 
         run={(work, done) => run("variants", work, done)}
         notice={show("variants")}
         onError={(text) => setNotice({ section: "variants", kind: "error", text })}
+      />
+
+      <BuilderEditor
+        token={token}
+        productId={product.id}
+        productSlug={slug}
+        vendorId={product.vendor_id}
+        basePrice={product.base_price_pkr}
       />
 
       <form onSubmit={saveCities} aria-labelledby="cities-heading" className="space-y-4 rounded-xl border p-4">

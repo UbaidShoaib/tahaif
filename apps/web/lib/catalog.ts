@@ -51,6 +51,8 @@ export type Product = {
   product_cities: ProductCity[];
   variants: ProductVariant[];
   vendor: VendorSummary | null;
+  /** A build-your-own base: buyers fill it at /build/{slug} instead of adding it to the cart. */
+  builder_kind?: "hamper" | "bouquet" | null;
 };
 
 export type PaginatedProducts = {

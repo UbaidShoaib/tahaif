@@ -45,6 +45,11 @@ function serve(overrides: Record<string, unknown> = {}) {
     if (path === "/categories") return Promise.resolve([{ id: "cat1", name: "Flowers" }]);
     if (path === "/occasions") return Promise.resolve([{ id: "eid", name: "Eid" }, { id: "mom", name: "Mother's Day" }]);
     if (path === "/cities") return Promise.resolve([{ id: "lhr", name: "Lahore" }, { id: "khi", name: "Karachi" }]);
+    // The Build-your-own section loads on its own.
+    if (path === "/admin/products/p1/builder") {
+      return Promise.resolve({ product_id: "p1", vendor_id: "v1", builder_kind: null, min_items: 1, max_items: null, components: [] });
+    }
+    if (path?.startsWith("/admin/products?vendor_id=")) return Promise.resolve([]);
     return Promise.resolve({});
   });
 }

@@ -11,6 +11,7 @@ import { MessageQueue } from "@/components/admin/MessageQueue";
 import { CampaignReport } from "@/components/admin/CampaignReport";
 import { OrderList } from "@/components/admin/OrderList";
 import { ActivityLog } from "@/components/admin/ActivityLog";
+import { BuilderList } from "@/components/admin/BuilderList";
 import { useStaffSession } from "@/hooks/use-staff-session";
 import { useAuthStore } from "@/stores/auth.store";
 
@@ -49,6 +50,7 @@ export default function AdminDashboard() {
           {section === "applications" && <VendorApplications token={token} />}
           {section === "add-product" && <AddProductForm token={token} />}
           {section === "products" && <ProductList token={token} />}
+          {section === "builders" && <BuilderList token={token} />}
           {section === "note-reports" && <NoteReports token={token} />}
           {section === "new-order" && <AssistedOrderForm token={token} />}
           {section === "messages" && <MessageQueue token={token} />}

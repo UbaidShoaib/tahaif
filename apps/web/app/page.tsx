@@ -15,6 +15,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { catalogApi, primaryImage, type Product } from "@/lib/catalog";
+import { bucketsApi, type BuilderSummary } from "@/lib/buckets";
 import { categoryPhotos } from "@/lib/home";
 import { isOptimizable } from "@/lib/image-hosts";
 import { ProductCard } from "@/components/catalog/ProductCard";
@@ -76,10 +77,11 @@ function Zari({ className = "" }: { className?: string }) {
 }
 
 export default async function HomePage() {
-  const [{ items: products }, categories, onTime] = await Promise.all([
+  const [{ items: products }, categories, onTime, builders] = await Promise.all([
     catalogApi.getProducts({ page_size: 48 }).catch(() => ({ items: [] as Product[], total: 0, page: 1, page_size: 48 })),
     catalogApi.getCategories().catch(() => []),
     onTimePercent(),
+    bucketsApi.list().catch(() => [] as BuilderSummary[]),
   ]);
   const featuredProducts = products.slice(0, 8);
   const photos = categoryPhotos(categories, products);
@@ -152,6 +154,39 @@ export default async function HomePage() {
       </section>
 
       <SameDayRail />
+
+      {/* Build your own: only once a builder is live with items (ADR 0014) */}
+      {builders.length > 0 && (
+        <section aria-labelledby="build-heading" className="px-4 pt-14">
+          <div className="container mx-auto">
+            <h2 id="build-heading" className="text-h2">Build your own</h2>
+            <p className="mt-2 text-muted-foreground">
+              Pick every stem or gift yourself, and share the link so family can build it with you.
+            </p>
+            <Zari className="mb-8 mt-3" />
+            <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {builders.map((b) => (
+                <li key={b.slug}>
+                  <Link
+                    href={`/build/${b.slug}`}
+                    className="group flex items-center gap-4 rounded-xl border bg-card p-3 hover:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    <span className="relative h-20 w-20 shrink-0 overflow-hidden rounded-lg bg-primary-soft">
+                      {b.image && <Photo src={b.image} alt="" sizes="80px" />}
+                    </span>
+                    <span className="min-w-0">
+                      <span className="block font-display text-lg leading-tight">{b.name}</span>
+                      <span className="mt-1 block text-sm text-muted-foreground">
+                        {b.kind === "bouquet" ? "Bouquet" : "Hamper"} · start building →
+                      </span>
+                    </span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </section>
+      )}
 
       {/* Categories: photo tiles; a tinted tile only where no product photo exists yet */}
       <section aria-labelledby="categories-heading" className="px-4 py-14">
