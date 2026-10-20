@@ -390,6 +390,20 @@ token: status 401; number not registered: 400) and `whatsapp_message_failed`
 itself means `WHATSAPP_APP_SECRET` doesn't match the app. Turn the bot off with
 `WHATSAPP_BOT_ENABLED=false`; orders already placed are unaffected.
 
+## Shared bucket builder (WebSockets)
+
+Live editing of build-your-own buckets (ADR 0014) uses a WebSocket at
+`/api/v1/buckets/{id}/ws`. Caddy's `reverse_proxy api:8000` passes WebSocket upgrades
+with no extra config; Cloudflare must have **Network → WebSockets** on (the default).
+Edits fan out through Redis pub/sub (`bucket:{id}` channels), so Redis must be up for
+live updates. REST edits still work without it.
+
+- **"Connecting…" never turns Live:** check `wss://<domain>/api/v1/buckets/<id>/ws?t=…`
+  in the browser devtools; a 4404 close means a wrong link or a bucket past its 30 days.
+- **Set up a builder:** set `builder_kind` (`hamper`/`bouquet`), `builder_min_items`,
+  `builder_max_items` on the base product and add `builder_components` rows (components
+  from the same vendor). `scripts/seed.py` has two examples.
+
 ## Card note reports
 
 Reported voice/video notes appear in **Admin → Reported notes** (log event `card_note_reported`).

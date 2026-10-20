@@ -8,6 +8,15 @@ pre-production-cutover).
 ## [Unreleased]
 
 ### Added
+- **Build your own hamper or bouquet, together** (ADR 0014). Drag items into a basket, or stems,
+  filler, wrap and ribbon onto a bouquet (or tap + on phones). The price updates as you go. Share
+  the link (copy or WhatsApp) and family can edit the same bucket live, with each person's name
+  and cursor shown. Limits per item and per bucket are checked on the server. **Add to cart** puts
+  it in as one line priced base + components; buyer tracking, the vendor portal and the admin order
+  page list what's inside. Pages `/build/[slug]` and `/build/b/[id]`. API `GET /builders/{slug}`,
+  `POST /buckets`, `GET /buckets/{id}`, `POST /buckets/{id}/edits`, `POST /buckets/{id}/cart`, and
+  WebSocket `/buckets/{id}/ws`. Migration `0021` adds `builder_components`, `custom_buckets` and
+  builder columns on `products`. Seed adds two builders.
 - **Shop inside WhatsApp** (ADR 0013). A bot on Meta's WhatsApp Cloud API takes customers through
   the website's checkout in the chat: city, gifts from our **WhatsApp catalog** (photos, quantities,
   the WhatsApp cart) or a plain list, option, delivery date, card message, recipient, address or

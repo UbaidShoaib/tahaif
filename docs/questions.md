@@ -11,3 +11,15 @@ How long do we keep `audit_logs` rows (they include staff IP addresses)?
 **Default:** keep everything for now; revisit at 100k rows or before the first
 GDPR request from staff. Payment-related entries likely need ≥ 5 years for tax.
 
+
+## Build-your-own buckets (2026-10-20, ADR 0014)
+
+- **Can a bucket mix vendors** (a Layers cake in a florist's hamper)? **Default:** no,
+  components come from the base's vendor so one bucket is one delivery.
+- **Should component products appear in the normal catalog?** A single stem at PKR 250 is
+  odd on its own. **Default:** they're ordinary products for now; add a hidden-from-listing
+  flag if vendors complain.
+- **Split payment** (each sibling pays a share, like Shareagift)? **Default:** one payer
+  checks out; revisit with Stripe in the diaspora phase.
+- **Reopening a bucket** after removing it from the cart. **Default:** not supported;
+  start a new bucket.
