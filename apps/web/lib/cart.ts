@@ -148,6 +148,8 @@ export interface OrderItemRead {
   note_content_type?: string | null;
   /** The note can still be added or replaced (the card isn't printed yet). */
   can_edit_note?: boolean;
+  /** Build-your-own hamper/bouquet: what goes in it, e.g. "6 × Red Rose". */
+  bucket_contents?: string[];
 }
 
 export interface OrderRead {

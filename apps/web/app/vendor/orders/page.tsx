@@ -252,6 +252,14 @@ export default function VendorOrdersPage() {
                       {f.courier_tracking}
                     </p>
                   )}
+                  {f.items
+                    .filter((i) => i.bucket_contents && i.bucket_contents.length > 0)
+                    .map((i, n) => (
+                      <div key={`bucket-${n}`} className="sm:col-span-2">
+                        <span className="text-muted-foreground">{i.product_name}, pack: </span>
+                        {i.bucket_contents?.join(", ")}
+                      </div>
+                    ))}
                   {f.items.some((i) => i.greeting_message || i.note_token) && (
                     <div className="sm:col-span-2 mt-1 space-y-1">
                       <span className="text-muted-foreground">Card messages: </span>

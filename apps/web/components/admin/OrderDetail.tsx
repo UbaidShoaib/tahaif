@@ -41,6 +41,7 @@ type Item = {
   greeting_message: string | null;
   has_note: boolean;
   customization: Record<string, unknown> | null;
+  bucket_contents?: string[];
 };
 
 type Payment = {
@@ -275,7 +276,10 @@ export function OrderDetail({ token, orderId }: { token: string; orderId: string
                     </p>
                     {it.greeting_message && <p className="italic text-muted-foreground">“{it.greeting_message}”</p>}
                     {it.has_note && <p className="text-xs text-muted-foreground">Voice/video note on the card</p>}
-                    {it.customization && Object.entries(it.customization).map(([k, v]) => (
+                    {it.bucket_contents && it.bucket_contents.length > 0 && (
+                      <p className="text-xs text-muted-foreground">Contains: {it.bucket_contents.join(", ")}</p>
+                    )}
+                    {it.customization && !("bucket_id" in it.customization) && Object.entries(it.customization).map(([k, v]) => (
                       <p key={k} className="text-xs text-muted-foreground">{words(k)}: {String(v)}</p>
                     ))}
                   </div>

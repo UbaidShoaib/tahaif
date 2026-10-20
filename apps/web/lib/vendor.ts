@@ -32,6 +32,8 @@ export interface VendorLineItem {
   greeting_message: string | null;
   /** Print a QR code to /note/{note_token} on the card when set. */
   note_token: string | null;
+  /** Build-your-own hamper/bouquet: what to pack, e.g. "6 × Red Rose". */
+  bucket_contents?: string[];
 }
 
 export interface VendorFulfillmentRead {

@@ -266,6 +266,9 @@ export default async function TrackPage({
                     {item.qty > 1 && `Qty ${item.qty}`}
                   </span>
                 )}
+                {item.bucket_contents && item.bucket_contents.length > 0 && (
+                  <span className="block text-muted-foreground">{item.bucket_contents.join(", ")}</span>
+                )}
               </span>
               <span className="tabular-nums">{formatPrice(item.line_total_pkr)}</span>
             </li>

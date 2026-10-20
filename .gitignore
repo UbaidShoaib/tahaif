@@ -23,6 +23,8 @@ node_modules/
 .next/
 out/
 build/
+# build/ above is for build output; this is the build-your-own bucket route.
+!apps/web/app/build/
 *.tsbuildinfo
 
 # pnpm
