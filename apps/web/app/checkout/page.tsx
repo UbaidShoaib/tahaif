@@ -49,6 +49,8 @@ export default function CheckoutPage() {
   const [cities, setCities] = useState<CheckoutCity[]>([]);
   const [quote, setQuote] = useState<CheckoutQuote | null>(null);
   const [isQuoting, setIsQuoting] = useState(false);
+  const [quoteError, setQuoteError] = useState<string | null>(null);
+  const [placed, setPlaced] = useState(false);
   const [isPlacing, setIsPlacing] = useState(false);
   const [placeError, setPlaceError] = useState<string | null>(null);
 
@@ -139,6 +141,7 @@ export default function CheckoutPage() {
         paymentMethod,
       });
       setQuote(q);
+      setQuoteError(null);
       // Only a successful quote *with* a coupon clears a coupon error; the
       // requote that follows a rejected coupon must keep the explanation visible.
       if (appliedCoupon) setCouponError(null);
@@ -149,6 +152,8 @@ export default function CheckoutPage() {
         setAppliedCoupon(null);
       } else {
         setQuote(null);
+        // e.g. a gift isn't delivered to the chosen city, or is no longer sold.
+        setQuoteError(err instanceof ApiError && err.status === 409 ? err.detail : null);
       }
     } finally {
       setIsQuoting(false);
@@ -231,8 +236,10 @@ export default function CheckoutPage() {
         item_count: order.items.length,
       });
       attemptRef.current = null;
-      await fetchCart();
+      // The cart is now empty; keep this page as it is until the success page opens.
+      setPlaced(true);
       router.push(`/checkout/success/${order.public_token}`);
+      void fetchCart();
     } catch (err: unknown) {
       setPlaceError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
     } finally {
@@ -254,7 +261,7 @@ export default function CheckoutPage() {
     if (invalidAttempt > 0) errorSummaryRef.current?.focus();
   }, [invalidAttempt]);
 
-  if (cart && cart.items.length === 0) {
+  if (cart && cart.items.length === 0 && !placed) {
     return (
       <div className="container mx-auto max-w-md px-4 py-24">
         <EmptyState
@@ -320,7 +327,7 @@ export default function CheckoutPage() {
             <span className="font-semibold tabular-nums">{formatMoney(totals.total_pkr, "PKR")}</span>
           </summary>
           <div className="border-t border-foreground/10 px-4 py-3">
-            <SummaryItems cart={cart} />
+            <SummaryItems cart={cart} quote={quote} />
           </div>
         </details>
       )}
@@ -417,6 +424,7 @@ export default function CheckoutPage() {
             totals={totals}
             quote={quote}
             isQuoting={isQuoting}
+            quoteError={quoteError}
             hasCity={!!cityId}
             appliedCoupon={appliedCoupon}
             couponError={couponError}

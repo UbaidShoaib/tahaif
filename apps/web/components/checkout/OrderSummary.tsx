@@ -17,8 +17,10 @@ export type SummaryTotals = Pick<
 
 const pkr = (paisa: number) => formatMoney(paisa, "PKR");
 
-/** The cart lines with each gift's card message, so buyers can check them before paying. */
-export function SummaryItems({ cart }: { cart: CartRead }) {
+/** The cart lines with each gift's card message, so buyers can check them before paying.
+ * With a quote, each line shows the delivery city's price. */
+export function SummaryItems({ cart, quote }: { cart: CartRead; quote?: CheckoutQuote | null }) {
+  const quoted = new Map((quote?.items ?? []).map((q) => [q.cart_item_id, q.line_total_pkr]));
   return (
     <ul className="space-y-3 text-sm">
       {cart.items.map((item) => (
@@ -29,7 +31,7 @@ export function SummaryItems({ cart }: { cart: CartRead }) {
               {item.variant_name ? ` (${item.variant_name})` : ""}
               <span className="text-muted-foreground"> ×{item.qty}</span>
             </span>
-            <span className="shrink-0 tabular-nums">{pkr(item.line_total_pkr)}</span>
+            <span className="shrink-0 tabular-nums">{pkr(quoted.get(item.id) ?? item.line_total_pkr)}</span>
           </div>
           {item.greeting_message && (
             <p className="flex gap-1.5 rounded-md bg-gold-soft px-2 py-1.5 text-xs text-gold-ink">
@@ -50,6 +52,8 @@ type Props = {
   totals: SummaryTotals;
   quote: CheckoutQuote | null;
   isQuoting: boolean;
+  /** Why the order can't be priced for this city (e.g. a gift isn't delivered there). */
+  quoteError?: string | null;
   hasCity: boolean;
   appliedCoupon: string | null;
   couponError: string | null;
@@ -69,6 +73,7 @@ export function OrderSummary({
   totals,
   quote,
   isQuoting,
+  quoteError,
   hasCity,
   appliedCoupon,
   couponError,
@@ -91,11 +96,17 @@ export function OrderSummary({
       {/* On phones the items are shown in the collapsible summary at the top instead. */}
       {cart && (
         <div className="hidden max-h-64 overflow-y-auto lg:block">
-          <SummaryItems cart={cart} />
+          <SummaryItems cart={cart} quote={quote} />
         </div>
       )}
 
       <Separator className="hidden lg:block" />
+
+      {quoteError && (
+        <Alert variant="destructive">
+          <AlertDescription>{quoteError}</AlertDescription>
+        </Alert>
+      )}
 
       <dl className="space-y-2 text-sm" aria-live="polite">
         <div className="flex justify-between">

@@ -1,61 +1,23 @@
 import { test, expect } from "@playwright/test";
-
-const BASE = process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3000";
+import { addFirstProductAndCheckout, fillGuestDelivery, register } from "./helpers";
 
 test.describe("COD checkout flow", () => {
-  test.beforeEach(async ({ page }) => {
-    // Seed: register and log in with a fresh account
-    const email = `cod_${Date.now()}@example.com`;
-    await page.goto(`${BASE}/register`);
-    await page.fill('[name="full_name"]', "COD Tester");
-    await page.fill('[name="email"]', email);
-    await page.fill('[name="password"]', "Test1234!");
-    await page.getByRole("button", { name: /create account|register/i }).click();
-    await expect(page).toHaveURL(/\/$|\/search/, { timeout: 10_000 });
-  });
-
   test("add product → checkout with COD → order confirmed", async ({ page }) => {
-    // Browse to a product and add to cart
-    await page.goto(`${BASE}/search`);
-    const firstProduct = page.locator("a[href^='/p/']").first();
-    await expect(firstProduct).toBeVisible({ timeout: 10_000 });
-    await firstProduct.click();
+    await addFirstProductAndCheckout(page);
+    await fillGuestDelivery(page, "Test Recipient");
 
-    // Add to cart
-    await page.getByRole("button", { name: /add to cart/i }).first().click();
-    await expect(page.getByText("Added to your cart", { exact: true })).toBeVisible({ timeout: 5_000 });
-
-    // Go to checkout
-    await page.goto(`${BASE}/checkout`);
-    await expect(page).toHaveURL(/checkout/);
-
-    // Fill delivery details
-    await page.fill('[name="recipient_name"]', "Test Recipient");
-    await page.fill('[name="recipient_phone"]', "+92 300 1234567");
-    await page.fill('[name="address_line1"]', "House 1, Street 1, Gulberg III");
-
-    // Select a city
-    const citySelect = page.locator('select[name="delivery_city_id"]');
-    if (await citySelect.count() > 0) {
-      await citySelect.selectOption({ index: 1 });
-    }
-
-    // Pick a future date (today + 2 days)
-    const future = new Date();
-    future.setDate(future.getDate() + 2);
-    const dateStr = future.toISOString().split("T")[0];
-    await page.fill('[name="delivery_date"]', dateStr);
-
-    // COD payment
     // Payment methods are radio cards: click the card, then confirm the radio is selected.
     await page.locator("label", { hasText: /cash on delivery/i }).click();
     await expect(page.getByRole("radio", { name: /cash on delivery|cod/i })).toBeChecked();
 
-    // Place order
     await page.getByRole("button", { name: /place order|confirm/i }).click();
-
-    // Should land on success page
     await expect(page).toHaveURL(/success|track/, { timeout: 20_000 });
     await expect(page.getByRole("heading", { level: 1, name: /order (is )?placed|confirmed/i })).toBeVisible({ timeout: 5_000 });
+  });
+
+  test("signed-in buyers must verify their email before ordering", async ({ page }) => {
+    await register(page, "cod");
+    await addFirstProductAndCheckout(page);
+    await expect(page.getByText(/verify your email to place this order/i)).toBeVisible();
   });
 });

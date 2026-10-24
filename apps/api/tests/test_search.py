@@ -43,9 +43,9 @@ async def _product(
         vendor_id=vendor.id, name=name, slug=f"p-{_tag()}", base_price_pkr=100000, is_active=active,
         description=f"{name} description",
     )
-    if city:
-        db.add(ProductCity(product_id=product.id, city_id=city.id, delivery_fee_pkr=20000))
-        await db.flush()
+    # Delivered in the given city, else the shop's own: the storefront hides products delivered nowhere.
+    db.add(ProductCity(product_id=product.id, city_id=city.id if city else vendor.city_id, delivery_fee_pkr=20000))
+    await db.flush()
     return product
 
 

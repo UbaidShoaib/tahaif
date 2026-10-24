@@ -6,6 +6,9 @@ from fastapi import HTTPException, status
 
 from app.models.catalog import ProductCity
 
+# Orders further out than this are almost always a mistyped year.
+MAX_ADVANCE_DAYS = 365
+
 
 def get_earliest_delivery_date(pc: ProductCity, now: datetime | None = None) -> date:
     """Return the earliest permissible delivery date for a city–product pairing."""
@@ -36,6 +39,12 @@ def validate_delivery_date(
 ) -> None:
     """Raise 422 if requested date violates lead-time or cutoff constraints."""
     earliest = get_earliest_delivery_date(pc, now)
+    latest = (now or datetime.now(UTC)).date() + timedelta(days=MAX_ADVANCE_DAYS)
+    if requested > latest:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Delivery can be booked up to a year ahead (until {latest}). Check the date.",
+        )
     if requested < earliest:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,

@@ -62,6 +62,19 @@ class CartRepository:
         result = await self._db.execute(self._with_items().where(Cart.id == cart.id))
         return result.scalar_one()
 
+    async def lock(self, cart: Cart) -> Cart:
+        """Lock the cart row, then reload its items as committed by whoever held the lock.
+
+        Two checkouts of one cart (a double tap) run one after the other; the second
+        finds the cart already emptied by the first.
+        """
+        await self._db.execute(select(Cart.id).where(Cart.id == cart.id).with_for_update())
+        self._db.expire(cart, ["items"])
+        result = await self._db.execute(
+            self._with_items().where(Cart.id == cart.id).execution_options(populate_existing=True)
+        )
+        return result.scalar_one()
+
     async def move_item(self, item: CartItem, to_cart: Cart) -> None:
         item.cart_id = to_cart.id
         await self._db.flush()

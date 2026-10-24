@@ -120,6 +120,36 @@ class OrderRepository:
             selectinload(Order.user),
         )
 
+    async def lock_idempotency_key(self, key: str) -> None:
+        """Hold a transaction lock on the key, so retries of one checkout run one at a time
+        and the later ones find the order the first one placed."""
+        await self._db.execute(select(func.pg_advisory_xact_lock(func.hashtextextended(key, 0))))
+
+    async def count_coupon_uses(
+        self, code: str, *, user_id: uuid.UUID | None, email: str | None, phone: str | None
+    ) -> int:
+        """Orders (not cancelled or refunded) this buyer placed with the coupon: by account,
+        else by the guest's email or phone."""
+        if user_id is not None:
+            who = Order.user_id == user_id
+        else:
+            matches = []
+            if email:
+                matches.append(func.lower(Order.contact_email) == email.lower())
+            if phone:
+                matches.append(Order.contact_phone == phone)
+            if not matches:
+                return 0
+            who = or_(*matches)
+        result = await self._db.execute(
+            select(func.count()).select_from(Order).where(
+                Order.coupon_code == code,
+                Order.status.not_in([OrderStatus.cancelled, OrderStatus.refunded]),
+                who,
+            )
+        )
+        return int(result.scalar_one())
+
     async def get_by_idempotency_key(self, key: str) -> Order | None:
         result = await self._db.execute(
             self._with_relations().where(Order.idempotency_key == key)

@@ -2,9 +2,9 @@ import builtins
 import uuid
 from typing import Any
 
-from sqlalchemy import func, or_, select
+from sqlalchemy import exists, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import aliased, selectinload
 
 from app.models.catalog import (
     Category,
@@ -230,9 +230,28 @@ class OccasionRepository:
         return occasion
 
 
+# Delivered to at least one city. Products without one (build-your-own parts, or
+# ones not set up yet) can't be ordered, so the storefront doesn't show them.
+_any_city = aliased(ProductCity)  # aliased: some queries also join ProductCity for a city filter
+_SELLABLE_SOMEWHERE = exists().where(_any_city.product_id == Product.id, _any_city.is_available.is_(True))
+
+
 class ProductRepository:
     def __init__(self, db: AsyncSession) -> None:
         self._db = db
+
+    async def lock_variants(self, variant_ids: builtins.list[uuid.UUID]) -> None:
+        """Lock these variants' rows and refresh their stock, so concurrent checkouts
+        can't sell the same units. Locked in id order so two carts never deadlock."""
+        if not variant_ids:
+            return
+        await self._db.execute(
+            select(ProductVariant)
+            .where(ProductVariant.id.in_(variant_ids))
+            .order_by(ProductVariant.id)
+            .with_for_update()
+            .execution_options(populate_existing=True)
+        )
 
     async def list_for_admin(
         self,
@@ -282,7 +301,7 @@ class ProductRepository:
         """
         q = self._with_relations()
         if active_only:
-            q = q.where(Product.is_active.is_(True))
+            q = q.where(Product.is_active.is_(True), _SELLABLE_SOMEWHERE)
         if vendor_id:
             q = q.where(Product.vendor_id == vendor_id)
         if category_id:
@@ -322,7 +341,7 @@ class ProductRepository:
     ) -> builtins.list[Product]:
         """Case-insensitive match on product name, description or vendor name.
 
-        Fallback for when Meilisearch is unavailable; active products only.
+        Fallback for when Meilisearch is unavailable; active products delivered somewhere.
         """
         pattern = f"%{query.strip()}%"
         q = (
@@ -330,6 +349,7 @@ class ProductRepository:
             .join(Product.vendor)
             .where(
                 Product.is_active.is_(True),
+                _SELLABLE_SOMEWHERE,
                 or_(
                     Product.name.ilike(pattern),
                     Product.description.ilike(pattern),
@@ -346,17 +366,17 @@ class ProductRepository:
         return builtins.list((await self._db.execute(q)).scalars().unique().all())
 
     async def get_active_by_ids(self, product_ids: builtins.list[uuid.UUID]) -> builtins.list[Product]:
-        """Active products for the given ids, in the order the ids were given."""
+        """Active, deliverable products for the given ids, in the order the ids were given."""
         if not product_ids:
             return []
         q = self._with_relations().where(
-            Product.id.in_(product_ids), Product.is_active.is_(True)
+            Product.id.in_(product_ids), Product.is_active.is_(True), _SELLABLE_SOMEWHERE
         )
         found = {p.id: p for p in (await self._db.execute(q)).scalars().unique().all()}
         return [found[pid] for pid in product_ids if pid in found]
 
     async def list_all_active(self) -> builtins.list[Product]:
-        q = self._with_relations().where(Product.is_active.is_(True))
+        q = self._with_relations().where(Product.is_active.is_(True), _SELLABLE_SOMEWHERE)
         return builtins.list((await self._db.execute(q)).scalars().unique().all())
 
     async def get_by_slug(self, slug: str) -> Product | None:

@@ -4,7 +4,10 @@ import uuid
 
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
+from app.models.catalog import Product
+from app.models.order import OrderItem
 from app.models.user import User
 from app.repositories.loyalty_repository import ReviewRepository
 from app.schemas.loyalty import ReviewCreate, ReviewRead
@@ -14,7 +17,18 @@ async def submit_review(
     db: AsyncSession, user: User, data: ReviewCreate
 ) -> ReviewRead:
     repo = ReviewRepository(db)
+    if await db.get(Product, data.product_id) is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Product not found")
+    if data.order_item_id is not None:
+        # Only a line of the reviewer's own order, for this product, can back a review.
+        item = await db.get(OrderItem, data.order_item_id, options=[selectinload(OrderItem.order)])
+        if item is None or item.product_id != data.product_id or item.order.user_id != user.id:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="That order item isn't one of your purchases of this product",
+            )
 
+    await repo.lock_user_product(user.id, data.product_id)
     existing = await repo.get_by_user_and_product(user.id, data.product_id)
     if existing:
         raise HTTPException(

@@ -23,13 +23,15 @@ async def _vendor_with_products(db: AsyncSession) -> tuple[Vendor, uuid.UUID]:
     """A vendor with three products; returns the vendor and a city id.
 
     Base prices: Apple 300, Banana 100, Cherry 200 (paisa).
-    In the city, Cherry is overridden to 50 and Banana is not delivered.
+    In the city, Cherry is overridden to 50 and Banana is not delivered
+    (Banana is delivered in another city, so it is still in the unfiltered list).
     """
     suffix = uuid.uuid4().hex[:6]
     user = await UserRepository(db).create(
         email=f"list_{suffix}@example.com", password_hash=hash_password("Password1"), role=UserRole.vendor
     )
     city = await CityRepository(db).create(name=f"C{suffix}", slug=f"c-{suffix}", timezone="Asia/Karachi")
+    other = await CityRepository(db).create(name=f"O{suffix}", slug=f"o-{suffix}", timezone="Asia/Karachi")
     vendor = await VendorRepository(db).create(
         city_id=city.id, owner_user_id=user.id, name=f"V{suffix}", slug=f"v-{suffix}"
     )
@@ -51,6 +53,7 @@ async def _vendor_with_products(db: AsyncSession) -> tuple[Vendor, uuid.UUID]:
                 product_id=created["Banana"].id, city_id=city.id, delivery_fee_pkr=0, lead_time_hours=24,
                 is_available=False,
             ),
+            ProductCity(product_id=created["Banana"].id, city_id=other.id, delivery_fee_pkr=0, lead_time_hours=24),
         ]
     )
     await db.flush()

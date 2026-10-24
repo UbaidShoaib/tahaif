@@ -30,6 +30,11 @@ async def test_set_occasions_shows_in_editor_and_on_occasion_page(
     client: AsyncClient, admin_headers: dict[str, str], shop: SimpleNamespace
 ) -> None:
     product = await _product(client, admin_headers, shop, "Red Roses")
+    # The storefront lists products delivered somewhere.
+    resp = await client.put(
+        f"{API}/products/{product['slug']}/cities", json=[{"city_id": shop.city_id}], headers=admin_headers
+    )
+    assert resp.status_code == 200, resp.text
     mothers = await _occasion(client, admin_headers, "Mother's Day")
     eid = await _occasion(client, admin_headers, "Eid")
     url = f"{API}/products/{product['slug']}/occasions"
