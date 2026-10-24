@@ -235,6 +235,45 @@ pre-production-cutover).
   once. Migration `0013`.
 
 ### Fixed
+Found by testing the shop as real buyers would (concurrent checkouts, a real browser):
+- **Overselling:** simultaneous checkouts could all buy the last units (50 sold against 15 in
+  stock). Checkout now locks the cart, the variants (in id order), the coupon and the loyalty
+  wallet until the order commits.
+- **Coupon limits:** a `usage_limit=1` coupon was used 8 times by concurrent orders. Fixed by the
+  lock above; cancelling an order now gives its coupon use back. New optional
+  `per_customer_limit` on coupons (`POST /admin/coupons`), e.g. 1 for a first-order code
+  (migration `0022`).
+- **Selling where the shop doesn't deliver:** a product not offered in the chosen city was
+  accepted with free delivery and no lead-time check (any date, even past). Checkout and quote now
+  return 409 when a product or size was switched off, or isn't delivered to that city
+  (`is_available` too), and refuse inactive cities. Build-your-own buckets follow their base's
+  cities. Delivery dates more than a year out are refused.
+- **Products delivered nowhere were listed:** build-your-own parts (single stems, wrap, ribbon)
+  appeared in the shop and search and could be bought alone. Listings, search and the catalog
+  feed now show only products delivered in at least one city.
+- **City prices:** the price set for a city was shown on product pages but checkout charged the
+  base price. Quote and order now use the city's price; the checkout summary shows it per line
+  (`cart_item_id` on quote lines).
+- **Delivery fee:** charged once per cart line; now once per shop (its highest fee), matching
+  the one delivery each shop makes.
+- **Loyalty on cancelled orders:** points earned stayed after cancellation, and points spent were
+  never returned. Cancelling or refunding now reverses both (ledger entries "Order cancelled: …").
+- **Idempotency keys** are scoped to the buyer (account or guest cart); another buyer's key could
+  return their order with the recipient's address. Retries with one key no longer 500 when sent
+  together, and a double-tapped *Place order* without a key now places one order, not one per tap.
+- **Build-your-own:** a bucket taken out of the cart (or the cart emptied) can be edited and added
+  again instead of staying locked; ordered buckets are marked `ordered`.
+- **Reviews:** an unknown product or order item returned 500; an order item must now be one of
+  the reviewer's own purchases of that product. Double submits no longer make duplicate reviews.
+- Bank receipts can't be uploaded to a paid, refunded or cancelled order (which reset its payment
+  to "awaiting verification").
+- Phone numbers must look like phone numbers (digits, +, spaces, dashes, brackets; 7–15 digits);
+  address lines, landmarks and review bodies have length limits.
+- Checkout explains why a city can't be priced, and no longer flashes "Your cart is empty"
+  between placing an order and the confirmation page.
+- `./start.sh` failed on a fresh clone: values with spaces in `.env.example` are now quoted.
+- Playwright specs updated for email verification after sign-up and for city availability.
+
 - `PATCH /products/{slug}` can now clear `category_id` and `description` with an explicit null.
 - Removing a product's main photo promotes the next one instead of leaving it with none.
 - Security: `POST /vendors` was open to any signed-in user, who became the owner of the new

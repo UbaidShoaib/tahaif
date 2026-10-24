@@ -285,6 +285,48 @@ describe("CheckoutPage", () => {
     expect(second?.[2]).not.toBe(first?.[2]);
   });
 
+  it("explains when a gift isn't delivered to the chosen city", async () => {
+    vi.mocked(cartApi.quote).mockRejectedValue(
+      new ApiError(409, "'Black Forest Cake' isn't delivered to Lahore. Choose another city or remove it from your cart."),
+    );
+    render(<CheckoutPage />);
+    await pickLahore();
+    expect(await screen.findByText(/isn't delivered to Lahore/)).toBeInTheDocument();
+  });
+
+  it("prices each line at the delivery city's price from the quote", async () => {
+    vi.mocked(cartApi.quote).mockResolvedValue(quote({
+      items: [{ cart_item_id: "ci1", product_name: "Black Forest Cake", variant_name: null, qty: 1,
+        unit_price_pkr: 300_000, line_total_pkr: 300_000 }],
+      subtotal_pkr: 300_000, total_pkr: 325_000,
+    }));
+    render(<CheckoutPage />);
+    await pickLahore();
+    await waitFor(() => expect(screen.getAllByText((_, el) => ns(el?.textContent) === "Rs 3,000").length).toBeGreaterThan(0));
+  });
+
+  it("keeps the checkout on screen, not an empty cart, while the success page opens", async () => {
+    vi.mocked(cartApi.place).mockResolvedValue({ id: "o1", public_token: "t1", total_pkr: 1, payment_method: "cod", items: [] } as never);
+    // The refresh after placing finds the cart empty.
+    const emptied = vi.fn(() => {
+      if (vi.mocked(cartApi.place).mock.calls.length > 0) {
+        useCartStore.setState({ cart: { ...cart, items: [], item_count: 0, subtotal_pkr: 0 } });
+      }
+      return Promise.resolve();
+    });
+    useCartStore.setState({ cart, fetchCart: emptied });
+    render(<CheckoutPage />);
+    await pickLahore();
+    await userEvent.type(screen.getByLabelText(/^Recipient name/), "Ammi");
+    await userEvent.type(screen.getByLabelText(/^Recipient phone/), "+923001234567");
+    await userEvent.type(screen.getByLabelText(/^Address/), "12 Main Boulevard");
+    await userEvent.click(screen.getByRole("button", { name: "Place Order" }));
+
+    await waitFor(() => expect(push).toHaveBeenCalledWith("/checkout/success/t1"));
+    await waitFor(() => expect(useCartStore.getState().cart?.items).toHaveLength(0));
+    expect(screen.queryByText("Your cart is empty")).not.toBeInTheDocument();
+  });
+
   it("shows each gift's card message in the summary", async () => {
     render(<CheckoutPage />);
     await screen.findByRole("option", { name: "Lahore" });

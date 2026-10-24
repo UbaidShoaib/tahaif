@@ -117,6 +117,8 @@ class Coupon(UUIDPrimaryKeyMixin, Base):
     starts_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     ends_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     usage_limit: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # How many of one buyer's (non-cancelled) orders may use it; None = no cap.
+    per_customer_limit: Mapped[int | None] = mapped_column(Integer, nullable=True)
     used_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     created_at: Mapped[datetime] = mapped_column(

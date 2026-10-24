@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.order import Order, OrderStatus, PaymentStatus
 from app.models.user import User
+from app.repositories.loyalty_repository import CouponRepository
 from app.repositories.order_repository import OrderRepository
 from app.repositories.user_repository import UserRepository
 from app.schemas.audit import AuditEntryRead
@@ -26,6 +27,7 @@ from app.schemas.order import (
 from app.services import (
     audit_service,
     checkout_service,
+    loyalty_service,
     order_status,
     proof_service,
     social_order_service,
@@ -244,6 +246,11 @@ async def set_status(db: AsyncSession, actor: User, order_id: uuid.UUID, new_sta
     order.status = new_status
     if new_status == OrderStatus.cancelled:
         await _restock(db, actor, order)
+        await _release_coupon(db, order)
+    if new_status in (OrderStatus.cancelled, OrderStatus.refunded) and order.user_id:
+        points = await loyalty_service.reverse_for_order(db, order.user_id, order.id)
+        if points:
+            await audit_service.record(db, actor, "order.points_reversed", "order", order.id, after={"points": points})
     await db.flush()
     await audit_service.record(
         db, actor, "order.status_changed", "order", order.id, before=before, after=audit_service.snapshot(order, ["status"])
@@ -261,6 +268,15 @@ async def _restock(db: AsyncSession, actor: User, order: Order) -> None:
             returned.append({"variant": v.name, "qty": item.qty, "stock_now": v.stock_qty})
     if returned:
         await audit_service.record(db, actor, "order.restocked", "order", order.id, after={"items": returned})
+
+
+async def _release_coupon(db: AsyncSession, order: Order) -> None:
+    """A cancelled order gives its coupon use back, so a limited code isn't used up by it."""
+    if not order.coupon_code:
+        return
+    coupon = await CouponRepository(db).get_by_code(order.coupon_code, for_update=True)
+    if coupon and coupon.used_count > 0:
+        coupon.used_count -= 1
 
 
 async def verify_payment(db: AsyncSession, actor: User, order_id: uuid.UUID, verified: bool) -> Order:

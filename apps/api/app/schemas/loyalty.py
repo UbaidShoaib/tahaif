@@ -29,7 +29,7 @@ class ReviewCreate(BaseModel):
     order_item_id: uuid.UUID | None = None
     rating: int = Field(ge=1, le=5)
     title: str | None = Field(default=None, max_length=255)
-    body: str | None = None
+    body: str | None = Field(default=None, max_length=5000)
 
 
 class ReviewRead(BaseModel):

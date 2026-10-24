@@ -6,10 +6,13 @@ from typing import TYPE_CHECKING
 
 import structlog
 from fastapi import HTTPException, UploadFile, status
+from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
 from app.integrations.s3_client import upload_proof
+from app.models.bucket import BucketStatus, CustomBucket
+from app.models.catalog import City
 from app.models.loyalty import Coupon, CouponType
 from app.models.order import (
     CartItem,
@@ -41,7 +44,12 @@ from app.services import (
     proof_service,
     thanks_service,
 )
-from app.services.cart_service import CartOwner, _unit_price, bucket_contents
+from app.services.cart_service import (
+    CartOwner,
+    _unit_price,
+    bucket_contents,
+    bucket_id_of,
+)
 
 logger = structlog.get_logger()
 settings = get_settings()
@@ -80,6 +88,60 @@ def _bad_request(detail: str) -> HTTPException:
     return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=detail)
 
 
+@dataclass
+class _Line:
+    """A cart line checked against the delivery city, priced for it."""
+
+    cart_item: CartItem
+    product: "Product"
+    variant: "ProductVariant | None"
+    pc: "ProductCity"
+    unit_pkr: int
+
+    @property
+    def total_pkr(self) -> int:
+        return self.unit_pkr * self.cart_item.qty
+
+
+def _sellable_line(cart_item: CartItem, city: City) -> _Line:
+    """The line priced for ``city``, or 409 when it can't be sold there now: the product
+    or size was switched off after it went in the cart, or the shop doesn't deliver
+    this product to that city."""
+    product = cart_item.product
+    variant = (
+        next((v for v in product.variants if v.id == cart_item.variant_id), None) if cart_item.variant_id else None
+    )
+    if not product.is_active or (cart_item.variant_id and (variant is None or not variant.is_active)):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"'{product.name}' is no longer available. Remove it from your cart to continue.",
+        )
+    pc = next((p for p in product.product_cities if p.city_id == city.id), None)
+    if pc is None or not pc.is_available:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"'{product.name}' isn't delivered to {city.name}. "
+            "Choose another city or remove it from your cart.",
+        )
+    return _Line(cart_item, product, variant, pc, _unit_price(product, variant, cart_item.customization, pc))
+
+
+def _delivery_pkr(lines: list[_Line]) -> int:
+    """One delivery per shop (one fulfillment each): the highest fee among its lines."""
+    fees: dict[uuid.UUID, int] = {}
+    for line in lines:
+        vendor_id = line.product.vendor_id
+        fees[vendor_id] = max(fees.get(vendor_id, 0), line.pc.delivery_fee_pkr)
+    return sum(fees.values())
+
+
+async def _active_city(db: AsyncSession, city_id: uuid.UUID) -> City:
+    city = await CityRepository(db).get_by_id(city_id)
+    if not city or not city.is_active:
+        raise _CITY_NOT_FOUND
+    return city
+
+
 # Paid in rupees in Pakistan: cash at the door, or a transfer to a PKR account.
 _LOCAL_METHODS = frozenset({PaymentMethod.cod, PaymentMethod.bank_transfer})
 
@@ -93,16 +155,24 @@ async def _price(
     use_loyalty_points: bool,
     now: datetime,
     payment_method: PaymentMethod,
+    *,
+    lock: bool = False,
+    contact_email: str | None = None,
+    contact_phone: str | None = None,
 ) -> _Pricing:
     """Apply coupon, loyalty burn and currency. Shared by quote and place_order
     so the buyer previews exactly what they will be charged.
 
     Local methods always charge PKR; only card-style methods charge in the
-    buyer's preferred currency (when a rate is known)."""
+    buyer's preferred currency (when a rate is known).
+
+    ``lock`` (placing an order) locks the coupon and the wallet rows until the order
+    commits, so concurrent checkouts can't overrun a usage limit or spend the same
+    points twice."""
     coupon: Coupon | None = None
     coupon_discount = 0
     if coupon_code:
-        coupon = await CouponRepository(db).get_by_code(coupon_code.strip().upper())
+        coupon = await CouponRepository(db).get_by_code(coupon_code.strip().upper(), for_update=lock)
         if not coupon or not coupon.is_active:
             raise _bad_request("Invalid coupon code")
         if coupon.starts_at and coupon.starts_at > now:
@@ -111,6 +181,16 @@ async def _price(
             raise _bad_request("Coupon has expired")
         if coupon.usage_limit is not None and coupon.used_count >= coupon.usage_limit:
             raise _bad_request("Coupon usage limit reached")
+        if coupon.per_customer_limit is not None:
+            used = await OrderRepository(db).count_coupon_uses(
+                coupon.code, user_id=user.id if user else None, email=contact_email, phone=contact_phone
+            )
+            if used >= coupon.per_customer_limit:
+                raise _bad_request(
+                    "You've already used this coupon"
+                    if coupon.per_customer_limit == 1
+                    else f"This coupon can be used on {coupon.per_customer_limit} orders per customer"
+                )
         if coupon.min_order_pkr and subtotal_pkr < coupon.min_order_pkr:
             raise _bad_request(
                 f"Minimum order of PKR {coupon.min_order_pkr / 100:,.0f} required for this coupon"
@@ -127,7 +207,7 @@ async def _price(
     if use_loyalty_points:
         if user is None:
             raise _bad_request("Sign in to use your loyalty points")
-        wallet = await LoyaltyRepository(db).get_wallet(user.id)
+        wallet = await LoyaltyRepository(db).get_wallet(user.id, for_update=lock)
         remaining = subtotal_pkr + delivery_pkr - coupon_discount
         if wallet and wallet.balance_points > 0 and remaining > 0:
             points_used = min(wallet.balance_points, remaining // loyalty_service.POINT_VALUE_PAISA)
@@ -163,34 +243,23 @@ async def quote(
     cart, _ = await cart_service.resolve_cart(
         db, CartOwner(user_id=user.id if user else None, guest_token=guest_token), create=False
     )
-    cart_read = cart_service.cart_to_read(cart)
-    if not cart_read.items:
+    if not cart or not cart.items:
         raise _EMPTY_CART
 
-    city_repo = CityRepository(db)
-    city = await city_repo.get_by_id(city_id)
-    if not city:
-        raise _CITY_NOT_FOUND
-
-    prod_repo = ProductRepository(db)
-    line_items: list[QuoteLineItem] = []
-    delivery_pkr = 0
-
-    for cart_item in cart_read.items:
-        product = await prod_repo.get_by_id(cart_item.product_id)
-        if not product:
-            continue
-        pc = next((p for p in product.product_cities if p.city_id == city_id), None)
-        delivery_fee = pc.delivery_fee_pkr if pc else 0
-        delivery_pkr += delivery_fee
-
-        line_items.append(QuoteLineItem(
-            product_name=cart_item.product_name,
-            variant_name=cart_item.variant_name,
-            qty=cart_item.qty,
-            unit_price_pkr=cart_item.unit_price_pkr,
-            line_total_pkr=cart_item.line_total_pkr,
-        ))
+    city = await _active_city(db, city_id)
+    lines = [_sellable_line(ci, city) for ci in cart.items]
+    delivery_pkr = _delivery_pkr(lines)
+    line_items = [
+        QuoteLineItem(
+            cart_item_id=line.cart_item.id,
+            product_name=line.product.name,
+            variant_name=line.variant.name if line.variant else None,
+            qty=line.cart_item.qty,
+            unit_price_pkr=line.unit_pkr,
+            line_total_pkr=line.total_pkr,
+        )
+        for line in lines
+    ]
 
     subtotal = sum(li.line_total_pkr for li in line_items)
     pricing = await _price(
@@ -229,11 +298,11 @@ async def place_order(
     """
     cart_repo = CartRepository(db)
     order_repo = OrderRepository(db)
-    city_repo = CityRepository(db)
     prod_repo = ProductRepository(db)
 
     # ── Idempotency check ──────────────────────────────────────────────────────
     if idempotency_key:
+        await order_repo.lock_idempotency_key(idempotency_key)
         existing = await order_repo.get_by_idempotency_key(idempotency_key)
         if existing:
             return _order_to_read(existing)
@@ -253,50 +322,37 @@ async def place_order(
     cart, _ = await cart_service.resolve_cart(
         db, CartOwner(user_id=user.id if user else None, guest_token=guest_token), create=False
     )
-    if not cart or not cart.items:
+    if not cart:
+        raise _EMPTY_CART
+    cart = await cart_repo.lock(cart)
+    if not cart.items:
         raise _EMPTY_CART
 
-    city = await city_repo.get_by_id(body.delivery_city_id)
-    if not city:
-        raise _CITY_NOT_FOUND
+    city = await _active_city(db, body.delivery_city_id)
 
-    # ── Stock validation (must happen before any writes) ──────────────────────
+    # ── Availability, stock and dates (must happen before any writes) ─────────
+    await prod_repo.lock_variants([ci.variant_id for ci in cart.items if ci.variant_id])
     now = datetime.now(UTC)
-    item_details: list[tuple[CartItem, Product, ProductVariant | None, int, ProductCity | None]] = []
-
-    for cart_item in cart.items:
-        product = await prod_repo.get_by_id(cart_item.product_id)
-        if not product:
-            continue
-        variant = (
-            next((v for v in product.variants if v.id == cart_item.variant_id), None)
-            if cart_item.variant_id
-            else None
-        )
-        if variant and not variant.has_stock(cart_item.qty):
+    lines = [_sellable_line(ci, city) for ci in cart.items]
+    for line in lines:
+        if line.variant and not line.variant.has_stock(line.cart_item.qty):
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
-                detail=f"'{product.name}' ({variant.name}) is out of stock "
-                       f"(available: {variant.stock_qty}, requested: {cart_item.qty})",
+                detail=f"'{line.product.name}' ({line.variant.name}) is out of stock "
+                       f"(available: {line.variant.stock_qty}, requested: {line.cart_item.qty})",
             )
-
-        pc = next((p for p in product.product_cities if p.city_id == body.delivery_city_id), None)
-
-        # Delivery date validation
-        if pc:
-            delivery_service.validate_delivery_date(pc, body.delivery_date, product.name, now)
-
-        unit = _unit_price(product, variant, cart_item.customization)
-        item_details.append((cart_item, product, variant, unit, pc))
+        delivery_service.validate_delivery_date(line.pc, body.delivery_date, line.product.name, now)
 
     # ── Calculate totals ───────────────────────────────────────────────────────
-    subtotal_pkr = sum(unit * ci.qty for ci, _, _, unit, _ in item_details)
-    delivery_pkr = sum(pc.delivery_fee_pkr for _, _, _, _, pc in item_details if pc)
-    vendor_ids: set[uuid.UUID] = {p.vendor_id for _, p, _, _, _ in item_details}
+    subtotal_pkr = sum(line.total_pkr for line in lines)
+    delivery_pkr = _delivery_pkr(lines)
+    vendor_ids: set[uuid.UUID] = {line.product.vendor_id for line in lines}
 
     pricing = await _price(
         db, user, subtotal_pkr, delivery_pkr, body.coupon_code, body.use_loyalty_points, now,
-        body.payment_method,
+        body.payment_method, lock=True,
+        contact_email=None if user or not body.contact_email else str(body.contact_email),
+        contact_phone=None if user else body.contact_phone,
     )
     applied_coupon = pricing.coupon
     discount_pkr = pricing.discount_pkr
@@ -343,16 +399,16 @@ async def place_order(
         fulfillment_map[vendor_id] = fulfillment.id
 
     # ── Order items + stock decrement ──────────────────────────────────────────
-    for cart_item, product, variant, unit, _ in item_details:
-        fulfillment_id = fulfillment_map.get(product.vendor_id)
+    for line in lines:
+        cart_item, variant = line.cart_item, line.variant
         await order_repo.add_item(
             order_id=order.id,
-            fulfillment_id=fulfillment_id,
+            fulfillment_id=fulfillment_map.get(line.product.vendor_id),
             product_id=cart_item.product_id,
             variant_id=cart_item.variant_id,
             qty=cart_item.qty,
-            unit_price_pkr=unit,
-            line_total_pkr=unit * cart_item.qty,
+            unit_price_pkr=line.unit_pkr,
+            line_total_pkr=line.total_pkr,
             greeting_message=cart_item.greeting_message,
             customization=cart_item.customization,
         )
@@ -360,6 +416,12 @@ async def place_order(
             # Sold out stays switched on: restocking brings it straight back.
             variant.stock_qty = max(0, variant.stock_qty - cart_item.qty)
             await db.flush()
+
+    bucket_ids = [bucket_id for ci in cart.items if (bucket_id := bucket_id_of(ci))]
+    if bucket_ids:
+        await db.execute(
+            update(CustomBucket).where(CustomBucket.id.in_(bucket_ids)).values(status=BucketStatus.ORDERED)
+        )
 
     # ── Payment record ─────────────────────────────────────────────────────────
     pay_status = (
@@ -509,6 +571,7 @@ def _order_to_read(order: Order) -> OrderRead:
 # ── Bank-transfer receipts ─────────────────────────────────────────────────────
 
 MAX_PROOF_BYTES = 10 * 1024 * 1024
+_SETTLED_PAYMENTS = frozenset({PaymentStatus.paid, PaymentStatus.refunded})
 
 
 async def upload_transfer_proof(
@@ -553,6 +616,12 @@ async def attach_transfer_proof(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Proof upload is only for bank transfer orders",
+        )
+    if payment.status in _SETTLED_PAYMENTS or order.status in (OrderStatus.cancelled, OrderStatus.refunded):
+        # A new receipt would send a settled order back to "awaiting verification".
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="This order's payment is already settled, so no receipt is needed",
         )
 
     url = await upload_proof(order_id=str(order.id), filename=filename, data=data, content_type=content_type)

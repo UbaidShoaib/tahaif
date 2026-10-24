@@ -64,8 +64,12 @@ async def checkout_place(
     x_cart_token: CartToken = None,
 ) -> OrderRead:
     """Place the order. Guests must include `contact_email` and `contact_phone`."""
-    # Hash the raw key so that the stored value has a consistent length
-    hashed_key = hashlib.sha256(idempotency_key.encode()).hexdigest()[:64] if idempotency_key else None
+    # Keys are scoped to the buyer (account, else guest cart), so one buyer's key can
+    # never return another buyer's order. Hashed so the stored value has a fixed length.
+    owner = f"user:{user.id}" if user else f"guest:{x_cart_token or ''}"
+    hashed_key = (
+        hashlib.sha256(f"{owner}:{idempotency_key}".encode()).hexdigest()[:64] if idempotency_key else None
+    )
     return await checkout_service.place_order(db, user, body, hashed_key, guest_token=x_cart_token)
 
 

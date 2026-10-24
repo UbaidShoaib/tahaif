@@ -3,6 +3,8 @@ from datetime import date
 
 from pydantic import BaseModel, Field
 
+from app.core.phone import OptionalTypedPhone
+
 
 class CartItemAdd(BaseModel):
     product_id: uuid.UUID
@@ -11,7 +13,7 @@ class CartItemAdd(BaseModel):
     delivery_date: date | None = None
     greeting_message: str | None = Field(default=None, max_length=500)
     recipient_name: str | None = Field(default=None, max_length=255)
-    recipient_phone: str | None = Field(default=None, max_length=30)
+    recipient_phone: OptionalTypedPhone = Field(default=None, max_length=30)
 
 
 class CartItemUpdate(BaseModel):
@@ -19,7 +21,7 @@ class CartItemUpdate(BaseModel):
     delivery_date: date | None = None
     greeting_message: str | None = Field(default=None, max_length=500)
     recipient_name: str | None = Field(default=None, max_length=255)
-    recipient_phone: str | None = Field(default=None, max_length=30)
+    recipient_phone: OptionalTypedPhone = Field(default=None, max_length=30)
 
 
 class CartItemRead(BaseModel):

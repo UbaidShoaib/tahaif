@@ -1,6 +1,5 @@
 import { test, expect } from "@playwright/test";
-
-const BASE = process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3000";
+import { BASE, addFirstProductAndCheckout, fillGuestDelivery } from "./helpers";
 
 test.describe("Order tracking", () => {
   test("tracking page shows order details for valid token", async ({ page }) => {
@@ -23,32 +22,8 @@ test.describe("Order tracking", () => {
   });
 
   test("tracking page renders correctly with real order", async ({ page }) => {
-    // Register and place an order, then track it
-    const email = `track_${Date.now()}@example.com`;
-    await page.goto(`${BASE}/register`);
-    await page.fill('[name="full_name"]', "Track Tester");
-    await page.fill('[name="email"]', email);
-    await page.fill('[name="password"]', "Test1234!");
-    await page.getByRole("button", { name: /create account|register/i }).click();
-    await expect(page).toHaveURL(/\/$|\/search/, { timeout: 10_000 });
-
-    // Add to cart and place order
-    await page.goto(`${BASE}/search`);
-    await page.locator("a[href^='/p/']").first().click();
-    await page.getByRole("button", { name: /add to cart/i }).first().click();
-    // Wait for the add to finish before leaving the page, or checkout can load an empty cart.
-    await expect(page.getByText("Added to your cart", { exact: true })).toBeVisible({ timeout: 5_000 });
-    await page.goto(`${BASE}/checkout`);
-    await page.fill('[name="recipient_name"]', "Track Recipient");
-    await page.fill('[name="recipient_phone"]', "+92 333 1111111");
-    await page.fill('[name="address_line1"]', "Plot 10, Bahria Town");
-
-    const citySelect = page.locator('select[name="delivery_city_id"]');
-    if (await citySelect.count() > 0) await citySelect.selectOption({ index: 1 });
-
-    const future = new Date();
-    future.setDate(future.getDate() + 2);
-    await page.fill('[name="delivery_date"]', future.toISOString().split("T")[0]);
+    await addFirstProductAndCheckout(page);
+    await fillGuestDelivery(page, "Track Recipient");
     await page.locator("label", { hasText: /cash on delivery/i }).click();
     await page.getByRole("button", { name: /place order|confirm/i }).click();
 

@@ -6,6 +6,7 @@ from unittest.mock import AsyncMock, patch
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.models.catalog import ProductCity
 from app.models.user import User, UserRole
 from app.repositories.catalog_repository import (
     CategoryRepository,
@@ -585,6 +586,7 @@ async def test_list_products_with_occasion_filter(db: AsyncSession) -> None:
     product = await ProductRepository(db).create(
         vendor_id=vendor.id, name="Occ Product", slug=p_slug, base_price_pkr=100
     )
+    db.add(ProductCity(product_id=product.id, city_id=city.id))  # listed only where it's delivered
     await db.execute(
         insert(product_occasions_table).values(product_id=product.id, occasion_id=occasion.id)
     )

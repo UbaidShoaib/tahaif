@@ -86,7 +86,10 @@ class CouponCreate(BaseModel):
     coupon_type: CouponType
     value: Decimal = Field(gt=0)
     min_order_pkr: int | None = None
-    usage_limit: int | None = None
+    usage_limit: int | None = Field(default=None, ge=1)
+    per_customer_limit: int | None = Field(
+        default=None, ge=1, description="How many orders one buyer may use it on; 1 for a first-order code"
+    )
     ends_at: datetime | None = None
 
 
@@ -424,6 +427,7 @@ async def list_coupons(_admin: AdminUser, db: DB) -> list[dict[str, Any]]:
             "value": str(c.value),
             "used_count": c.used_count,
             "usage_limit": c.usage_limit,
+            "per_customer_limit": c.per_customer_limit,
             "is_active": c.is_active,
             "ends_at": c.ends_at.isoformat() if c.ends_at else None,
         }
@@ -440,6 +444,7 @@ async def create_coupon(body: CouponCreate, admin: AdminUser, db: DB) -> dict[st
         value=body.value,
         min_order_pkr=body.min_order_pkr,
         usage_limit=body.usage_limit,
+        per_customer_limit=body.per_customer_limit,
         ends_at=body.ends_at,
     )
     await audit_service.record(

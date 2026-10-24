@@ -71,6 +71,8 @@ export interface CheckoutPlace {
 }
 
 export interface QuoteLineItem {
+  /** The cart line this prices (city prices can differ from the cart's). */
+  cart_item_id?: string | null;
   product_name: string;
   variant_name: string | null;
   qty: number;

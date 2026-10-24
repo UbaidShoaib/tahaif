@@ -1,19 +1,13 @@
 import { test, expect } from "@playwright/test";
-
-const BASE = process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3000";
+import { BASE, register } from "./helpers";
 
 test.describe("Auth flow", () => {
-  const email = `e2e_${Date.now()}@example.com`;
   const password = "Test1234!";
 
-  test("register → login → logout cycle", async ({ page }) => {
-    // Register
-    await page.goto(`${BASE}/register`);
-    await page.fill('[name="full_name"]', "E2E Tester");
-    await page.fill('[name="email"]', email);
-    await page.fill('[name="password"]', password);
-    await page.getByRole("button", { name: /create account|register/i }).click();
-    await expect(page).toHaveURL(/\/$|\/search/, { timeout: 10_000 });
+  test("register → verify later → logout → login cycle", async ({ page }) => {
+    const email = await register(page, "e2e", password);
+    await page.getByRole("link", { name: /do this later/i }).click();
+    await expect(page).not.toHaveURL(/verify-email|register/, { timeout: 10_000 });
 
     // Logout
     await page.getByRole("button", { name: /log ?out|sign out/i }).click();
@@ -24,7 +18,7 @@ test.describe("Auth flow", () => {
     await page.fill('[name="email"]', email);
     await page.fill('[name="password"]', password);
     await page.getByRole("button", { name: /login|sign in/i }).click();
-    await expect(page).toHaveURL(/\/$|\/search/, { timeout: 10_000 });
+    await expect(page).not.toHaveURL(/login/, { timeout: 10_000 });
   });
 
   test("wrong password shows error", async ({ page }) => {
