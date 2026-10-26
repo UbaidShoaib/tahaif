@@ -325,9 +325,8 @@ describe("CheckoutPage", () => {
     useCartStore.setState({ cart, fetchCart: emptied });
     render(<CheckoutPage />);
     await pickLahore();
-    await userEvent.type(screen.getByLabelText(/^Recipient name/), "Ammi");
-    await userEvent.type(screen.getByLabelText(/^Recipient phone/), "+923001234567");
-    await userEvent.type(screen.getByLabelText(/^Address/), "12 Main Boulevard");
+    await fillRecipient();
+    await toPayment();
     await userEvent.click(screen.getByRole("button", { name: "Place Order" }));
 
     await waitFor(() => expect(push).toHaveBeenCalledWith("/checkout/success/t1"));
