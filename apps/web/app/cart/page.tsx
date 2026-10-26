@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect } from "react";
-import { ArrowRight, Gift, Trash2 } from "lucide-react";
+import { ArrowRight, CalendarDays, Gift, Trash2 } from "lucide-react";
 import { useCartStore } from "@/stores/cart.store";
 import { useAuthStore } from "@/stores/auth.store";
 import { CartItemRow } from "@/components/cart/CartItemRow";
@@ -11,6 +11,10 @@ import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Price } from "@/components/money/Price";
+import { groupByRecipient } from "@/lib/cart-groups";
+import { formatDeliveryDay } from "@/lib/delivery";
+
+const TZ = "Asia/Karachi";
 
 export default function CartPage() {
   const { user } = useAuthStore();
@@ -81,15 +85,36 @@ export default function CartPage() {
       </div>
 
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-3 lg:gap-12">
-        {/* Items: open rows with hairlines, not a box */}
-        <ul className="divide-y border-y lg:col-span-2">
-          {cart.items.map((item) => (
-            <li key={item.id} className="py-2">
-              <CartItemRow item={item} />
-              <GreetingEditor item={item} />
-            </li>
+        {/* Layout decision (cart A): one card per recipient and day, the way the gifts ship. */}
+        <div className="space-y-4 lg:col-span-2">
+          {groupByRecipient(cart.items).map((group) => (
+            <section
+              key={group.key}
+              aria-label={group.recipientName ? `For ${group.recipientName}` : "Gifts"}
+              className="rounded-2xl border p-4 sm:p-5"
+            >
+              <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 border-b pb-3">
+                <h2 className="font-display text-lg">
+                  {group.recipientName ? `For ${group.recipientName}` : "Who it's for: add at checkout"}
+                </h2>
+                <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                  <CalendarDays aria-hidden className="h-4 w-4" />
+                  {group.deliveryDate
+                    ? `Arrives ${formatDeliveryDay(group.deliveryDate, TZ)}`
+                    : "Delivery day chosen at checkout"}
+                </p>
+              </div>
+              <ul className="divide-y">
+                {group.items.map((item) => (
+                  <li key={item.id} className="py-1">
+                    <CartItemRow item={item} />
+                    <GreetingEditor item={item} />
+                  </li>
+                ))}
+              </ul>
+            </section>
           ))}
-        </ul>
+        </div>
 
         {/* Summary: one soft panel */}
         <div className="lg:col-span-1">
