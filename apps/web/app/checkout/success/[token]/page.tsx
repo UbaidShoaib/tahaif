@@ -35,6 +35,12 @@ export default async function SuccessPage({
   }
 
   const isBank = order.payment_method === "bank_transfer";
+  // "Ammi's gift is booked for Monday 2 November." from the first delivery.
+  const first = order.fulfillments[0];
+  const forWhom = first?.recipient_name ? `${first.recipient_name}'s gift` : "Your gift";
+  const headline = first
+    ? `Thank you. ${forWhom} is booked for ${formatCalendarDate(first.delivery_date, { weekday: "long", day: "numeric", month: "long" })}.`
+    : "Thank you. Your order is placed.";
 
   const placedDate = new Date(order.placed_at).toLocaleDateString("en-PK", {
     day: "numeric",
@@ -46,29 +52,33 @@ export default async function SuccessPage({
 
   return (
     <div className="container mx-auto px-4 py-12 max-w-2xl">
-      {/* Success banner */}
-      <div className="mb-6 space-y-3 rounded-2xl border border-success/30 bg-success-soft px-6 py-8 text-center">
-        <CheckCircle aria-hidden className="mx-auto h-12 w-12 text-success" />
-        <h1 className="text-h1">
-          {isBank ? "Order placed — one more step" : "Thank you! Your order is placed"}
-        </h1>
-        <p className="text-sm text-foreground-secondary">
-          {isBank
-            ? "Transfer the total and upload your receipt below so we can start preparing your gift."
-            : "We'll confirm with the shop and let you know as your gift is prepared and delivered."}
+      {/* Layout decision (confirmation A, next-step card): thanks, then the one thing left to do. */}
+      <header className="mb-6 space-y-2">
+        <p className="flex items-center gap-1.5 text-sm font-medium text-success">
+          <CheckCircle aria-hidden className="h-4 w-4" />
+          Order <span className="font-mono">{orderNumber(String(order.public_token))}</span> placed
         </p>
-        <p className="inline-block rounded-lg bg-background px-3 py-1.5 text-sm">
-          Order number <strong className="font-mono">{orderNumber(String(order.public_token))}</strong>
-        </p>
-      </div>
+        <h1 className="text-h1">{headline}</h1>
+        <span aria-hidden className="block h-px w-12 bg-gold" />
+      </header>
 
-      {/* Bank transfer: the next action, so it comes first */}
-      {isBank && (
+      {isBank ? (
         <BankTransferPanel
           orderId={String(order.id)}
           publicToken={String(order.public_token)}
           totalPkr={order.total_pkr}
+          title="One step left: send your transfer"
         />
+      ) : (
+        <section aria-labelledby="pay-heading" className="mb-6 space-y-2 rounded-xl border border-success/30 bg-success-soft p-5">
+          <h2 id="pay-heading" className="text-h3">
+            Nothing more to do
+          </h2>
+          <p className="text-sm text-foreground-secondary">
+            Cash is paid to the rider on delivery. Share the tracking link so family can follow along.
+          </p>
+          <ShareTracking publicToken={String(order.public_token)} />
+        </section>
       )}
 
       {/* What happens next */}
@@ -82,10 +92,12 @@ export default async function SuccessPage({
           <li>A rider delivers it and calls the recipient on arrival.</li>
           {!isBank && <li>The recipient pays the rider in cash, unless you&apos;ve already paid.</li>}
         </ol>
-        <div className="mt-4 flex flex-wrap items-center gap-3 border-t pt-4">
-          <span className="text-sm font-medium">Share the tracking link:</span>
-          <ShareTracking publicToken={String(order.public_token)} />
-        </div>
+        {isBank && (
+          <div className="mt-4 flex flex-wrap items-center gap-3 border-t pt-4">
+            <span className="text-sm font-medium">Share the tracking link:</span>
+            <ShareTracking publicToken={String(order.public_token)} />
+          </div>
+        )}
       </section>
 
       {/* Order details */}
