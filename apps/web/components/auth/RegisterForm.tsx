@@ -66,7 +66,7 @@ export function RegisterForm() {
   return (
     <div className="space-y-4">
       <div className="space-y-1 text-center">
-        <h1 className="text-2xl font-bold">Create your account</h1>
+        <h1 className="font-display text-h2">Create your account</h1>
         <p className="text-sm text-muted-foreground">Join {brand.name} and send gifts across Pakistan</p>
       </div>
 

@@ -52,7 +52,7 @@ export function LoginForm() {
   return (
     <div className="space-y-4">
       <div className="space-y-1 text-center">
-        <h1 className="text-2xl font-bold">Welcome back</h1>
+        <h1 className="font-display text-h2">Welcome back</h1>
         <p className="text-sm text-muted-foreground">Sign in to your {brand.name} account</p>
       </div>
 
@@ -89,9 +89,9 @@ export function LoginForm() {
       </form>
 
       <p className="text-center text-sm text-muted-foreground">
-        Don&apos;t have an account?{" "}
+        New here?{" "}
         <Link href="/register" className="text-link hover:underline font-medium">
-          Sign up
+          Create an account
         </Link>
       </p>
     </div>
