@@ -45,6 +45,13 @@ function makeProduct(overrides: Partial<Product> = {}): Product {
   };
 }
 
+/** Steps through the buy box to the last step, where Add to Cart lives. */
+async function continueToCard() {
+  for (let b = screen.queryByRole("button", { name: "Continue" }); b; b = screen.queryByRole("button", { name: "Continue" })) {
+    await userEvent.click(b);
+  }
+}
+
 describe("VariantPicker", () => {
   const addItem = vi.fn();
 
@@ -58,7 +65,7 @@ describe("VariantPicker", () => {
   it("selects the first active variant by default and shows its price", () => {
     vi.mocked(useAuthStore).mockReturnValue({ user: { id: "u1" } });
     render(<VariantPicker product={makeProduct()} />);
-    expect(screen.getByText(/Selected: 1lb/)).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: "1lb" })).toBeChecked();
     expect(screen.getAllByText(/2,000/).length).toBeGreaterThan(0);
   });
 
@@ -78,7 +85,7 @@ describe("VariantPicker", () => {
     })} />);
 
     await userEvent.click(screen.getByRole("radio", { name: "2lb" }));
-    expect(screen.getByText(/Selected: 2lb/)).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: "2lb" })).toBeChecked();
     expect(screen.getAllByText(/2,500/).length).toBeGreaterThan(0);
   });
 
@@ -86,6 +93,7 @@ describe("VariantPicker", () => {
     vi.mocked(useAuthStore).mockReturnValue({ user: null });
     addItem.mockResolvedValue(undefined);
     render(<VariantPicker product={makeProduct()} />);
+    await continueToCard();
 
     await userEvent.click(screen.getByRole("button", { name: "Add to Cart" }));
 
@@ -97,6 +105,7 @@ describe("VariantPicker", () => {
     vi.mocked(useAuthStore).mockReturnValue({ user: { id: "u1" } });
     addItem.mockResolvedValue(undefined);
     render(<VariantPicker product={makeProduct()} />);
+    await continueToCard();
 
     await userEvent.click(screen.getByRole("button", { name: "Add to Cart" }));
 
@@ -111,7 +120,7 @@ describe("VariantPicker", () => {
     );
   });
 
-  it("disables the add-to-cart button when the selected variant is out of stock", () => {
+  it("disables the add-to-cart button when the selected variant is out of stock", async () => {
     vi.mocked(useAuthStore).mockReturnValue({ user: { id: "u1" } });
     render(
       <VariantPicker
@@ -122,6 +131,7 @@ describe("VariantPicker", () => {
         })}
       />,
     );
+    await continueToCard();
     expect(screen.getByRole("button", { name: "Out of Stock" })).toBeDisabled();
   });
 
@@ -130,6 +140,7 @@ describe("VariantPicker", () => {
     vi.mocked(useAuthStore).mockReturnValue({ user: { id: "u1" } });
     addItem.mockRejectedValue(new Error("Cart service unavailable"));
     render(<VariantPicker product={makeProduct()} />);
+    await continueToCard();
     await userEvent.click(screen.getByRole("button", { name: /add to cart/i }));
     expect(await screen.findByRole("alert")).toHaveTextContent("Cart service unavailable");
   });
@@ -150,5 +161,26 @@ describe("VariantPicker", () => {
     await userEvent.click(screen.getByRole("radio", { name: "2lb" }));
     expect(screen.getByRole("radio", { name: "2lb" })).toBeChecked();
     expect(screen.getByRole("radio", { name: "1lb" })).not.toBeChecked();
+  });
+});
+
+describe("VariantPicker steps", () => {
+  beforeEach(() => {
+    vi.mocked(useAuthStore).mockReturnValue({ user: null });
+    vi.mocked(useCartStore).mockReturnValue({ addItem: vi.fn() });
+  });
+
+  it("opens one step at a time and lets a finished step be reopened", async () => {
+    render(<VariantPicker product={makeProduct()} />);
+    expect(screen.getByRole("radio", { name: "1lb" })).toBeVisible();
+    expect(screen.queryByRole("textbox", { name: /Greeting card message/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Add to Cart" })).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Continue" }));
+    expect(screen.getByRole("textbox", { name: /Greeting card message/ })).toBeVisible();
+    expect(screen.queryByRole("radio", { name: "1lb" })).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: /1 · Size.*1lb/ }));
+    expect(screen.getByRole("radio", { name: "1lb" })).toBeVisible();
   });
 });
