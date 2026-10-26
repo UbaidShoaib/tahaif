@@ -72,6 +72,14 @@ describe("CheckoutPage", () => {
     global.fetch = originalFetch;
   });
 
+  async function fillRecipient() {
+    await userEvent.type(screen.getByLabelText(/^Recipient name/), "Ammi");
+    await userEvent.type(screen.getByLabelText(/^Recipient phone/), "+923001234567");
+    await userEvent.type(screen.getByLabelText(/^Address/), "12 Main Boulevard");
+  }
+
+  const toPayment = () => userEvent.click(screen.getByRole("button", { name: "Continue to payment" }));
+
   async function pickLahore() {
     await screen.findByRole("option", { name: "Lahore" });
     await userEvent.selectOptions(screen.getByLabelText(/^Delivery city/), "city-lhr");
@@ -185,9 +193,8 @@ describe("CheckoutPage", () => {
     await pickLahore();
     await userEvent.type(screen.getByLabelText("Coupon code"), "eid10");
     await userEvent.click(screen.getByRole("button", { name: "Apply" }));
-    await userEvent.type(screen.getByLabelText(/^Recipient name/), "Ammi");
-    await userEvent.type(screen.getByLabelText(/^Recipient phone/), "+923001234567");
-    await userEvent.type(screen.getByLabelText(/^Address/), "12 Main Boulevard");
+    await fillRecipient();
+    await toPayment();
 
     await userEvent.click(screen.getByRole("button", { name: "Place Order" }));
 
@@ -202,11 +209,10 @@ describe("CheckoutPage", () => {
     vi.mocked(cartApi.place).mockResolvedValue({ id: "o1", public_token: "t1", total_pkr: 1, payment_method: "cod", items: [] } as never);
     render(<CheckoutPage />);
     await pickLahore();
-    await userEvent.type(screen.getByLabelText(/^Recipient name/), "Ammi");
-    await userEvent.type(screen.getByLabelText(/^Recipient phone/), "+923001234567");
-    await userEvent.type(screen.getByLabelText(/^Address/), "12 Main Boulevard");
+    await fillRecipient();
     await userEvent.type(screen.getByLabelText(/^Your name for the recipient/), "Ali (London)");
     await userEvent.click(screen.getByRole("checkbox", { name: /Keep it a surprise/ }));
+    await toPayment();
 
     await userEvent.click(screen.getByRole("button", { name: "Place Order" }));
 
@@ -214,10 +220,10 @@ describe("CheckoutPage", () => {
     expect(vi.mocked(cartApi.place).mock.calls[0]?.[0]).toMatchObject({ gift_from: "Ali (London)", surprise: true });
   });
 
-  it("shows an error summary and inline errors instead of placing an incomplete order", async () => {
+  it("shows an error summary and inline errors instead of moving on with an incomplete recipient", async () => {
     render(<CheckoutPage />);
     await screen.findByRole("option", { name: "Lahore" });
-    await userEvent.click(screen.getByRole("button", { name: "Place Order" }));
+    await toPayment();
 
     const summary = await screen.findByText(/things need fixing/);
     expect(summary.closest('[role="alert"]')).toHaveFocus();
@@ -230,7 +236,7 @@ describe("CheckoutPage", () => {
   it("clears a field's error as soon as it is fixed", async () => {
     render(<CheckoutPage />);
     await pickLahore();
-    await userEvent.click(screen.getByRole("button", { name: "Place Order" }));
+    await toPayment();
     const name = screen.getByLabelText(/^Recipient name/);
     expect(name).toHaveAttribute("aria-invalid", "true");
     await userEvent.type(name, "Ammi");
@@ -240,6 +246,8 @@ describe("CheckoutPage", () => {
   it("chooses the payment method with radio cards and requotes", async () => {
     render(<CheckoutPage />);
     await pickLahore();
+    await fillRecipient();
+    await toPayment();
     expect(screen.getByRole("radio", { name: /Cash on Delivery/ })).toBeChecked();
     await userEvent.click(screen.getByRole("radio", { name: /Bank Transfer/ }));
     expect(screen.getByText("Bank transfer details")).toBeInTheDocument();
@@ -254,9 +262,8 @@ describe("CheckoutPage", () => {
       .mockResolvedValueOnce({ id: "o1", public_token: "t1", total_pkr: 1, payment_method: "cod", items: [] } as never);
     render(<CheckoutPage />);
     await pickLahore();
-    await userEvent.type(screen.getByLabelText(/^Recipient name/), "Ammi");
-    await userEvent.type(screen.getByLabelText(/^Recipient phone/), "+923001234567");
-    await userEvent.type(screen.getByLabelText(/^Address/), "12 Main Boulevard");
+    await fillRecipient();
+    await toPayment();
 
     await userEvent.click(screen.getByRole("button", { name: "Place Order" }));
     expect(await screen.findByText("Network timeout")).toBeInTheDocument();
@@ -272,12 +279,13 @@ describe("CheckoutPage", () => {
     vi.mocked(cartApi.place).mockRejectedValue(new Error("Try again"));
     render(<CheckoutPage />);
     await pickLahore();
-    await userEvent.type(screen.getByLabelText(/^Recipient name/), "Ammi");
-    await userEvent.type(screen.getByLabelText(/^Recipient phone/), "+923001234567");
-    await userEvent.type(screen.getByLabelText(/^Address/), "12 Main Boulevard");
+    await fillRecipient();
+    await toPayment();
     await userEvent.click(screen.getByRole("button", { name: "Place Order" }));
     await screen.findByText("Try again");
+    await userEvent.click(screen.getByRole("button", { name: "Edit recipient" }));
     await userEvent.type(screen.getByLabelText(/^Address/), ", Gulberg");
+    await toPayment();
     await userEvent.click(screen.getByRole("button", { name: "Place Order" }));
 
     await waitFor(() => expect(cartApi.place).toHaveBeenCalledTimes(2));
@@ -317,5 +325,18 @@ describe("CheckoutPage", () => {
     await userEvent.click(screen.getByRole("radio", { name: /A new address/ }));
     expect(screen.getByLabelText(/^Recipient name/)).toHaveValue("");
   });
-});
 
+  it("reviews the recipient on the payment step and starts from the day picked for the gift", async () => {
+    useCartStore.setState({ cart: { ...cart, items: [{ ...cart.items[0], delivery_date: "2099-01-05" }] } });
+    render(<CheckoutPage />);
+    await pickLahore();
+    expect(screen.getByLabelText(/^Delivery date/)).toHaveValue("2099-01-05");
+    await fillRecipient();
+    await toPayment();
+    expect(screen.getByRole("listitem", { current: "step" })).toHaveTextContent("Pay");
+    const review = screen.getByRole("region", { name: "Going to" });
+    expect(review).toHaveTextContent("Ammi");
+    expect(review).toHaveTextContent("12 Main Boulevard, Lahore");
+    expect(review).toHaveTextContent("Arrives Mon, 5 Jan");
+  });
+});
