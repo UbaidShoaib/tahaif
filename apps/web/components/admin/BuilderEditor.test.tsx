@@ -23,8 +23,8 @@ const shop = [
 ];
 
 function serve(config: AdminBuilderConfig, after: AdminBuilderConfig = config) {
-  vi.mocked(apiFetch).mockImplementation((path?: string, opts?: { method?: string }) => {
-    if (path?.startsWith("/admin/products?vendor_id=")) return Promise.resolve(shop);
+  vi.mocked(apiFetch).mockImplementation((path: string, opts?: { method?: string }) => {
+    if (path.startsWith("/admin/products?vendor_id=")) return Promise.resolve(shop);
     if (path === "/admin/products/base/builder" && !opts?.method) return Promise.resolve(config);
     return Promise.resolve(after);
   });
@@ -34,7 +34,9 @@ const renderEditor = () =>
   render(<BuilderEditor token="t" productId="base" productSlug="byo" vendorId="v1" basePrice={50000} />);
 
 describe("BuilderEditor", () => {
-  beforeEach(() => vi.mocked(apiFetch).mockReset());
+  beforeEach(() => {
+    vi.mocked(apiFetch).mockReset();
+  });
 
   it("turns an ordinary product into a bouquet builder", async () => {
     serve(plain, { ...plain, builder_kind: "bouquet", min_items: 3, max_items: 24 });
@@ -80,8 +82,8 @@ describe("BuilderEditor", () => {
   it("asks before removing an item and shows server errors", async () => {
     const builder = { ...plain, builder_kind: "bouquet" as const, components: [rose] };
     serve(builder);
-    vi.mocked(apiFetch).mockImplementation((path?: string, opts?: { method?: string }) => {
-      if (path?.startsWith("/admin/products?")) return Promise.resolve(shop);
+    vi.mocked(apiFetch).mockImplementation((path: string, opts?: { method?: string }) => {
+      if (path.startsWith("/admin/products?")) return Promise.resolve(shop);
       if (opts?.method === "DELETE") return Promise.reject(new ApiError(404, "Item not found"));
       return Promise.resolve(builder);
     });

@@ -56,7 +56,7 @@ describe("VariantPicker delivery info", () => {
     expect(screen.getByText("Price for delivery in Lahore")).toBeInTheDocument();
     expect(screen.getAllByText(/4,500/).length).toBeGreaterThan(0);
     expect(screen.getByText(/Delivery fee Rs 250/)).toBeInTheDocument();
-    expect(screen.getByText("Today")).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: "Today" })).toBeChecked();
     expect(screen.getByText(/Order within 4h 0m for same-day delivery/)).toBeInTheDocument();
     expect(screen.getByText("Order by 2:00 pm Lahore time")).toBeInTheDocument();
     expect(useDeliveryStore.getState().cityId).toBe("lhr");
@@ -74,8 +74,35 @@ describe("VariantPicker delivery info", () => {
     useDeliveryStore.setState({ cityId: "khi" });
     render(<VariantPicker product={product} cities={[LHR, KHI]} />);
     expect(screen.getByText(/Delivery fee Rs 300/)).toBeInTheDocument();
-    expect(screen.getByText(/^Mon, 28 Sept?$/)).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: /^Mon, 28 Sept?$/ })).toBeChecked();
+    expect(screen.queryByRole("radio", { name: "Today" })).not.toBeInTheDocument();
     expect(screen.queryByText(/same-day/)).not.toBeInTheDocument();
+  });
+
+  it("adds the chosen arrival day to the cart item", async () => {
+    const addItem = vi.fn().mockResolvedValue(undefined);
+    vi.mocked(useCartStore).mockReturnValue({ addItem, openDrawer: vi.fn() });
+    useDeliveryStore.setState({ cityId: "lhr" });
+    render(<VariantPicker product={product} cities={[LHR, KHI]} />);
+    await userEvent.click(screen.getByRole("radio", { name: "Tomorrow" }));
+    await userEvent.click(screen.getByRole("button", { name: "Continue" }));
+    await userEvent.click(screen.getByRole("button", { name: "Add to Cart" }));
+    expect(addItem).toHaveBeenCalledWith(expect.objectContaining({ delivery_date: "2026-09-27" }));
+  });
+
+  it("offers any later date once Pick a date is chosen", async () => {
+    useDeliveryStore.setState({ cityId: "lhr" });
+    render(<VariantPicker product={product} cities={[LHR, KHI]} />);
+    await userEvent.click(screen.getByRole("radio", { name: "Pick a date" }));
+    const input = screen.getByLabelText("Delivery date");
+    expect(input).toHaveValue("2026-09-28");
+    expect(input).toHaveAttribute("min", "2026-09-26");
+  });
+
+  it("can't continue past When until the city is served", () => {
+    useDeliveryStore.setState({ cityId: "isb" });
+    render(<VariantPicker product={product} cities={[LHR, KHI, ISB]} />);
+    expect(screen.getByRole("button", { name: "Continue" })).toBeDisabled();
   });
 
   it("warns when the buyer's city isn't served, and lists where it is", () => {

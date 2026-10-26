@@ -7,7 +7,19 @@ pre-production-cutover).
 
 ## [Unreleased]
 
+### Changed
+- **New page layouts across the site** (ADR 0015). Home asks where, when and what for in the hero.
+  Shop, category, occasion and search pages filter from one chip row with *Arrives tomorrow* first.
+  The product buy box is three steps: size, when, your card; the chosen day goes on the cart line.
+  The cart is grouped by recipient and day. Checkout is three steps (Recipient → You → Pay) with a
+  review before paying. The confirmation leads with the one next step. Tracking is a split view on
+  wide screens. The account page leads with your people and their next occasion. Sign-in is a small
+  centred card. The vendor portal opens on today's queue by slot. The back office opens on *Needs
+  attention*: receipts to verify, WhatsApp messages due and late orders.
+
 ### Added
+- **Filter gifts by arrival day.** `GET /products?deliver_on=YYYY-MM-DD` (with `city_id`) keeps only
+  gifts that can arrive that day, counting same-day cutoffs and lead times.
 - **Set up build-your-own hampers and bouquets in the admin** (ADR 0014). New *Catalog →
   Build-your-own* page lists every builder with its items and how many buckets were started, plus
   set-up steps. On any product, the new *Build-your-own* section makes it a hamper or bouquet

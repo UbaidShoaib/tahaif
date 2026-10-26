@@ -1,4 +1,6 @@
 import uuid
+from datetime import UTC, date, datetime, time, timedelta
+from zoneinfo import ZoneInfo
 
 import structlog
 from fastapi import HTTPException, UploadFile, status
@@ -217,14 +219,28 @@ async def list_products(
     sort: ProductSort = "recommended",
     min_price_pkr: int | None = None,
     max_price_pkr: int | None = None,
+    deliver_on: date | None = None,
+    now: datetime | None = None,
 ) -> PaginatedProducts:
     if min_price_pkr is not None and max_price_pkr is not None and min_price_pkr > max_price_pkr:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="min_price_pkr must not be greater than max_price_pkr",
         )
+    deliverable = None
+    if deliver_on is not None:
+        if city_id is None:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="deliver_on needs city_id",
+            )
+        city = await CityRepository(db).get_by_id(city_id)
+        if city is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="City not found")
+        deliverable = _deliverable_window(deliver_on, ZoneInfo(city.timezone), now or datetime.now(UTC))
     repo = ProductRepository(db)
     items, total = await repo.list(
+        deliverable=deliverable,
         city_id=city_id,
         vendor_id=vendor_id,
         category_id=category_id,
@@ -241,6 +257,23 @@ async def list_products(
         page=page,
         page_size=page_size,
     )
+
+
+def _deliverable_window(day: date, tz: ZoneInfo, now: datetime) -> tuple[time | None, float]:
+    """Bounds for "can arrive on ``day``", mirroring the web's earliestDelivery.
+
+    Same-day counts only when ``day`` is today in the city: the cutoff must be
+    after the local time now. Otherwise a gift is ready ``lead_time_hours``
+    from now and never before tomorrow, so it can arrive on ``day`` when the
+    lead time ends before ``day`` is over.
+    """
+    local = now.astimezone(tz)
+    today = local.date()
+    same_day_before = local.time().replace(tzinfo=None) if day == today else None
+    if day <= today:
+        return same_day_before, -1.0
+    end_of_day = datetime.combine(day + timedelta(days=1), time(), tzinfo=tz)
+    return same_day_before, (end_of_day - now).total_seconds() / 3600
 
 
 async def get_product(db: AsyncSession, slug: str) -> Product:

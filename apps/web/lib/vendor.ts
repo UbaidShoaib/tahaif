@@ -66,6 +66,15 @@ export interface VendorFulfillmentRead {
   surprise: boolean;
 }
 
+/** The one forward step a vendor takes from each status. */
+export const NEXT_STATUS: Partial<Record<FulfillmentStatus, FulfillmentStatus>> = {
+  pending: "preparing",
+  preparing: "ready",
+  ready: "dispatched",
+  dispatched: "out_for_delivery",
+  out_for_delivery: "delivered",
+};
+
 export interface FulfillmentStatusUpdate {
   status: FulfillmentStatus;
   courier_tracking?: string | null;

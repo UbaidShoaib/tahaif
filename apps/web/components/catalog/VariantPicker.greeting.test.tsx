@@ -28,6 +28,7 @@ describe("VariantPicker greeting card", () => {
 
   it("sends the trimmed greeting with the cart item and clears the field", async () => {
     render(<VariantPicker product={product} />);
+    await userEvent.click(screen.getByRole("button", { name: "Continue" }));
     const field = screen.getByLabelText(/Greeting card message/);
 
     await userEvent.type(field, "  Happy birthday, Ammi!  ");

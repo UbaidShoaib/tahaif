@@ -66,6 +66,8 @@ type Props = {
   paymentMethod: PaymentMethod;
   placeError: string | null;
   isPlacing: boolean;
+  /** Button text before the last checkout step, e.g. "Continue to pay". Unset: Place Order. */
+  submitLabel?: string;
 };
 
 export function OrderSummary({
@@ -86,6 +88,7 @@ export function OrderSummary({
   paymentMethod,
   placeError,
   isPlacing,
+  submitLabel,
 }: Props) {
   return (
     <section aria-labelledby="summary-heading" className="space-y-4 rounded-2xl bg-background-alt p-5 sm:p-6 lg:sticky lg:top-24">
@@ -187,8 +190,8 @@ export function OrderSummary({
             <p className="text-xs text-muted-foreground">Total</p>
             <p className="font-semibold tabular-nums">{pkr(totals.total_pkr)}</p>
           </div>
-          <Button type="submit" size="lg" className="flex-1 lg:w-full" loading={isPlacing}>
-            {isPlacing ? "Placing Order…" : "Place Order"}
+          <Button type="submit" size="lg" className="flex-1 lg:w-full" loading={!submitLabel && isPlacing}>
+            {submitLabel ?? (isPlacing ? "Placing Order…" : "Place Order")}
           </Button>
         </div>
       </div>

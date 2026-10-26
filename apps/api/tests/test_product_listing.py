@@ -1,6 +1,6 @@
 """Sorting and price filtering of the storefront product list (redesign phase 7)."""
 import uuid
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, time, timedelta
 
 import pytest
 from fastapi import HTTPException
@@ -135,3 +135,43 @@ async def test_endpoint_accepts_sort_and_price(client: AsyncClient, db: AsyncSes
 async def test_endpoint_rejects_unknown_sort_and_negative_price(client: AsyncClient) -> None:
     assert (await client.get("/api/v1/products", params={"sort": "cheapest"})).status_code == 422
     assert (await client.get("/api/v1/products", params={"min_price_pkr": -1})).status_code == 422
+
+
+async def _timed_products(db: AsyncSession) -> uuid.UUID:
+    """Three gifts in one Karachi-time city: same-day until 14:00, 24h lead, 72h lead."""
+    suffix = uuid.uuid4().hex[:6]
+    user = await UserRepository(db).create(
+        email=f"due_{suffix}@example.com", password_hash=hash_password("Password1"), role=UserRole.vendor
+    )
+    city = await CityRepository(db).create(name=f"D{suffix}", slug=f"d-{suffix}", timezone="Asia/Karachi")
+    vendor = await VendorRepository(db).create(
+        city_id=city.id, owner_user_id=user.id, name=f"W{suffix}", slug=f"w-{suffix}"
+    )
+    repo = ProductRepository(db)
+    for name, lead, cutoff in [("Fast", 24, time(14, 0)), ("Day", 24, None), ("Slow", 72, None)]:
+        p = await repo.create(vendor_id=vendor.id, name=name, slug=f"{name.lower()}-{suffix}", base_price_pkr=100)
+        db.add(ProductCity(product_id=p.id, city_id=city.id, lead_time_hours=lead, same_day_cutoff=cutoff))
+    await db.flush()
+    return city.id
+
+
+@pytest.mark.asyncio
+async def test_deliver_on_counts_same_day_cutoff_and_lead_time(db: AsyncSession) -> None:
+    city_id = await _timed_products(db)
+    now = datetime(2026, 10, 26, 5, 0, tzinfo=UTC)  # 10:00 in Karachi
+
+    async def names(day: date, at: datetime = now) -> list[str]:
+        res = await catalog_service.list_products(db, city_id=city_id, deliver_on=day, now=at)
+        return _names(res)
+
+    assert await names(date(2026, 10, 26)) == ["Fast"]
+    assert await names(date(2026, 10, 27)) == ["Day", "Fast"]
+    assert await names(date(2026, 10, 29)) == ["Day", "Fast", "Slow"]
+    # After the cutoff nothing arrives today.
+    assert await names(date(2026, 10, 26), datetime(2026, 10, 26, 10, 0, tzinfo=UTC)) == []
+
+
+@pytest.mark.asyncio
+async def test_deliver_on_needs_a_city(client: AsyncClient) -> None:
+    res = await client.get("/api/v1/products", params={"deliver_on": "2026-10-27"})
+    assert res.status_code == 422

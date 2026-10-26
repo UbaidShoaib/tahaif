@@ -46,3 +46,16 @@ export function formatDaysUntil(days: number): string {
 
 /** How far ahead an occasion counts as "coming up" (time to order and deliver). */
 export const UPCOMING_DAYS = 30;
+
+export type NextOccasion = { kind: "birthday" | "anniversary"; days: number };
+
+/** A saved person's soonest birthday or anniversary from `today`, or null when neither is known. */
+export function nextOccasion(
+  person: { birthday?: MonthDay | null; anniversary?: MonthDay | null },
+  today: string,
+): NextOccasion | null {
+  const candidates: NextOccasion[] = [];
+  if (person.birthday) candidates.push({ kind: "birthday", days: daysUntil(person.birthday, today) });
+  if (person.anniversary) candidates.push({ kind: "anniversary", days: daysUntil(person.anniversary, today) });
+  return candidates.sort((a, b) => a.days - b.days)[0] ?? null;
+}

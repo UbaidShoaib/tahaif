@@ -12,6 +12,7 @@
 | [decisions/0011-public-product-images.md](decisions/0011-public-product-images.md) | Product photos uploaded to `products/` in the media bucket, the only publicly readable prefix |
 | [decisions/0012-audit-log.md](decisions/0012-audit-log.md) | Audit log: services record who/what/before→after/IP in the change's transaction; admin-only Activity tab |
 | [decisions/0014-collaborative-bucket-builder.md](decisions/0014-collaborative-bucket-builder.md) | Build-your-own hampers and bouquets, edited together live over a WebSocket with Redis fan-out; server-owned state, one payer |
+| [decisions/0015-page-layouts.md](decisions/0015-page-layouts.md) | The layout picked for each page from the layout book, the arrival-day filter, what counts as "needs attention", and what wasn't built yet |
 | [decisions/0013-whatsapp-ordering-bot.md](decisions/0013-whatsapp-ordering-bot.md) | Shopping inside WhatsApp: catalog feed for Meta, cart orders through the website checkout, bank details and receipt photos in the chat, staff verification sent back to the customer |
 | [questions.md](questions.md) | Open questions with defaults (legal review of card-note rules, retention) |
 | [whatsapp-order-sop.md](whatsapp-order-sop.md) | SOP for staff taking orders in Instagram DMs and WhatsApp |

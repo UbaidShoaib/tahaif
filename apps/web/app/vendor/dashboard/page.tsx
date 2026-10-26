@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useAuthStore } from "@/stores/auth.store";
 import { vendorApi, type VendorRead } from "@/lib/vendor";
+import { TodayQueue } from "@/components/vendor/TodayQueue";
 
 export default function VendorDashboardPage() {
   const { accessToken, isLoading: authLoading } = useAuthStore();
@@ -65,10 +66,8 @@ export default function VendorDashboardPage() {
     <div className="container mx-auto px-4 py-8 max-w-4xl">
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-2xl font-bold">{vendor.name}</h1>
-          {vendor.description && (
-            <p className="text-muted-foreground mt-1 text-sm">{vendor.description}</p>
-          )}
+          <p className="text-sm text-muted-foreground">{vendor.name}</p>
+          <h1 className="font-display text-h2">Today</h1>
         </div>
         <span
           className={`text-xs font-semibold px-3 py-1 rounded-full ${
@@ -79,29 +78,16 @@ export default function VendorDashboardPage() {
         </span>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <Link
-          href="/vendor/orders"
-          className="border rounded-xl p-6 hover:border-primary-700 hover:shadow-sm transition-all group"
-        >
-          <div className="text-3xl mb-3">📦</div>
-          <h2 className="text-lg font-semibold group-hover:text-link">Fulfillments</h2>
-          <p className="text-sm text-muted-foreground mt-1">
-            View and update delivery status for your orders.
-          </p>
-        </Link>
+      <TodayQueue token={accessToken} />
 
-        <Link
-          href="/vendor/products"
-          className="border rounded-xl p-6 hover:border-primary-700 hover:shadow-sm transition-all group"
-        >
-          <div className="text-3xl mb-3">🛍️</div>
-          <h2 className="text-lg font-semibold group-hover:text-link">Products</h2>
-          <p className="text-sm text-muted-foreground mt-1">
-            Browse the products listed under your store.
-          </p>
+      <nav aria-label="Vendor portal" className="mt-10 flex flex-wrap gap-3 border-t pt-6 text-sm font-medium">
+        <Link href="/vendor/orders" className="text-link hover:underline">
+          All orders
         </Link>
-      </div>
+        <Link href="/vendor/products" className="text-link hover:underline">
+          Products
+        </Link>
+      </nav>
     </div>
   );
 }

@@ -9,17 +9,20 @@ export function BankTransferPanel({
   orderId,
   publicToken,
   totalPkr,
+  title = "Pay by bank transfer",
 }: {
   orderId: string;
   publicToken: string;
   totalPkr: number;
+  /** Heading; the confirmation page leads with it as the one next step. */
+  title?: string;
 }) {
   const bankIban = process.env.NEXT_PUBLIC_BANK_IBAN ?? null;
   const ref = orderNumber(publicToken);
   return (
     <section aria-labelledby="pay-heading" className="mb-6 space-y-4 rounded-xl border border-warning/40 bg-warning-soft p-5">
       <h2 id="pay-heading" className="text-h3">
-        Pay by bank transfer
+        {title}
       </h2>
       <dl className="grid gap-3 text-sm sm:grid-cols-[auto_1fr_auto] sm:items-center">
         <dt className="text-foreground-secondary">Amount</dt>

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useAuthStore } from "@/stores/auth.store";
 import {
+  NEXT_STATUS,
   vendorApi,
   type FulfillmentStatus,
   type VendorFulfillmentRead,
@@ -32,14 +33,6 @@ const ACTION_LABELS: Record<FulfillmentStatus, string> = {
   out_for_delivery: "Out for Delivery",
   delivered: "Delivered",
   failed: "Failed",
-};
-
-const NEXT_STATUS: Partial<Record<FulfillmentStatus, FulfillmentStatus>> = {
-  pending: "preparing",
-  preparing: "ready",
-  ready: "dispatched",
-  dispatched: "out_for_delivery",
-  out_for_delivery: "delivered",
 };
 
 // Once the gift has left the shop, the rider can confirm delivery with a photo.

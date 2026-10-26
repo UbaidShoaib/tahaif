@@ -14,7 +14,7 @@ import {
   SprayCan,
   type LucideIcon,
 } from "lucide-react";
-import { catalogApi, primaryImage, type Product } from "@/lib/catalog";
+import { catalogApi, type Occasion, type Product } from "@/lib/catalog";
 import { bucketsApi, type BuilderSummary } from "@/lib/buckets";
 import { categoryPhotos } from "@/lib/home";
 import { isOptimizable } from "@/lib/image-hosts";
@@ -33,13 +33,14 @@ const CATEGORIES: { name: string; slug: string; icon: LucideIcon; desc: string }
   { name: "Combo Gifts", slug: "combo-gifts", icon: Gift, desc: "Curated gift sets & hampers" },
 ];
 
-const OCCASIONS: { name: string; slug: string }[] = [
-  { name: "Birthday", slug: "birthday" },
-  { name: "Eid ul Fitr", slug: "eid-ul-fitr" },
-  { name: "Anniversary", slug: "anniversary" },
-  { name: "Mother's Day", slug: "mothers-day" },
-  { name: "Wedding", slug: "wedding" },
-  { name: "Aqiqa", slug: "aqiqa" },
+/** Used only when the occasions API is unreachable, so the page still offers them. */
+const FALLBACK_OCCASIONS: { name: string; slug: string; banner_url: string | null }[] = [
+  { name: "Birthday", slug: "birthday", banner_url: null },
+  { name: "Eid ul Fitr", slug: "eid-ul-fitr", banner_url: null },
+  { name: "Anniversary", slug: "anniversary", banner_url: null },
+  { name: "Mother's Day", slug: "mothers-day", banner_url: null },
+  { name: "Wedding", slug: "wedding", banner_url: null },
+  { name: "Aqiqa", slug: "aqiqa", banner_url: null },
 ];
 
 const STEPS = [
@@ -77,15 +78,17 @@ function Zari({ className = "" }: { className?: string }) {
 }
 
 export default async function HomePage() {
-  const [{ items: products }, categories, onTime, builders] = await Promise.all([
+  const [{ items: products }, categories, onTime, builders, allOccasions] = await Promise.all([
     catalogApi.getProducts({ page_size: 48 }).catch(() => ({ items: [] as Product[], total: 0, page: 1, page_size: 48 })),
     catalogApi.getCategories().catch(() => []),
     onTimePercent(),
     bucketsApi.list().catch(() => [] as BuilderSummary[]),
+    catalogApi.getOccasions().catch(() => [] as Occasion[]),
   ]);
-  const featuredProducts = products.slice(0, 8);
+  const featuredProducts = products.slice(0, 10);
   const photos = categoryPhotos(categories, products);
-  const heroShots = products.filter((p) => p.images.length > 0).slice(0, 3);
+  const live = allOccasions.filter((o) => o.is_active).sort((a, b) => a.sort_order - b.sort_order);
+  const occasions = live.length > 0 ? live : FALLBACK_OCCASIONS;
   // A measured rate, shown only once there's enough delivery history.
   const trust =
     onTime === null
@@ -94,64 +97,80 @@ export default async function HomePage() {
 
   return (
     <div>
-      {/* Hero: words and the city finder on the left, real gifts on the right */}
-      <section className="bg-background-alt px-4 pb-12 pt-10 md:pb-20 md:pt-16">
-        <div className="container mx-auto grid items-center gap-10 lg:grid-cols-[1.05fr_1fr] lg:gap-16">
-          <div className="space-y-6">
-            <p className="text-sm font-medium uppercase tracking-wider text-gold-ink">Gifts delivered across Pakistan</p>
+      {/* Hero (layout decision: occasion-first). City, day and occasion in the first tap. */}
+      <section className="px-4 pt-6 md:pt-10">
+        <div className="container mx-auto rounded-3xl bg-primary-soft px-5 py-8 sm:px-8 md:px-12 md:py-14">
+          <div className="max-w-4xl space-y-5">
+            <p className="text-sm font-medium uppercase tracking-wider text-primary-soft-foreground">
+              Gifts delivered across Pakistan, same day in many cities
+            </p>
             <h1 className="text-display text-foreground">
-              Send love home,
-              <br />
+              Send love home,{" "}
               <span className="italic text-primary-700 dark:text-primary-300">delivered fresh.</span>
             </h1>
             <Zari />
-            <p className="max-w-lg text-lg text-foreground-secondary">
-              Cakes, flowers, mithai and more for the people you miss, with your own card message, delivered in
-              Karachi, Lahore, Islamabad and beyond.
-            </p>
-            <div className="max-w-lg">
-              <HeroFinder />
-            </div>
+            <HeroFinder occasions={occasions.map(({ slug, name }) => ({ slug, name }))} />
             <p className="text-sm text-muted-foreground">Cash on delivery · No account needed · Card message included</p>
           </div>
-
-          {heroShots.length > 0 && (
-            <div className="grid h-72 grid-cols-3 grid-rows-2 gap-3 sm:h-96 lg:h-[30rem]">
-              {heroShots.map((p, i) => (
-                <div
-                  key={p.id}
-                  className={`relative overflow-hidden rounded-2xl bg-muted ${
-                    i === 0 ? "col-span-2 row-span-2" : heroShots.length === 2 ? "row-span-2" : ""
-                  }`}
-                >
-                  <Photo src={primaryImage(p)} alt={p.name} sizes={i === 0 ? "(max-width: 1024px) 66vw, 33vw" : "20vw"} priority={i === 0} />
-                </div>
-              ))}
-            </div>
-          )}
         </div>
       </section>
 
-      {/* Occasions: quiet text pills, no emoji */}
-      <section aria-labelledby="occasions-heading" className="border-b px-4 py-6">
-        <div className="container mx-auto flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-6">
-          <h2 id="occasions-heading" className="shrink-0 font-sans text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+      {/* Occasions as photo tiles; a tinted tile where no banner exists yet */}
+      <section aria-labelledby="occasions-heading" className="px-4 pt-12">
+        <div className="container mx-auto">
+          <h2 id="occasions-heading" className="text-h2">
             Shop by occasion
           </h2>
-          <ul className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0">
-            {OCCASIONS.map((o) => (
-              <li key={o.slug} className="shrink-0">
+          <Zari className="mb-6 mt-3" />
+          <ul className="grid grid-cols-3 gap-3 sm:gap-4 lg:grid-cols-6">
+            {occasions.slice(0, 6).map((o) => (
+              <li key={o.slug}>
                 <Link
                   href={`/occasion/${o.slug}`}
-                  className="inline-flex min-h-11 items-center rounded-full border border-input px-4 text-sm font-medium transition-colors hover:border-primary-700 hover:bg-primary-soft hover:text-primary-soft-foreground"
+                  className="group block rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                 >
-                  {o.name}
+                  <span className="relative block aspect-square overflow-hidden rounded-xl bg-primary-soft">
+                    {o.banner_url ? (
+                      <span className="absolute inset-0 transition-transform duration-500 ease-out motion-safe:group-hover:scale-[1.04]">
+                        <Photo src={o.banner_url} alt="" sizes="(max-width: 1024px) 33vw, 16vw" />
+                      </span>
+                    ) : (
+                      <Gift aria-hidden className="absolute left-1/2 top-1/2 h-10 w-10 -translate-x-1/2 -translate-y-1/2 text-primary-soft-foreground/60" />
+                    )}
+                  </span>
+                  <span className="mt-2 block text-sm font-semibold group-hover:underline">{o.name}</span>
                 </Link>
               </li>
             ))}
           </ul>
         </div>
       </section>
+
+      {/* Featured */}
+      {featuredProducts.length > 0 && (
+        <section aria-labelledby="featured-heading" className="px-4 pb-14 pt-4">
+          <div className="container mx-auto">
+            <div className="mb-8 flex items-end justify-between gap-4">
+              <div>
+                <h2 id="featured-heading" className="text-h2">
+                  Popular gifts
+                </h2>
+                <Zari className="mt-3" />
+              </div>
+              <Link href="/search" className="text-sm font-medium text-link hover:underline">
+                View all <span aria-hidden>→</span>
+              </Link>
+            </div>
+            <ul className="grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-3 lg:grid-cols-5 lg:gap-x-6">
+              {featuredProducts.map((p) => (
+                <li key={p.id}>
+                  <ProductCard product={p} />
+                </li>
+              ))}
+            </ul>
+          </div>
+        </section>
+      )}
 
       <SameDayRail />
 
@@ -225,32 +244,6 @@ export default async function HomePage() {
           </ul>
         </div>
       </section>
-
-      {/* Featured */}
-      {featuredProducts.length > 0 && (
-        <section aria-labelledby="featured-heading" className="bg-background-alt px-4 py-14">
-          <div className="container mx-auto">
-            <div className="mb-8 flex items-end justify-between gap-4">
-              <div>
-                <h2 id="featured-heading" className="text-h2">
-                  Featured gifts
-                </h2>
-                <Zari className="mt-3" />
-              </div>
-              <Link href="/search" className="text-sm font-medium text-link hover:underline">
-                View all <span aria-hidden>→</span>
-              </Link>
-            </div>
-            <ul className="grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-3 lg:grid-cols-4 lg:gap-x-6">
-              {featuredProducts.map((p) => (
-                <li key={p.id}>
-                  <ProductCard product={p} />
-                </li>
-              ))}
-            </ul>
-          </div>
-        </section>
-      )}
 
       {/* How it works: three open columns with serif numerals */}
       <section aria-labelledby="how-heading" className="px-4 py-14">

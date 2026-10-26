@@ -40,6 +40,20 @@ describe("HeroFinder", () => {
     expect(push).toHaveBeenCalledWith("/search?city_id=lhr");
   });
 
+  it("opens the chosen occasion with the city and arrival day", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-10-26T05:00:00Z"));
+    render(<HeroFinder occasions={[{ slug: "birthday", name: "Birthday" }]} />);
+    const day = screen.getByRole("combobox", { name: "Arrives on" });
+    expect(day).toBeDisabled();
+    await userEvent.selectOptions(screen.getByRole("combobox", { name: "Deliver to" }), "lhr");
+    await userEvent.selectOptions(day, "Tomorrow");
+    await userEvent.selectOptions(screen.getByRole("combobox", { name: "Occasion" }), "birthday");
+    await userEvent.click(screen.getByRole("button", { name: "Find gifts" }));
+    expect(push).toHaveBeenCalledWith("/occasion/birthday?city_id=lhr&on=2026-10-27");
+    vi.useRealTimers();
+  });
+
   it("browses everything when no city is chosen", async () => {
     render(<HeroFinder />);
     await userEvent.click(screen.getByRole("button", { name: "Find gifts" }));
