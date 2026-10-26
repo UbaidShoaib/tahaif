@@ -12802,6 +12802,28 @@
               "description": "Maximum price in paisa",
               "title": "Max Price Pkr"
             }
+          },
+          {
+            "description": "Only gifts that can arrive on this date (YYYY-MM-DD) in city_id, counting same-day cutoffs and lead times. Needs city_id.",
+            "in": "query",
+            "name": "deliver_on",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Only gifts that can arrive on this date (YYYY-MM-DD) in city_id, counting same-day cutoffs and lead times. Needs city_id.",
+              "examples": [
+                "2026-10-27"
+              ],
+              "title": "Deliver On"
+            }
           }
         ],
         "responses": {

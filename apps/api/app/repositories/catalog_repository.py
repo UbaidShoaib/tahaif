@@ -1,5 +1,6 @@
 import builtins
 import uuid
+from datetime import time
 from typing import Any
 
 from sqlalchemy import func, or_, select
@@ -273,12 +274,18 @@ class ProductRepository:
         sort: str = "recommended",
         min_price_pkr: int | None = None,
         max_price_pkr: int | None = None,
+        deliverable: tuple[time | None, float] | None = None,
     ) -> tuple[list[Product], int]:
         """Paginated products.
 
         Price filters and price sorting use the city's price override when
         ``city_id`` is given (what the buyer will actually pay there), and the
         base price otherwise.
+
+        ``deliverable`` is ``(same_day_before, max_lead_hours)`` worked out by
+        the service for one city and date: keep products whose same-day cutoff
+        is still ahead of ``same_day_before`` (None = same-day doesn't count),
+        or whose lead time is under ``max_lead_hours``. Needs ``city_id``.
         """
         q = self._with_relations()
         if active_only:
@@ -294,6 +301,12 @@ class ProductRepository:
                 ProductCity.is_available.is_(True),
             )
             price = func.coalesce(ProductCity.price_override_pkr, Product.base_price_pkr)
+            if deliverable is not None:
+                same_day_before, max_lead_hours = deliverable
+                ok: Any = ProductCity.lead_time_hours < max_lead_hours
+                if same_day_before is not None:
+                    ok = or_(ok, ProductCity.same_day_cutoff > same_day_before)
+                q = q.where(ok)
         if occasion_id:
             q = q.join(
                 product_occasions_table,

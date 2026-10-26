@@ -1,4 +1,5 @@
 import uuid
+from datetime import date
 from typing import Annotated
 
 from fastapi import APIRouter, Form, Query, Response, UploadFile, status
@@ -134,6 +135,12 @@ async def list_products(
     ),
     min_price_pkr: int | None = Query(default=None, ge=0, description="Minimum price in paisa"),  # noqa: B008
     max_price_pkr: int | None = Query(default=None, ge=0, description="Maximum price in paisa"),  # noqa: B008
+    deliver_on: date | None = Query(  # noqa: B008
+        default=None,
+        description="Only gifts that can arrive on this date (YYYY-MM-DD) in city_id, "
+        "counting same-day cutoffs and lead times. Needs city_id.",
+        examples=["2026-10-27"],
+    ),
 ) -> PaginatedProducts:
     response.headers["Cache-Control"] = _CACHE_PRODUCTS
     return await catalog_service.list_products(
@@ -147,6 +154,7 @@ async def list_products(
         sort=sort,
         min_price_pkr=min_price_pkr,
         max_price_pkr=max_price_pkr,
+        deliver_on=deliver_on,
     )
 
 
