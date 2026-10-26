@@ -69,35 +69,29 @@ export default async function OccasionPage({ params, searchParams }: Props) {
         </div>
       )}
 
+      <nav aria-label="Occasions" className="-mx-4 mb-4 overflow-x-auto px-4 pb-1">
+        <ul className="flex gap-2">
+          {occasions.map((o) => (
+            <li key={o.id}>
+              <Link
+                href={`/occasion/${o.slug}`}
+                aria-current={o.slug === slug ? "page" : undefined}
+                className={`flex min-h-11 items-center whitespace-nowrap rounded-full px-4 text-sm font-medium transition-colors ${
+                  o.slug === slug ? "bg-primary-soft text-primary-soft-foreground" : "text-foreground hover:bg-muted"
+                }`}
+              >
+                {o.name}
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </nav>
+
       <Suspense>
         <ProductListing
           scope={scope}
           initial={initial}
           emptyTitle={`No gifts for ${occasion.name} yet`}
-          aside={
-            <nav aria-label="Occasions">
-              <h2 className="mb-2 font-sans text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Occasions
-              </h2>
-              <ul className="space-y-0.5">
-                {occasions.map((o) => (
-                  <li key={o.id}>
-                    <Link
-                      href={`/occasion/${o.slug}`}
-                      aria-current={o.slug === slug ? "page" : undefined}
-                      className={`block rounded-lg px-3 py-2 text-sm transition-colors ${
-                        o.slug === slug
-                          ? "bg-primary-soft font-medium text-primary-soft-foreground"
-                          : "text-foreground hover:bg-muted"
-                      }`}
-                    >
-                      {o.name}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </nav>
-          }
         />
       </Suspense>
     </div>

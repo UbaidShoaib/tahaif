@@ -26,7 +26,7 @@ export function SameDayRail() {
       return;
     }
     let cancelled = false;
-    fetchListing({}, { q: "", cityId, sort: "recommended", price: "" }, 1)
+    fetchListing({}, { q: "", cityId, sort: "recommended", price: "", on: "" }, 1)
       .then((res) => {
         if (cancelled) return;
         const now = new Date();
