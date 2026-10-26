@@ -142,6 +142,6 @@ describe("OrderDetail", () => {
     render(<OrderDetail token="tok" orderId="o1" />);
 
     expect(await screen.findByRole("alert")).toHaveTextContent("Order not found");
-    expect(screen.getByRole("link", { name: /All orders/ })).toHaveAttribute("href", "/admin");
+    expect(screen.getByRole("link", { name: /All orders/ })).toHaveAttribute("href", "/admin?section=orders");
   });
 });

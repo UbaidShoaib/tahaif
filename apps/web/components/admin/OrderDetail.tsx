@@ -394,7 +394,7 @@ export function OrderDetail({ token, orderId }: { token: string; orderId: string
 
 function BackLink() {
   return (
-    <Link href="/admin" className="inline-flex items-center gap-1 text-sm text-link hover:underline">
+    <Link href="/admin?section=orders" className="inline-flex items-center gap-1 text-sm text-link hover:underline">
       <ArrowLeft aria-hidden className="h-4 w-4" /> All orders
     </Link>
   );

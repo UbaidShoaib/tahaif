@@ -7,12 +7,13 @@ import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/stores/auth.store";
 
 export type Section =
-  | "orders" | "new-order" | "messages" | "campaigns" | "applications" | "add-product" | "products" | "note-reports"
+  | "attention" | "orders" | "new-order" | "messages" | "campaigns" | "applications" | "add-product" | "products" | "note-reports"
   | "builders" | "activity";
 
 type Item = { key: Section; label: string; adminOnly?: boolean };
 
 export const NAV: { group: string; items: Item[] }[] = [
+  { group: "Today", items: [{ key: "attention", label: "Needs attention" }] },
   {
     group: "Orders",
     items: [

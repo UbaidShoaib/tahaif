@@ -74,14 +74,15 @@ describe("AdminDashboard sections", () => {
     global.fetch = originalFetch;
   });
 
-  it("opens on orders and switches to the shop applications queue", async () => {
+  it("opens on what needs attention and switches to the shop applications queue", async () => {
     render(<AdminDashboard />);
-    expect(await screen.findByText("No orders found.")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Needs attention");
+    expect(await screen.findByText(/All clear/)).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("button", { name: "Shop applications" }));
 
     expect(await screen.findByText("No shop applications are waiting.")).toBeInTheDocument();
-    expect(screen.queryByText("No orders found.")).not.toBeInTheDocument();
+    expect(screen.queryByText(/All clear/)).not.toBeInTheDocument();
     expect(global.fetch).toHaveBeenCalledWith(
       expect.stringContaining("/admin/vendor-applications?status=pending"),
       expect.anything(),
@@ -124,7 +125,7 @@ describe("AdminDashboard sections", () => {
       window.history.replaceState(null, "", "/admin");
       window.dispatchEvent(new PopStateEvent("popstate"));
     });
-    expect(await screen.findByText("No orders found.")).toBeInTheDocument();
+    expect(await screen.findByText(/All clear/)).toBeInTheDocument();
     window.history.replaceState(null, "", "/");
   });
 });
