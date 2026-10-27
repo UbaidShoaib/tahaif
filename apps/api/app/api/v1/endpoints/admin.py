@@ -1,4 +1,7 @@
-"""Admin API: order management, payment verification, product CRUD, FX override, coupons, users."""
+"""Admin API: order management, payment verification, product CRUD, FX override, coupons, users, team.
+
+Staff and admins share most of it. Money settings (FX rates, coupons, refunds), the user
+list, the team and the activity log are admins only."""
 
 import uuid
 from datetime import UTC, date, datetime
@@ -40,6 +43,7 @@ from app.schemas.social_order import (
     WhatsAppMessageRead,
     WhatsAppQueueEntry,
 )
+from app.schemas.team import TeamMemberAdd, TeamMemberRead, TeamMemberUpdate
 from app.schemas.vendor import (
     AdminProductRead,
     AdminVendorApplicationRead,
@@ -53,11 +57,13 @@ from app.services import (
     note_service,
     report_service,
     social_order_service,
+    team_service,
     vendor_application_service,
     whatsapp_bot_service,
 )
 
 AdminUser = Annotated[User, require_roles(UserRole.admin, UserRole.staff)]
+AdminOnly = Annotated[User, require_roles(UserRole.admin)]
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -97,7 +103,7 @@ class CouponCreate(BaseModel):
 
 @router.get("/orders", response_model=AdminOrderPage)
 async def list_orders(
-    _admin: AdminUser,
+    admin: AdminUser,
     db: DB,
     status: OrderStatus | None = None,
     q: str | None = Query(  # noqa: B008
@@ -113,15 +119,15 @@ async def list_orders(
     limit: int = Query(default=50, ge=1, le=100),  # noqa: B008
 ) -> AdminOrderPage:
     return await admin_order_service.list_orders(
-        db, status=status, q=q, placed_from=placed_from, placed_to=placed_to, offset=offset, limit=limit
+        db, admin, status=status, q=q, placed_from=placed_from, placed_to=placed_to, offset=offset, limit=limit
     )
 
 
 @router.get("/orders/{order_id}", response_model=AdminOrderDetail)
-async def get_order(order_id: uuid.UUID, _admin: AdminUser, db: DB) -> AdminOrderDetail:
+async def get_order(order_id: uuid.UUID, admin: AdminUser, db: DB) -> AdminOrderDetail:
     """One order with everything staff need: buyer contact, each recipient's full address and shop,
     payment and receipt, internal notes and a timeline."""
-    return await admin_order_service.get_order_detail(db, order_id)
+    return await admin_order_service.get_order_detail(db, order_id, admin)
 
 
 @router.post(
@@ -383,7 +389,7 @@ async def list_fx_rates(_admin: AdminUser, db: DB) -> list[dict[str, Any]]:
 
 
 @router.post("/fx-rates/override")
-async def override_fx_rate(body: FxRateOverride, admin: AdminUser, db: DB) -> dict[str, Any]:
+async def override_fx_rate(body: FxRateOverride, admin: AdminOnly, db: DB) -> dict[str, Any]:
     existing = (await db.execute(
         select(FxRate).where(
             FxRate.base_currency == "PKR",
@@ -436,7 +442,7 @@ async def list_coupons(_admin: AdminUser, db: DB) -> list[dict[str, Any]]:
 
 
 @router.post("/coupons", status_code=status.HTTP_201_CREATED)
-async def create_coupon(body: CouponCreate, admin: AdminUser, db: DB) -> dict[str, Any]:
+async def create_coupon(body: CouponCreate, admin: AdminOnly, db: DB) -> dict[str, Any]:
     repo = CouponRepository(db)
     coupon = await repo.create(
         code=body.code.upper(),
@@ -458,7 +464,7 @@ async def create_coupon(body: CouponCreate, admin: AdminUser, db: DB) -> dict[st
 async def set_coupon_active(
     coupon_id: uuid.UUID,
     body: ProductActiveUpdate,
-    admin: AdminUser,
+    admin: AdminOnly,
     db: DB,
 ) -> dict[str, Any]:
     result = await db.execute(select(Coupon).where(Coupon.id == coupon_id))
@@ -477,7 +483,7 @@ async def set_coupon_active(
 # ── Users ─────────────────────────────────────────────────────────────────────
 
 @router.get("/users")
-async def list_users(_admin: AdminUser, db: DB, limit: int = 50) -> list[dict[str, Any]]:
+async def list_users(_admin: AdminOnly, db: DB, limit: int = 50) -> list[dict[str, Any]]:
     result = await db.execute(
         select(User).where(User.is_active.is_(True)).order_by(User.created_at.desc()).limit(limit)
     )
@@ -498,15 +504,14 @@ async def list_users(_admin: AdminUser, db: DB, limit: int = 50) -> list[dict[st
 async def update_user_role(
     user_id: uuid.UUID,
     role: UserRole,
-    admin: AdminUser,
+    admin: AdminOnly,
     db: DB,
 ) -> dict[str, Any]:
-    if admin.role != UserRole.admin:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only admins can change roles")
     repo = UserRepository(db)
     user = await repo.get_by_id(user_id)
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    await team_service.ensure_an_admin_remains(db, user, role=role, is_active=user.is_active)
     await audit_service.record(
         db, admin, "user.role_changed", "user", user.id,
         before={"role": user.role}, after={"role": role}, context={"email": user.email},
@@ -515,11 +520,39 @@ async def update_user_role(
     return {"id": str(user.id), "role": user.role}
 
 
+# ── Team (admins only) ────────────────────────────────────────────────────────
+
+@router.get("/team", response_model=list[TeamMemberRead])
+async def list_team(_admin: AdminOnly, db: DB) -> list[TeamMemberRead]:
+    """Everyone with back-office access, including deactivated accounts."""
+    return await team_service.list_team(db)
+
+
+@router.post(
+    "/team",
+    response_model=TeamMemberRead,
+    responses={404: {"description": "No account with that email"}, 409: {"description": "Account can't be added yet"}},
+)
+async def add_team_member(body: TeamMemberAdd, admin: AdminOnly, db: DB) -> TeamMemberRead:
+    """Give an existing, verified account staff or admin access."""
+    return await team_service.add_member(db, admin, body)
+
+
+@router.patch(
+    "/team/{user_id}",
+    response_model=TeamMemberRead,
+    responses={409: {"description": "Would change your own access or leave no active admin"}},
+)
+async def update_team_member(user_id: uuid.UUID, body: TeamMemberUpdate, admin: AdminOnly, db: DB) -> TeamMemberRead:
+    """Change a member's role (`customer` removes them from the team) or (de)activate their account."""
+    return await team_service.update_member(db, admin, user_id, body)
+
+
 # ── Audit log ─────────────────────────────────────────────────────────────────
 
 @router.get("/audit-log", response_model=AuditPage)
 async def list_audit_log(
-    admin: AdminUser,
+    _admin: AdminOnly,
     db: DB,
     entity: str | None = Query(default=None, examples=["order"]),  # noqa: B008
     entity_id: str | None = Query(default=None, max_length=255),  # noqa: B008
@@ -532,8 +565,6 @@ async def list_audit_log(
 ) -> AuditPage:
     """Who changed what in the back office, newest first. Admins only: it shows every staff
     member's actions and IP addresses."""
-    if admin.role != UserRole.admin:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only admins can see the activity log")
     return await audit_service.search(
         db, entity=entity, entity_id=entity_id, actor_user_id=actor_user_id, action=action, offset=offset, limit=limit
     )

@@ -12,6 +12,7 @@ import { CampaignReport } from "@/components/admin/CampaignReport";
 import { OrderList } from "@/components/admin/OrderList";
 import { AttentionInbox } from "@/components/admin/AttentionInbox";
 import { ActivityLog } from "@/components/admin/ActivityLog";
+import { TeamManager } from "@/components/admin/TeamManager";
 import { BuilderList } from "@/components/admin/BuilderList";
 import { useStaffSession } from "@/hooks/use-staff-session";
 import { useAuthStore } from "@/stores/auth.store";
@@ -57,6 +58,7 @@ export default function AdminDashboard() {
           {section === "new-order" && <AssistedOrderForm token={token} />}
           {section === "messages" && <MessageQueue token={token} />}
           {section === "campaigns" && <CampaignReport token={token} />}
+          {section === "team" && isAdmin && <TeamManager token={token} />}
           {section === "activity" && isAdmin && <ActivityLog token={token} />}
         </>
       )}

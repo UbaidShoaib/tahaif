@@ -172,11 +172,26 @@ storefront queries don't have to load them.
 drag library). `PUT /products/{slug}/images/order` takes every photo id exactly once, else 422. The main
 photo is still chosen separately ("Make main").
 
+**P0 · Team and staff limits — done (2026-10-27)** — "Team" in the Admin group (`TeamManager.tsx`,
+`app/services/team_service.py`), admins only.
+- Staff have no separate sign-up: they register on the site and verify their email, then an admin adds that
+  email as staff or admin (`POST /admin/team`). Unverified addresses are refused (anyone can register any
+  address), and so are shop owners' accounts (staff can't open the vendor portal).
+- `PATCH /admin/team/{id}` changes the role (`customer` takes them off the team) or deactivates. Deactivating
+  revokes their refresh tokens; the access token stops working at once because `get_current_user` checks
+  `is_active`. Audited as `user.role_changed`, `user.deactivated`, `user.reactivated`.
+- Nobody changes their own access, and the last active admin can't be demoted or deactivated (also enforced
+  on the older `PATCH /admin/users/{id}/role`).
+- **Admins only:** refunds (`order_status.ADMIN_ONLY`; staff don't see *refunded* in `next_statuses` and get
+  403), creating or switching coupons, FX overrides, the user list, the team and the activity log. Staff keep
+  reading coupons and verifying payments.
+- First admin: `uv run python scripts/create_admin.py you@example.com` (promotes an account, or creates one).
+
 **P0 is complete.** Next is P1 (see section 3): the Today home page, payouts, merchandising, reports.
 
 ## 5. Open questions (defaults in brackets)
 
 - Vendor commission model: flat % per vendor or per category? **[flat % per vendor, stored on `Vendor`]**
-- Who issues refunds: ops or admin only? **[admin only until permission scopes ship]**
+- Who issues refunds: ops or admin only? **[admin only until permission scopes ship]** — enforced (2026-10-27)
 - Should vendors edit their own prices, or must admin approve? **[vendor edits go live; audit log + admin can revert]**
 - Is stock tracked for made-to-order items (cakes, bouquets)? **[no — use daily capacity; stock only for perfumes/hampers]** — built as "blank stock = not counted" (2026-10-18); capacity not yet.

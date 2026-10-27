@@ -7,7 +7,15 @@ pre-production-cutover).
 
 ## [Unreleased]
 
+### Added
+- **Team page in the back office** (admins only). Add a verified account as staff or admin by email,
+  switch roles, deactivate (signs them out everywhere) or take someone off the team. Nobody can change
+  their own access or remove the last admin. `GET/POST /admin/team`, `PATCH /admin/team/{id}`, audited.
+  `scripts/create_admin.py` makes the first admin without SQL.
+
 ### Changed
+- **Staff can no longer refund orders, create or switch coupons, override exchange rates or list users**;
+  those are admins only now. Staff don't see *Refunded* among an order's next statuses.
 - **New page layouts across the site** (ADR 0015). Home asks where, when and what for in the hero.
   Shop, category, occasion and search pages filter from one chip row with *Arrives tomorrow* first.
   The product buy box is three steps: size, when, your card; the chosen day goes on the cart line.

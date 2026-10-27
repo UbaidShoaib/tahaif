@@ -97,12 +97,14 @@ describe("AdminDashboard sections", () => {
     expect(await screen.findByRole("searchbox", { name: "Search products" })).toBeInTheDocument();
   });
 
-  it("shows the activity log to admins only", async () => {
+  it("shows the team and activity log to admins only", async () => {
     render(<AdminDashboard />);
     expect(await screen.findByRole("button", { name: "Activity" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Team" })).toBeInTheDocument();
 
     useAuthStore.setState({ user: { ...admin, role: "staff" } as never });
     await waitFor(() => expect(screen.queryByRole("button", { name: "Activity" })).not.toBeInTheDocument());
+    expect(screen.queryByRole("button", { name: "Team" })).not.toBeInTheDocument();
   });
 
   it("opens the tab named in ?section=", async () => {

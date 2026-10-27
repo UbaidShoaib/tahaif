@@ -8,7 +8,7 @@ import { useAuthStore } from "@/stores/auth.store";
 
 export type Section =
   | "attention" | "orders" | "new-order" | "messages" | "campaigns" | "applications" | "add-product" | "products" | "note-reports"
-  | "builders" | "activity";
+  | "builders" | "team" | "activity";
 
 type Item = { key: Section; label: string; adminOnly?: boolean };
 
@@ -38,8 +38,14 @@ export const NAV: { group: string; items: Item[] }[] = [
     ],
   },
   { group: "Reports", items: [{ key: "campaigns", label: "Sales by campaign" }] },
-  // Shows every staff member's actions and IPs, so admins only (the API enforces it too).
-  { group: "Admin", items: [{ key: "activity", label: "Activity", adminOnly: true }] },
+  // Who has access, and every staff member's actions and IPs: admins only (the API enforces it too).
+  {
+    group: "Admin",
+    items: [
+      { key: "team", label: "Team", adminOnly: true },
+      { key: "activity", label: "Activity", adminOnly: true },
+    ],
+  },
 ];
 
 export function visibleSections(isAdmin: boolean): Item[] {

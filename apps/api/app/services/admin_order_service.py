@@ -9,7 +9,7 @@ from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.order import Order, OrderStatus, PaymentStatus
-from app.models.user import User
+from app.models.user import User, UserRole
 from app.repositories.loyalty_repository import CouponRepository
 from app.repositories.order_repository import OrderRepository
 from app.repositories.user_repository import UserRepository
@@ -60,13 +60,13 @@ def parse_query(q: str | None) -> dict[str, str | None]:
     }
 
 
-def _summary(o: Order) -> AdminOrderSummary:
+def _summary(o: Order, viewer: User) -> AdminOrderSummary:
     payment = o.payments[0] if o.payments else None
     return AdminOrderSummary(
         id=o.id,
         public_token=o.public_token,
         status=o.status,
-        next_statuses=order_status.next_statuses(o.status),
+        next_statuses=order_status.next_statuses(o.status, is_admin=viewer.role == UserRole.admin),
         user_id=o.user_id,
         total_pkr=o.total_pkr,
         currency=o.currency,
@@ -85,6 +85,7 @@ def _summary(o: Order) -> AdminOrderSummary:
 
 async def list_orders(
     db: AsyncSession,
+    viewer: User,
     *,
     status: OrderStatus | None = None,
     q: str | None = None,
@@ -102,7 +103,7 @@ async def list_orders(
         offset=offset,
         limit=limit,
     )
-    return AdminOrderPage(items=[_summary(o) for o in orders], total=total, offset=offset, limit=limit)
+    return AdminOrderPage(items=[_summary(o, viewer) for o in orders], total=total, offset=offset, limit=limit)
 
 
 # Hand-sent WhatsApp messages as they read on the timeline.
@@ -164,7 +165,7 @@ def _timeline(o: Order, logged: list[AuditEntryRead]) -> list[OrderEvent]:
     return sorted(events + _audit_events(logged), key=lambda e: e.at)
 
 
-async def get_order_detail(db: AsyncSession, order_id: uuid.UUID) -> AdminOrderDetail:
+async def get_order_detail(db: AsyncSession, order_id: uuid.UUID, viewer: User) -> AdminOrderDetail:
     o = await OrderRepository(db).get_for_admin(order_id)
     if not o:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Order not found")
@@ -190,7 +191,7 @@ async def get_order_detail(db: AsyncSession, order_id: uuid.UUID) -> AdminOrderD
             for f in base.fulfillments
         ],
         user_id=o.user_id,
-        next_statuses=order_status.next_statuses(o.status),
+        next_statuses=order_status.next_statuses(o.status, is_admin=viewer.role == UserRole.admin),
         buyer_name=_person(o.user) if o.user and o.user.full_name else o.gift_from,
         buyer_email=o.user.email if o.user else o.contact_email,
         buyer_phone=social_order_service.buyer_phone(o),
@@ -242,6 +243,8 @@ async def set_status(db: AsyncSession, actor: User, order_id: uuid.UUID, new_sta
             status_code=status.HTTP_409_CONFLICT,
             detail=f"An order that is {_words(order.status)} can't be moved to {_words(new_status)}.",
         )
+    if new_status in order_status.ADMIN_ONLY and actor.role != UserRole.admin:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=f"Only an admin can mark an order {_words(new_status)}.")
     before = audit_service.snapshot(order, ["status"])
     order.status = new_status
     if new_status == OrderStatus.cancelled:
