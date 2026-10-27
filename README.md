@@ -163,7 +163,7 @@ uv run alembic upgrade head
 # Seed the database with cities, vendors, and products
 uv run python scripts/seed.py
 
-# Make yourself the first admin (then add staff from Back office → Team)
+# Make yourself the first super admin (then add admins and staff from Back office → Team)
 uv run python scripts/create_admin.py you@example.com
 ```
 

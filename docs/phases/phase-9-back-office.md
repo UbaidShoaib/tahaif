@@ -180,12 +180,15 @@ photo is still chosen separately ("Make main").
 - `PATCH /admin/team/{id}` changes the role (`customer` takes them off the team) or deactivates. Deactivating
   revokes their refresh tokens; the access token stops working at once because `get_current_user` checks
   `is_active`. Audited as `user.role_changed`, `user.deactivated`, `user.reactivated`.
-- Nobody changes their own access, and the last active admin can't be demoted or deactivated (also enforced
-  on the older `PATCH /admin/users/{id}/role`).
-- **Admins only:** refunds (`order_status.ADMIN_ONLY`; staff don't see *refunded* in `next_statuses` and get
+- Three back-office roles: **staff**, **admin**, **super admin** (`super_admin`, migration 0023). Admins manage
+  staff; only a super admin adds, changes or deactivates admins and super admins. The migration makes the
+  oldest active admin the first super admin.
+- Nobody changes their own access, and the last active super admin can't be demoted or deactivated (also
+  enforced on the older `PATCH /admin/users/{id}/role`).
+- **Admins and super admins only:** refunds (`order_status.ADMIN_ONLY`; staff don't see *refunded* in `next_statuses` and get
   403), creating or switching coupons, FX overrides, the user list, the team and the activity log. Staff keep
   reading coupons and verifying payments.
-- First admin: `uv run python scripts/create_admin.py you@example.com` (promotes an account, or creates one).
+- First super admin: `uv run python scripts/create_admin.py you@example.com` (promotes an account, or creates one).
 
 **P0 is complete.** Next is P1 (see section 3): the Today home page, payouts, merchandising, reports.
 

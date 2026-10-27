@@ -16,7 +16,7 @@ from app.core.deps import DB, require_roles
 from app.models.catalog import FxRate, FxRateSource, VendorApprovalStatus
 from app.models.loyalty import Coupon, CouponType
 from app.models.order import OrderSource, OrderStatus
-from app.models.user import User, UserRole
+from app.models.user import ADMIN_ROLES, BACK_OFFICE_ROLES, User, UserRole
 from app.repositories.loyalty_repository import CouponRepository
 from app.repositories.user_repository import UserRepository
 from app.schemas.audit import AuditPage
@@ -62,8 +62,8 @@ from app.services import (
     whatsapp_bot_service,
 )
 
-AdminUser = Annotated[User, require_roles(UserRole.admin, UserRole.staff)]
-AdminOnly = Annotated[User, require_roles(UserRole.admin)]
+AdminUser = Annotated[User, require_roles(*BACK_OFFICE_ROLES)]
+AdminOnly = Annotated[User, require_roles(*ADMIN_ROLES)]
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -511,7 +511,8 @@ async def update_user_role(
     user = await repo.get_by_id(user_id)
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
-    await team_service.ensure_an_admin_remains(db, user, role=role, is_active=user.is_active)
+    team_service.ensure_can_manage(admin, user, role)
+    await team_service.ensure_a_super_admin_remains(db, user, role=role, is_active=user.is_active)
     await audit_service.record(
         db, admin, "user.role_changed", "user", user.id,
         before={"role": user.role}, after={"role": role}, context={"email": user.email},

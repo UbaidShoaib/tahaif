@@ -8,7 +8,7 @@ import { Select } from "@/components/ui/select";
 import { apiFetch, ApiError } from "@/lib/api";
 import { useAuthStore } from "@/stores/auth.store";
 
-type Role = "staff" | "admin";
+type Role = "staff" | "admin" | "super_admin";
 
 export type Member = {
   id: string;
@@ -21,18 +21,29 @@ export type Member = {
 
 type Change = { role?: Role | "customer"; is_active?: boolean };
 
+const ROLES: Role[] = ["staff", "admin", "super_admin"];
+
+const ROLE_LABEL: Record<Role, string> = { staff: "Staff", admin: "Admin", super_admin: "Super admin" };
+
 const ROLE_HELP: Record<Role, string> = {
   staff: "Orders, payments, catalog, shops and messages",
-  admin: "Everything staff do, plus refunds, coupons, exchange rates, the team and the activity log",
+  admin: "Everything staff do, plus refunds, coupons, exchange rates, managing staff and the activity log",
+  super_admin: "Everything admins do, plus adding, changing and deactivating admins",
 };
 
+const nowA = (role: string) =>
+  role === "admin" ? "an admin" : role === "super_admin" ? "a super admin" : "staff";
+
 /**
- * Who can use the back office. Admins add an existing, verified account by email,
- * switch it between staff and admin, deactivate it, or take it off the team.
- * Your own row is read-only, so nobody locks themselves out (the API enforces it too).
+ * Who can use the back office. Add an existing, verified account by email, change
+ * its role, deactivate it, or take it off the team. Admins manage staff; only a
+ * super admin manages admins. Your own row is read-only, so nobody locks
+ * themselves out (the API enforces all of it too).
  */
 export function TeamManager({ token }: { token: string }) {
   const myId = useAuthStore((s) => s.user?.id);
+  const iAmSuper = useAuthStore((s) => s.user?.role === "super_admin");
+  const assignable = iAmSuper ? ROLES : (["staff"] as Role[]);
   const [members, setMembers] = useState<Member[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -69,7 +80,7 @@ export function TeamManager({ token }: { token: string }) {
     void run("add", () => apiFetch<Member>("/admin/team", { method: "POST", body: { email: email.trim(), role }, token }),
       (m) => {
         setEmail("");
-        return `${m.full_name ?? m.email} is now ${m.role === "admin" ? "an admin" : "staff"}.`;
+        return `${m.full_name ?? m.email} is now ${nowA(m.role)}.`;
       });
   };
 
@@ -89,18 +100,22 @@ export function TeamManager({ token }: { token: string }) {
             <span className="font-medium">Email</span>
             <Input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@example.com" />
           </label>
-          <label className="space-y-1 text-sm">
-            <span className="font-medium">Access</span>
-            <Select className="w-auto" value={role} onChange={(e) => setRole(e.target.value as Role)}>
-              <option value="staff">Staff</option>
-              <option value="admin">Admin</option>
-            </Select>
-          </label>
+          {assignable.length > 1 && (
+            <label className="space-y-1 text-sm">
+              <span className="font-medium">Access</span>
+              <Select className="w-auto" value={role} onChange={(e) => setRole(e.target.value as Role)}>
+                {assignable.map((r) => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}
+              </Select>
+            </label>
+          )}
           <Button type="submit" disabled={busy === "add" || !email.trim()}>
             {busy === "add" ? "Adding…" : "Add to team"}
           </Button>
         </div>
-        <p className="text-xs text-muted-foreground">{ROLE_HELP[role]}</p>
+        <p className="text-xs text-muted-foreground">
+          {ROLE_HELP[role]}
+          {!iAmSuper && " · Only a super admin can add admins."}
+        </p>
       </form>
 
       {error && <div role="alert" className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">{error}</div>}
@@ -112,6 +127,7 @@ export function TeamManager({ token }: { token: string }) {
         <ul className="divide-y rounded-xl border">
           {(members ?? []).map((m) => {
             const me = m.id === myId;
+            const editable = !me && (iAmSuper || m.role === "staff");
             return (
               <li key={m.id} className="flex flex-wrap items-center justify-between gap-3 p-3 text-sm">
                 <div className="min-w-0">
@@ -122,16 +138,18 @@ export function TeamManager({ token }: { token: string }) {
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
                   {!m.is_active && <Badge variant="error">Deactivated</Badge>}
-                  {me ? (
-                    <Badge variant={m.role === "admin" ? "brand" : "neutral"}>{m.role === "admin" ? "Admin" : "Staff"}</Badge>
+                  {!editable ? (
+                    <Badge variant={m.role === "staff" ? "neutral" : "brand"}>{ROLE_LABEL[m.role]}</Badge>
                   ) : (
                     <>
-                      <Select aria-label={`Access for ${name(m)}`} className="w-auto" value={m.role} disabled={busy === m.id}
-                        onChange={(e) => void change(m, { role: e.target.value as Role },
-                          `${name(m)} is now ${e.target.value === "admin" ? "an admin" : "staff"}.`)}>
-                        <option value="staff">Staff</option>
-                        <option value="admin">Admin</option>
-                      </Select>
+                      {iAmSuper ? (
+                        <Select aria-label={`Access for ${name(m)}`} className="w-auto" value={m.role} disabled={busy === m.id}
+                          onChange={(e) => void change(m, { role: e.target.value as Role }, `${name(m)} is now ${nowA(e.target.value)}.`)}>
+                          {ROLES.map((r) => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}
+                        </Select>
+                      ) : (
+                        <Badge variant="neutral">{ROLE_LABEL[m.role]}</Badge>
+                      )}
                       <Button variant="outline" size="sm" disabled={busy === m.id}
                         onClick={() => void change(m, { is_active: !m.is_active },
                           m.is_active ? `${name(m)} is deactivated and signed out.` : `${name(m)} can sign in again.`)}>

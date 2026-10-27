@@ -15,13 +15,14 @@ import { ActivityLog } from "@/components/admin/ActivityLog";
 import { TeamManager } from "@/components/admin/TeamManager";
 import { BuilderList } from "@/components/admin/BuilderList";
 import { useStaffSession } from "@/hooks/use-staff-session";
+import { isAdminRole } from "@/lib/roles";
 import { useAuthStore } from "@/stores/auth.store";
 
 const LABELS = Object.fromEntries(NAV.flatMap((g) => g.items).map((i) => [i.key, i.label])) as Record<Section, string>;
 
 export default function AdminDashboard() {
   const token = useStaffSession("/admin");
-  const isAdmin = useAuthStore((s) => s.user?.role === "admin");
+  const isAdmin = useAuthStore((s) => isAdminRole(s.user?.role));
   const [section, setSection] = useState<Section>("attention");
 
   // The section lives in ?section=… so links from other admin pages, refresh and

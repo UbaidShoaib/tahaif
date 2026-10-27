@@ -16,7 +16,7 @@ from app.models.catalog import (
     Vendor,
     VendorApprovalStatus,
 )
-from app.models.user import User, UserRole
+from app.models.user import BACK_OFFICE_ROLES, User
 from app.repositories.catalog_repository import (
     CategoryRepository,
     CityRepository,
@@ -56,7 +56,7 @@ _FORBIDDEN = HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not yo
 
 
 def _is_staff(user: User) -> bool:
-    return user.role in (UserRole.staff, UserRole.admin)
+    return user.role in BACK_OFFICE_ROLES
 
 
 def _STAFF_ONLY(detail: str = "Staff only") -> HTTPException:
@@ -69,7 +69,7 @@ def _require_staff(user: User) -> None:
 
 
 def _owns_vendor(user: User, vendor: Vendor) -> bool:
-    return user.role in (UserRole.staff, UserRole.admin) or vendor.owner_user_id == user.id
+    return user.role in BACK_OFFICE_ROLES or vendor.owner_user_id == user.id
 
 
 # ── Cities ────────────────────────────────────────────────────────────────────

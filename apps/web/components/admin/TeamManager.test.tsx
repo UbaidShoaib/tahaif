@@ -14,6 +14,9 @@ vi.mock("@/lib/api", async () => {
 const me: Member = {
   id: "u1", email: "owner@example.com", full_name: "Owner", role: "admin", is_active: true, created_at: "2026-10-01T00:00:00Z",
 };
+const zain: Member = {
+  id: "u3", email: "zain@example.com", full_name: "Zain", role: "admin", is_active: true, created_at: "2026-10-03T00:00:00Z",
+};
 const sara: Member = {
   id: "u2", email: "sara@example.com", full_name: "Sara", role: "staff", is_active: true, created_at: "2026-10-02T00:00:00Z",
 };
@@ -21,16 +24,34 @@ const sara: Member = {
 describe("TeamManager", () => {
   beforeEach(() => {
     vi.mocked(apiFetch).mockReset();
-    useAuthStore.setState({ user: { id: "u1", email: me.email, full_name: "Owner", role: "admin" } as never });
+    signInAs("admin");
   });
 
-  it("lists the team and keeps your own row read-only", async () => {
-    vi.mocked(apiFetch).mockResolvedValue([me, sara]);
+  const signInAs = (role: string) =>
+    useAuthStore.setState({ user: { id: "u1", email: me.email, full_name: "Owner", role } as never });
+
+  it("lets a super admin change anyone's role but their own", async () => {
+    signInAs("super_admin");
+    vi.mocked(apiFetch).mockResolvedValue([{ ...me, role: "super_admin" }, zain, sara]);
     render(<TeamManager token="tok" />);
 
     expect(await screen.findByText("(you)")).toBeInTheDocument();
     expect(screen.queryByRole("combobox", { name: "Access for Owner" })).not.toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: "Access for Zain" })).toHaveValue("admin");
     expect(screen.getByRole("combobox", { name: "Access for Sara" })).toHaveValue("staff");
+    expect(screen.getByRole("combobox", { name: "Access" })).toHaveTextContent("Super admin");
+  });
+
+  it("lets an admin manage staff only", async () => {
+    vi.mocked(apiFetch).mockResolvedValue([me, zain, sara]);
+    render(<TeamManager token="tok" />);
+
+    const admin = (await screen.findByText("Zain")).closest("li")!;
+    expect(within(admin).queryByRole("button")).not.toBeInTheDocument();
+    const staff = screen.getByText("Sara").closest("li")!;
+    expect(within(staff).getByRole("button", { name: "Deactivate" })).toBeInTheDocument();
+    expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
+    expect(screen.getByText(/Only a super admin can add admins/)).toBeInTheDocument();
   });
 
   it("adds a member by email", async () => {
@@ -61,6 +82,7 @@ describe("TeamManager", () => {
   });
 
   it("deactivates and changes roles", async () => {
+    signInAs("super_admin");
     vi.mocked(apiFetch).mockImplementation((_path, opts) =>
       Promise.resolve((opts?.method === "PATCH" ? sara : [me, sara]) as never));
     render(<TeamManager token="tok" />);

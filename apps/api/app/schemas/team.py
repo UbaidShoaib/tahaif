@@ -18,11 +18,11 @@ class TeamMemberRead(BaseModel):
 
 class TeamMemberAdd(BaseModel):
     email: EmailStr = Field(description="An existing, verified account; they sign up on the site first")
-    role: Literal["staff", "admin"] = "staff"
+    role: Literal["staff", "admin", "super_admin"] = "staff"
 
 
 class TeamMemberUpdate(BaseModel):
-    role: Literal["customer", "staff", "admin"] | None = Field(
-        default=None, description="`customer` takes them off the team"
+    role: Literal["customer", "staff", "admin", "super_admin"] | None = Field(
+        default=None, description="`customer` takes them off the team. Only a super admin sets or changes admins."
     )
     is_active: bool | None = None

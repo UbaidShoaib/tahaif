@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import { Package } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { isAdminRole } from "@/lib/roles";
 import { useAuthStore } from "@/stores/auth.store";
 
 export type Section =
@@ -66,7 +67,7 @@ export function AdminShell({
   onSelect?: (s: Section) => void;
   children: ReactNode;
 }) {
-  const isAdmin = useAuthStore((s) => s.user?.role === "admin");
+  const isAdmin = useAuthStore((s) => isAdminRole(s.user?.role));
   const groups = NAV.map((g) => ({ ...g, items: g.items.filter((i) => isAdmin || !i.adminOnly) }))
     .filter((g) => g.items.length > 0);
 

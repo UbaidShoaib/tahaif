@@ -1,9 +1,12 @@
-"""The back-office team: admins add staff by email, change roles and deactivate accounts.
+"""The back-office team: add people by email, change roles and deactivate accounts.
 
 There is no separate sign-up for staff. A person registers on the site like any
-buyer and verifies their email; an admin then adds that account here. Two rules
-keep the back office reachable: nobody changes their own role or deactivates
-themselves, and the last active admin can't be demoted or deactivated.
+buyer and verifies their email; an admin then adds that account here.
+
+Admins manage staff. Only a super admin adds, changes or deactivates admins and
+super admins. Two rules keep the back office reachable: nobody changes their own
+role or deactivates themselves, and the last active super admin can't be demoted
+or deactivated.
 """
 
 import uuid
@@ -12,12 +15,10 @@ from fastapi import HTTPException, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.user import User, UserRole
+from app.models.user import ADMIN_ROLES, BACK_OFFICE_ROLES, User, UserRole
 from app.repositories.user_repository import UserRepository
 from app.schemas.team import TeamMemberAdd, TeamMemberRead, TeamMemberUpdate
 from app.services import audit_service
-
-_TEAM = (UserRole.staff, UserRole.admin)
 
 
 def _read(u: User) -> TeamMemberRead:
@@ -31,22 +32,32 @@ def _conflict(detail: str) -> HTTPException:
 
 
 async def list_team(db: AsyncSession) -> list[TeamMemberRead]:
-    """Admins first, then staff; deactivated accounts stay listed so they can be turned back on."""
+    """Super admins, admins, then staff; deactivated accounts stay listed so they can be turned back on."""
     result = await db.execute(
-        select(User).where(User.role.in_(_TEAM)).order_by(User.role.desc(), User.is_active.desc(), User.email)
+        select(User).where(User.role.in_(BACK_OFFICE_ROLES)).order_by(User.role.desc(), User.is_active.desc(), User.email)
     )
     return [_read(u) for u in result.scalars().all()]
 
 
-async def ensure_an_admin_remains(db: AsyncSession, user: User, *, role: UserRole, is_active: bool) -> None:
-    """Refuse a change that would leave no active admin to run the back office."""
-    if user.role != UserRole.admin or not user.is_active or (role == UserRole.admin and is_active):
+def ensure_can_manage(actor: User, user: User, role: UserRole) -> None:
+    """Admins manage staff; anything touching an admin or super admin is a super admin's call."""
+    if actor.role != UserRole.super_admin and (user.role in ADMIN_ROLES or role in ADMIN_ROLES):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only a super admin can add, change or deactivate admins.",
+        )
+
+
+async def ensure_a_super_admin_remains(db: AsyncSession, user: User, *, role: UserRole, is_active: bool) -> None:
+    """Refuse a change that would leave no active super admin to manage the admins."""
+    super_admin = UserRole.super_admin
+    if user.role != super_admin or not user.is_active or (role == super_admin and is_active):
         return
-    admins = await db.scalar(
-        select(func.count()).select_from(User).where(User.role == UserRole.admin, User.is_active.is_(True))
+    left = await db.scalar(
+        select(func.count()).select_from(User).where(User.role == super_admin, User.is_active.is_(True))
     )
-    if (admins or 0) <= 1:
-        raise _conflict("This is the last admin. Make someone else an admin first.")
+    if (left or 0) <= 1:
+        raise _conflict("This is the last super admin. Make someone else a super admin first.")
 
 
 async def _set_role(db: AsyncSession, actor: User, user: User, role: UserRole) -> None:
@@ -76,7 +87,8 @@ async def add_member(db: AsyncSession, actor: User, body: TeamMemberAdd) -> Team
     if user.role != role:
         if user.id == actor.id:
             raise _conflict("You can't change your own role.")
-        await ensure_an_admin_remains(db, user, role=role, is_active=True)
+        ensure_can_manage(actor, user, role)
+        await ensure_a_super_admin_remains(db, user, role=role, is_active=True)
         await _set_role(db, actor, user, role)
         await db.flush()
     return _read(user)
@@ -86,7 +98,7 @@ async def update_member(
     db: AsyncSession, actor: User, user_id: uuid.UUID, body: TeamMemberUpdate
 ) -> TeamMemberRead:
     user = await UserRepository(db).get_by_id(user_id)
-    if not user or user.role not in _TEAM:
+    if not user or user.role not in BACK_OFFICE_ROLES:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not on the team")
     role = UserRole(body.role) if body.role else user.role
     is_active = user.is_active if body.is_active is None else body.is_active
@@ -94,7 +106,8 @@ async def update_member(
         return _read(user)
     if user.id == actor.id:
         raise _conflict("You can't change your own role or deactivate yourself. Ask another admin.")
-    await ensure_an_admin_remains(db, user, role=role, is_active=is_active)
+    ensure_can_manage(actor, user, role)
+    await ensure_a_super_admin_remains(db, user, role=role, is_active=is_active)
 
     if role != user.role:
         await _set_role(db, actor, user, role)

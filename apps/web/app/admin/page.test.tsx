@@ -105,6 +105,9 @@ describe("AdminDashboard sections", () => {
     useAuthStore.setState({ user: { ...admin, role: "staff" } as never });
     await waitFor(() => expect(screen.queryByRole("button", { name: "Activity" })).not.toBeInTheDocument());
     expect(screen.queryByRole("button", { name: "Team" })).not.toBeInTheDocument();
+
+    useAuthStore.setState({ user: { ...admin, role: "super_admin" } as never });
+    expect(await screen.findByRole("button", { name: "Team" })).toBeInTheDocument();
   });
 
   it("opens the tab named in ?section=", async () => {

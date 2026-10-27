@@ -23,6 +23,14 @@ class UserRole(enum.StrEnum):
     vendor = "vendor"
     staff = "staff"
     admin = "admin"
+    # Everything an admin does, plus managing admins. At least one stays active.
+    super_admin = "super_admin"
+
+
+# Who may do admin-only work (refunds, coupons, FX, the team, the activity log).
+ADMIN_ROLES = (UserRole.admin, UserRole.super_admin)
+# Who may use the back office at all.
+BACK_OFFICE_ROLES = (UserRole.staff, *ADMIN_ROLES)
 
 
 class User(UUIDPrimaryKeyMixin, TimestampMixin, Base):

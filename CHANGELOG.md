@@ -8,10 +8,12 @@ pre-production-cutover).
 ## [Unreleased]
 
 ### Added
-- **Team page in the back office** (admins only). Add a verified account as staff or admin by email,
-  switch roles, deactivate (signs them out everywhere) or take someone off the team. Nobody can change
-  their own access or remove the last admin. `GET/POST /admin/team`, `PATCH /admin/team/{id}`, audited.
-  `scripts/create_admin.py` makes the first admin without SQL.
+- **Team page in the back office** (admins only). Add a verified account by email, switch roles,
+  deactivate (signs them out everywhere) or take someone off the team. `GET/POST /admin/team`,
+  `PATCH /admin/team/{id}`, audited. `scripts/create_admin.py` makes the first super admin without SQL.
+- **Super admin role** above admin (migration 0023 promotes the oldest active admin). Admins manage
+  staff; only a super admin adds, changes or deactivates admins. Nobody can change their own access or
+  remove the last super admin.
 
 ### Changed
 - **Staff can no longer refund orders, create or switch coupons, override exchange rates or list users**;

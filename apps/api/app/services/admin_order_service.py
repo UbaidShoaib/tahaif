@@ -9,7 +9,7 @@ from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.order import Order, OrderStatus, PaymentStatus
-from app.models.user import User, UserRole
+from app.models.user import ADMIN_ROLES, User
 from app.repositories.loyalty_repository import CouponRepository
 from app.repositories.order_repository import OrderRepository
 from app.repositories.user_repository import UserRepository
@@ -66,7 +66,7 @@ def _summary(o: Order, viewer: User) -> AdminOrderSummary:
         id=o.id,
         public_token=o.public_token,
         status=o.status,
-        next_statuses=order_status.next_statuses(o.status, is_admin=viewer.role == UserRole.admin),
+        next_statuses=order_status.next_statuses(o.status, is_admin=viewer.role in ADMIN_ROLES),
         user_id=o.user_id,
         total_pkr=o.total_pkr,
         currency=o.currency,
@@ -191,7 +191,7 @@ async def get_order_detail(db: AsyncSession, order_id: uuid.UUID, viewer: User) 
             for f in base.fulfillments
         ],
         user_id=o.user_id,
-        next_statuses=order_status.next_statuses(o.status, is_admin=viewer.role == UserRole.admin),
+        next_statuses=order_status.next_statuses(o.status, is_admin=viewer.role in ADMIN_ROLES),
         buyer_name=_person(o.user) if o.user and o.user.full_name else o.gift_from,
         buyer_email=o.user.email if o.user else o.contact_email,
         buyer_phone=social_order_service.buyer_phone(o),
@@ -243,7 +243,7 @@ async def set_status(db: AsyncSession, actor: User, order_id: uuid.UUID, new_sta
             status_code=status.HTTP_409_CONFLICT,
             detail=f"An order that is {_words(order.status)} can't be moved to {_words(new_status)}.",
         )
-    if new_status in order_status.ADMIN_ONLY and actor.role != UserRole.admin:
+    if new_status in order_status.ADMIN_ONLY and actor.role not in ADMIN_ROLES:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=f"Only an admin can mark an order {_words(new_status)}.")
     before = audit_service.snapshot(order, ["status"])
     order.status = new_status

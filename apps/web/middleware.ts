@@ -1,4 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server";
+import { ADMIN_ROLES, BACK_OFFICE_ROLES } from "@/lib/roles";
 
 // /vendor/[slug] is a public storefront, so only the portal routes under
 // /vendor are protected — not the whole prefix.
@@ -6,8 +7,8 @@ const VENDOR_PORTAL = ["/vendor/dashboard", "/vendor/orders", "/vendor/products"
 // Checkout is open to guests (ADR 0004), so it isn't gated here.
 const PROTECTED = ["/account", "/admin", ...VENDOR_PORTAL];
 const ROLE_GATES: [string[], string[]][] = [
-  [["/admin"], ["admin", "staff"]],
-  [VENDOR_PORTAL, ["vendor", "admin"]],
+  [["/admin"], BACK_OFFICE_ROLES],
+  [VENDOR_PORTAL, ["vendor", ...ADMIN_ROLES]],
 ];
 
 /** True for the path itself or anything beneath it (not "/adminx"). */
