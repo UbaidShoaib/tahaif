@@ -73,6 +73,18 @@ pre-production-cutover).
   shop approvals; card-note take-downs; coupons; exchange-rate overrides; and role changes record who,
   what changed (before → after) and the IP. Admin-only **Activity** tab (`GET /admin/audit-log`); the
   order page timeline now shows status changes and who made them.
+- SEO (Phase 10 P0): the **sitemap lists the whole catalog** — every live product (paged within the
+  API's 100-per-page limit, with `lastmod`), categories and subcategories, occasions and shop pages;
+  missing (`/about`), private (`/login`, `/register`, `/search`) and placeholder pages are gone. An API
+  failure now fails the sitemap request instead of publishing one without products.
+  **Canonical URLs** on the home, product, category, occasion, shop, contact, sell and terms pages
+  (filtered listings point at the unfiltered page) via `metadataBase`. Private and token pages
+  (`/track`, `/send`, `/note`, `/thanks`, `/checkout`, `/cart`, `/search`, sign-in, account, admin,
+  shop portal) send `X-Robots-Tag: noindex`; "Coming soon" pages (FAQ, blog, privacy, refund) are
+  `noindex` until written. `robots.txt` no longer blocks `/_next/`. `/c/{slug}/{anything}` is a 404.
+  Search Console / Bing verification via `NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION` /
+  `NEXT_PUBLIC_BING_SITE_VERIFICATION`. **Production builds fail without `NEXT_PUBLIC_SITE_URL`.**
+  API: products include `updated_at`.
 - Back office (Phase 9 P0): **order page** at `/admin/orders/{id}` — every recipient's full address,
   landmark, delivery day/slot, shop and shop phone (tap to call); items with card message and
   customisation; totals and charged currency; buyer contact, source and who took the order; payment

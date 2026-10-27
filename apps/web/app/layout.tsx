@@ -26,6 +26,8 @@ const naskh = Noto_Naskh_Arabic({
 });
 
 export const metadata: Metadata = {
+  // Resolves relative canonical and Open Graph URLs to the public origin.
+  metadataBase: new URL(brand.siteUrl),
   title: { default: `${brand.name} — ${brand.tagline}`, template: `%s | ${brand.name}` },
   description:
     "Send cakes, flowers, perfumes and more to your loved ones across Pakistan. Fast delivery, quality guaranteed.",
@@ -34,6 +36,13 @@ export const metadata: Metadata = {
     type: "website",
     locale: "en_PK",
     siteName: brand.name,
+  },
+  // Search Console / Bing Webmaster ownership tags; omitted when unset.
+  verification: {
+    google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION || undefined,
+    other: process.env.NEXT_PUBLIC_BING_SITE_VERIFICATION
+      ? { "msvalidate.01": process.env.NEXT_PUBLIC_BING_SITE_VERIFICATION }
+      : undefined,
   },
 };
 

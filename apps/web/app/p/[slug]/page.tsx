@@ -13,6 +13,7 @@ import { TrustList } from "@/components/catalog/TrustList";
 import { onTimePercent } from "@/lib/stats";
 import { VendorStory } from "@/components/catalog/VendorStory";
 import { ProductCard } from "@/components/catalog/ProductCard";
+import { canonical } from "@/lib/seo";
 
 type Props = { params: Promise<{ slug: string }> };
 
@@ -24,6 +25,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     title: product.name,
     description: product.description ?? undefined,
     openGraph: { images: [primaryImage(product)] },
+    ...canonical(`/p/${product.slug}`),
   };
 }
 

@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { brand } from "@/lib/brand";
+import { canonical } from "@/lib/seo";
 
-export const metadata: Metadata = { title: "Terms of Service" };
+export const metadata: Metadata = { title: "Terms of Service", ...canonical("/terms") };
 
 export default function Page() {
   return (

@@ -51,6 +51,7 @@ export type Product = {
   product_cities: ProductCity[];
   variants: ProductVariant[];
   vendor: VendorSummary | null;
+  updated_at?: string;
   /** A build-your-own base: buyers fill it at /build/{slug} instead of adding it to the cart. */
   builder_kind?: "hamper" | "bouquet" | null;
 };
@@ -135,6 +136,8 @@ export const catalogApi = {
   getProduct: (slug: string) => apiFetch<Product>(`/products/${slug}`),
 
   getVendor: (slug: string) => apiFetch<Vendor>(`/vendors/${slug}`),
+
+  getVendors: () => apiFetch<Vendor[]>("/vendors"),
 
   getOccasions: () => apiFetch<Occasion[]>("/occasions"),
 

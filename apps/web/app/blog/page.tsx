@@ -1,3 +1,9 @@
+import type { Metadata } from "next";
+import { NOINDEX } from "@/lib/seo";
+
+// A placeholder: kept out of search results until the page has content.
+export const metadata: Metadata = { title: "Blog", ...NOINDEX };
+
 export default function Page() {
   return (
     <div className="container mx-auto px-4 py-16 text-center">

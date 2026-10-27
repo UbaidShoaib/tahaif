@@ -8,6 +8,7 @@ import { Suspense } from "react";
 import { fetchListing, parseListingParams } from "@/lib/listing";
 import { ProductListing } from "@/components/catalog/ProductListing";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
+import { canonical } from "@/lib/seo";
 
 type Props = {
   params: Promise<{ slug: string }>;
@@ -21,6 +22,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return {
     title: `${occasion.name} Gifts`,
     description: `Send the perfect ${occasion.name} gift to Pakistan. Cakes, flowers, and more.`,
+    ...canonical(`/occasion/${occasion.slug}`),
   };
 }
 

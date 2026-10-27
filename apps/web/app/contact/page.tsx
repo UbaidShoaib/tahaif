@@ -1,5 +1,9 @@
 import { SupportWhatsApp } from "@/components/support/SupportWhatsApp";
+import type { Metadata } from "next";
 import { support } from "@/lib/support";
+import { canonical } from "@/lib/seo";
+
+export const metadata: Metadata = { title: "Contact Us", ...canonical("/contact") };
 
 export default function Page() {
   return (
