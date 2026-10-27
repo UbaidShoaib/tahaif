@@ -10,8 +10,8 @@ import { formatPrice } from "@/lib/utils";
 
 /**
  * Every build-your-own hamper and bouquet, with how many items buyers can add and
- * how many buckets have been started. To make a new one, open any product (often a
- * new "Build your own…" product with the basket's price) and use its Build-your-own section.
+ * how many buckets have been started. New ones are made in Add product (type: build-your-own),
+ * or by switching an existing product in its Build-your-own section.
  */
 export function BuilderList({ token }: { token: string }) {
   const [builders, setBuilders] = useState<AdminBuilderSummary[] | null>(null);
@@ -29,9 +29,9 @@ export function BuilderList({ token }: { token: string }) {
       <div className="rounded-lg border bg-muted/40 p-4 text-sm">
         <p className="font-medium">How to set one up</p>
         <ol className="mt-1 list-decimal space-y-1 pl-5 text-muted-foreground">
-          <li>Add a product for the empty basket or wrap (Add product), priced at what the container costs, and add its photo and delivery cities.</li>
           <li>Add the items as products of the same shop. Single stems or ribbons can stay hidden from the shop.</li>
-          <li>Open the basket product, set <em>Build-your-own</em> to Hamper or Bouquet, and add the items with how many each bucket may hold.</li>
+          <li>In <em>Add product</em>, pick <em>Build-your-own hamper</em> or <em>bouquet</em> as the type, price it at what the empty basket or wrap costs, and set the fewest and most items. (An existing product can be switched in its <em>Build-your-own</em> section.)</li>
+          <li>Open the new product and add the items, with how many of each a bucket may hold.</li>
           <li>Publish the basket product. Buyers start at <code>/build/&lt;product URL name&gt;</code>; it also appears under “Build your own” on the home page.</li>
         </ol>
       </div>

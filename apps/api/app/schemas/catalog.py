@@ -2,8 +2,9 @@ import uuid
 from datetime import datetime, time
 from decimal import Decimal
 from typing import Literal
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 # ── City ──────────────────────────────────────────────────────────────────────
 
@@ -17,16 +18,39 @@ class CityRead(BaseModel):
     is_active: bool
 
 
+def _known_timezone(value: str | None) -> str | None:
+    """Delivery cut-offs are worked out in the city's own time, so it must be a real IANA zone."""
+    if value is None:
+        return value
+    try:
+        ZoneInfo(value)
+    except (ZoneInfoNotFoundError, ValueError) as exc:
+        raise ValueError(f"Unknown time zone {value!r}; use one like Asia/Karachi") from exc
+    return value
+
+
 class CityCreate(BaseModel):
-    name: str = Field(max_length=100)
+    name: str = Field(min_length=1, max_length=100)
     slug: str = Field(max_length=100, pattern=r"^[a-z0-9-]+$")
-    timezone: str = Field(max_length=64)
+    timezone: str = Field(default="Asia/Karachi", max_length=64)
+
+    _check_timezone = field_validator("timezone")(_known_timezone)
 
 
 class CityUpdate(BaseModel):
-    name: str | None = Field(default=None, max_length=100)
+    name: str | None = Field(default=None, min_length=1, max_length=100)
     timezone: str | None = Field(default=None, max_length=64)
     is_active: bool | None = None
+
+    _check_timezone = field_validator("timezone")(_known_timezone)
+
+
+class AdminCityRead(CityRead):
+    """A city in the back office, with what still depends on it."""
+
+    vendor_count: int = Field(description="Shops based in the city")
+    product_count: int = Field(description="Products set up to deliver there")
+    delivery_count: int = Field(description="Deliveries ever sent there")
 
 
 # ── Vendor ────────────────────────────────────────────────────────────────────
@@ -75,16 +99,31 @@ class CategoryRead(BaseModel):
 
 class CategoryCreate(BaseModel):
     parent_id: uuid.UUID | None = None
-    name: str = Field(max_length=100)
+    name: str = Field(min_length=1, max_length=100)
     slug: str = Field(max_length=100, pattern=r"^[a-z0-9-]+$")
     sort_order: int = 0
 
 
 class CategoryUpdate(BaseModel):
-    parent_id: uuid.UUID | None = None
-    name: str | None = Field(default=None, max_length=100)
+    parent_id: uuid.UUID | None = Field(default=None, description="Send null to make it a top-level category")
+    name: str | None = Field(default=None, min_length=1, max_length=100)
     sort_order: int | None = None
     is_active: bool | None = None
+
+
+class AdminCategoryRead(BaseModel):
+    """A category in the back office: flat, switched-off ones included."""
+
+    model_config = {"from_attributes": True}
+
+    id: uuid.UUID
+    parent_id: uuid.UUID | None
+    name: str
+    slug: str
+    sort_order: int
+    is_active: bool
+    product_count: int = Field(description="Products filed under it")
+    child_count: int = Field(description="Subcategories under it")
 
 
 # ── ProductImage ──────────────────────────────────────────────────────────────

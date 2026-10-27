@@ -104,14 +104,18 @@ class _Line:
 
 
 def _sellable_line(cart_item: CartItem, city: City) -> _Line:
-    """The line priced for ``city``, or 409 when it can't be sold there now: the product
-    or size was switched off after it went in the cart, or the shop doesn't deliver
+    """The line priced for ``city``, or 409 when it can't be sold there now: the product,
+    size or whole shop was switched off after it went in the cart, or the shop doesn't deliver
     this product to that city."""
     product = cart_item.product
     variant = (
         next((v for v in product.variants if v.id == cart_item.variant_id), None) if cart_item.variant_id else None
     )
-    if not product.is_active or (cart_item.variant_id and (variant is None or not variant.is_active)):
+    if (
+        not product.is_active
+        or not product.vendor.is_active
+        or (cart_item.variant_id and (variant is None or not variant.is_active))
+    ):
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail=f"'{product.name}' is no longer available. Remove it from your cart to continue.",

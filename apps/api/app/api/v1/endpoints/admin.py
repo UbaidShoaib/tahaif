@@ -1,21 +1,28 @@
-"""Admin API: order management, payment verification, product CRUD, FX override, coupons, users."""
+"""Admin API: orders, payments, products, catalog set-up (categories, cities, occasions, shops), FX, coupons, users."""
 
 import uuid
-from datetime import UTC, date, datetime
+from datetime import date
 from decimal import Decimal
 from typing import Annotated, Any
 
 from fastapi import APIRouter, BackgroundTasks, Header, HTTPException, Query, status
 from pydantic import BaseModel, Field
-from sqlalchemy import select
 
 from app.core.deps import DB, require_roles
-from app.models.catalog import FxRate, FxRateSource, VendorApprovalStatus
-from app.models.loyalty import Coupon, CouponType
+from app.models.catalog import VendorApprovalStatus
 from app.models.order import OrderSource, OrderStatus
 from app.models.user import User, UserRole
-from app.repositories.loyalty_repository import CouponRepository
-from app.repositories.user_repository import UserRepository
+from app.schemas.admin import (
+    AdminOccasionRead,
+    AdminShopRead,
+    AdminShopUpdate,
+    AdminUserRead,
+    CouponCreate,
+    CouponRead,
+    CouponUpdate,
+    FxCurrencyRead,
+    FxRateRead,
+)
 from app.schemas.audit import AuditPage
 from app.schemas.bucket import (
     AdminBuilderConfig,
@@ -24,7 +31,14 @@ from app.schemas.bucket import (
     BuilderComponentUpdate,
     BuilderSettingsUpdate,
 )
-from app.schemas.catalog import AdminProductDetail
+from app.schemas.catalog import (
+    AdminCategoryRead,
+    AdminCityRead,
+    AdminProductDetail,
+    OccasionCreate,
+    OccasionRead,
+    OccasionUpdate,
+)
 from app.schemas.order import (
     AdminOrderDetail,
     AdminOrderPage,
@@ -48,6 +62,7 @@ from app.schemas.vendor import (
 from app.services import (
     admin_order_service,
     audit_service,
+    back_office_service,
     builder_admin_service,
     catalog_service,
     note_service,
@@ -79,18 +94,6 @@ class ProductActiveUpdate(BaseModel):
 class FxRateOverride(BaseModel):
     quote_currency: str = Field(min_length=3, max_length=3)
     rate: Decimal = Field(gt=0)
-
-
-class CouponCreate(BaseModel):
-    code: str = Field(min_length=2, max_length=50)
-    coupon_type: CouponType
-    value: Decimal = Field(gt=0)
-    min_order_pkr: int | None = None
-    usage_limit: int | None = Field(default=None, ge=1)
-    per_customer_limit: int | None = Field(
-        default=None, ge=1, description="How many orders one buyer may use it on; 1 for a first-order code"
-    )
-    ends_at: datetime | None = None
 
 
 # ── Orders ────────────────────────────────────────────────────────────────────
@@ -314,6 +317,40 @@ async def set_product_active(
     return {"id": str(product.id), "is_active": product.is_active}
 
 
+# ── Cities & categories ──────────────────────────────────────────────────────
+# Create and edit go through /cities and /categories (staff only there too); these
+# add what the back office needs on top: switched-off rows, usage, and delete.
+
+@router.get("/cities", response_model=list[AdminCityRead])
+async def list_cities(_admin: AdminUser, db: DB) -> list[AdminCityRead]:
+    """Every city, switched-off ones too, with how many shops, products and deliveries use it."""
+    return await catalog_service.list_admin_cities(db)
+
+
+@router.delete(
+    "/cities/{city_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses={409: {"description": "Still used by a shop, product or delivery; switch it off instead"}},
+)
+async def delete_city(city_id: uuid.UUID, admin: AdminUser, db: DB) -> None:
+    await catalog_service.delete_city(db, city_id, admin)
+
+
+@router.get("/categories", response_model=list[AdminCategoryRead])
+async def list_categories(_admin: AdminUser, db: DB) -> list[AdminCategoryRead]:
+    """Every category, flat, switched-off ones too, with product and subcategory counts."""
+    return await catalog_service.list_admin_categories(db)
+
+
+@router.delete(
+    "/categories/{category_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses={409: {"description": "Still has products or subcategories; switch it off instead"}},
+)
+async def delete_category(category_id: uuid.UUID, admin: AdminUser, db: DB) -> None:
+    await catalog_service.delete_category(db, category_id, admin)
+
+
 # ── Build-your-own builders (ADR 0014) ──────────────────────────────────────
 
 @router.get("/builders", response_model=list[AdminBuilderSummary])
@@ -365,154 +402,112 @@ async def remove_builder_component(
     return await builder_admin_service.remove_component(db, admin, product_id, component_id)
 
 
-# ── FX rates ──────────────────────────────────────────────────────────────────
+# ── Exchange rates ───────────────────────────────────────────────────────────
 
-@router.get("/fx-rates")
-async def list_fx_rates(_admin: AdminUser, db: DB) -> list[dict[str, Any]]:
-    result = await db.execute(select(FxRate).order_by(FxRate.quote_currency))
-    return [
-        {
-            "id": str(r.id),
-            "quote_currency": r.quote_currency,
-            "rate": str(r.rate),
-            "source": r.source,
-            "fetched_at": r.fetched_at.isoformat(),
-        }
-        for r in result.scalars().all()
-    ]
+@router.get("/fx-rates", response_model=list[FxCurrencyRead])
+async def list_fx_rates(_admin: AdminUser, db: DB) -> list[FxCurrencyRead]:
+    """Each currency buyers can pay in, with its automatic and manual rate and which one is charged."""
+    return await back_office_service.list_fx(db)
 
 
-@router.post("/fx-rates/override")
-async def override_fx_rate(body: FxRateOverride, admin: AdminUser, db: DB) -> dict[str, Any]:
-    existing = (await db.execute(
-        select(FxRate).where(
-            FxRate.base_currency == "PKR",
-            FxRate.quote_currency == body.quote_currency.upper(),
-            FxRate.source == FxRateSource.manual,
-        )
-    )).scalar_one_or_none()
+@router.post("/fx-rates/override", response_model=FxRateRead)
+async def override_fx_rate(body: FxRateOverride, admin: AdminUser, db: DB) -> FxRateRead:
+    """Fix a currency's rate by hand; it wins over the automatic one until cleared."""
+    return FxRateRead.model_validate(await back_office_service.override_fx(db, admin, body.quote_currency, body.rate))
 
-    now = datetime.now(UTC)
-    await audit_service.record(
-        db, admin, "fx_rate.overridden", "fx_rate", body.quote_currency.upper(),
-        before={"rate": existing.rate} if existing else None, after={"rate": body.rate},
-    )
-    if existing:
-        existing.rate = body.rate
-        existing.fetched_at = now
-        existing.set_by = admin.id
-    else:
-        db.add(FxRate(
-            base_currency="PKR",
-            quote_currency=body.quote_currency.upper(),
-            rate=body.rate,
-            source=FxRateSource.manual,
-            set_by=admin.id,
-            fetched_at=now,
-        ))
-    await db.flush()
-    return {"quote_currency": body.quote_currency.upper(), "rate": str(body.rate), "source": "manual"}
+
+@router.delete("/fx-rates/override/{quote_currency}", status_code=status.HTTP_204_NO_CONTENT)
+async def clear_fx_override(quote_currency: str, admin: AdminUser, db: DB) -> None:
+    """Drop the manual rate and charge the automatic one again."""
+    await back_office_service.clear_fx_override(db, admin, quote_currency)
 
 
 # ── Coupons ───────────────────────────────────────────────────────────────────
 
-@router.get("/coupons")
-async def list_coupons(_admin: AdminUser, db: DB) -> list[dict[str, Any]]:
-    result = await db.execute(select(Coupon).order_by(Coupon.created_at.desc()).limit(100))
-    return [
-        {
-            "id": str(c.id),
-            "code": c.code,
-            "coupon_type": c.coupon_type,
-            "value": str(c.value),
-            "used_count": c.used_count,
-            "usage_limit": c.usage_limit,
-            "per_customer_limit": c.per_customer_limit,
-            "is_active": c.is_active,
-            "ends_at": c.ends_at.isoformat() if c.ends_at else None,
-        }
-        for c in result.scalars().all()
-    ]
+@router.get("/coupons", response_model=list[CouponRead])
+async def list_coupons(
+    _admin: AdminUser, db: DB, q: str | None = Query(default=None, max_length=50)  # noqa: B008
+) -> list[CouponRead]:
+    """Newest first; `q` matches part of the code."""
+    return await back_office_service.list_coupons(db, q)
 
 
-@router.post("/coupons", status_code=status.HTTP_201_CREATED)
-async def create_coupon(body: CouponCreate, admin: AdminUser, db: DB) -> dict[str, Any]:
-    repo = CouponRepository(db)
-    coupon = await repo.create(
-        code=body.code.upper(),
-        coupon_type=body.coupon_type,
-        value=body.value,
-        min_order_pkr=body.min_order_pkr,
-        usage_limit=body.usage_limit,
-        per_customer_limit=body.per_customer_limit,
-        ends_at=body.ends_at,
-    )
-    await audit_service.record(
-        db, admin, "coupon.created", "coupon", coupon.id,
-        after={"code": coupon.code, **body.model_dump(exclude={"code"})},
-    )
-    return {"id": str(coupon.id), "code": coupon.code}
+@router.post(
+    "/coupons", response_model=CouponRead, status_code=status.HTTP_201_CREATED,
+    responses={409: {"description": "That code is taken"}},
+)
+async def create_coupon(body: CouponCreate, admin: AdminUser, db: DB) -> CouponRead:
+    return await back_office_service.create_coupon(db, admin, body)
 
 
-@router.patch("/coupons/{coupon_id}/active")
-async def set_coupon_active(
-    coupon_id: uuid.UUID,
-    body: ProductActiveUpdate,
-    admin: AdminUser,
-    db: DB,
-) -> dict[str, Any]:
-    result = await db.execute(select(Coupon).where(Coupon.id == coupon_id))
-    coupon = result.scalar_one_or_none()
-    if not coupon:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Coupon not found")
-    await audit_service.record(
-        db, admin, "coupon.enabled" if body.is_active else "coupon.disabled", "coupon", coupon.id,
-        before={"is_active": coupon.is_active}, after={"is_active": body.is_active}, context={"code": coupon.code},
-    )
-    coupon.is_active = body.is_active
-    await db.flush()
-    return {"id": str(coupon.id), "is_active": coupon.is_active}
+@router.patch("/coupons/{coupon_id}", response_model=CouponRead)
+async def update_coupon(coupon_id: uuid.UUID, body: CouponUpdate, admin: AdminUser, db: DB) -> CouponRead:
+    """Change the amount, limits or dates; null removes a limit or date."""
+    return await back_office_service.update_coupon(db, admin, coupon_id, body)
+
+
+@router.patch("/coupons/{coupon_id}/active", response_model=CouponRead)
+async def set_coupon_active(coupon_id: uuid.UUID, body: ProductActiveUpdate, admin: AdminUser, db: DB) -> CouponRead:
+    return await back_office_service.set_coupon_active(db, admin, coupon_id, body.is_active)
 
 
 # ── Users ─────────────────────────────────────────────────────────────────────
 
-@router.get("/users")
-async def list_users(_admin: AdminUser, db: DB, limit: int = 50) -> list[dict[str, Any]]:
-    result = await db.execute(
-        select(User).where(User.is_active.is_(True)).order_by(User.created_at.desc()).limit(limit)
-    )
-    return [
-        {
-            "id": str(u.id),
-            "email": u.email,
-            "full_name": u.full_name,
-            "role": u.role,
-            "is_verified": u.is_verified,
-            "created_at": u.created_at.isoformat(),
-        }
-        for u in result.scalars().all()
-    ]
-
-
-@router.patch("/users/{user_id}/role")
-async def update_user_role(
-    user_id: uuid.UUID,
-    role: UserRole,
-    admin: AdminUser,
+@router.get("/users", response_model=list[AdminUserRead])
+async def list_users(
+    _admin: AdminUser,
     db: DB,
-) -> dict[str, Any]:
-    if admin.role != UserRole.admin:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only admins can change roles")
-    repo = UserRepository(db)
-    user = await repo.get_by_id(user_id)
-    if not user:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
-    await audit_service.record(
-        db, admin, "user.role_changed", "user", user.id,
-        before={"role": user.role}, after={"role": role}, context={"email": user.email},
-    )
-    await repo.update(user, role=role)
-    return {"id": str(user.id), "role": user.role}
+    q: str | None = Query(default=None, max_length=100, description="Part of the email, name or phone"),  # noqa: B008
+    role: UserRole | None = None,
+    limit: int = Query(default=50, ge=1, le=200),  # noqa: B008
+) -> list[AdminUserRead]:
+    return await back_office_service.list_users(db, q=q, role=role, limit=limit)
+
+
+@router.patch(
+    "/users/{user_id}/role", response_model=AdminUserRead,
+    responses={403: {"description": "Admins only"}, 422: {"description": "Your own role"}},
+)
+async def update_user_role(user_id: uuid.UUID, role: UserRole, admin: AdminUser, db: DB) -> AdminUserRead:
+    return await back_office_service.change_role(db, admin, user_id, role)
+
+
+# ── Occasions ─────────────────────────────────────────────────────────────────
+
+@router.get("/occasions", response_model=list[AdminOccasionRead])
+async def list_occasions(_admin: AdminUser, db: DB) -> list[AdminOccasionRead]:
+    """Every occasion, switched-off ones too, with how many products are on its page."""
+    return await back_office_service.list_occasions(db)
+
+
+@router.post(
+    "/occasions", response_model=OccasionRead, status_code=status.HTTP_201_CREATED,
+    responses={409: {"description": "URL name taken"}},
+)
+async def create_occasion(body: OccasionCreate, admin: AdminUser, db: DB) -> OccasionRead:
+    return OccasionRead.model_validate(await back_office_service.create_occasion(db, admin, body))
+
+
+@router.patch("/occasions/{occasion_id}", response_model=OccasionRead)
+async def update_occasion(occasion_id: uuid.UUID, body: OccasionUpdate, admin: AdminUser, db: DB) -> OccasionRead:
+    """Null removes the Urdu name, banner or a date."""
+    return OccasionRead.model_validate(await back_office_service.update_occasion(db, admin, occasion_id, body))
+
+
+# ── Shops ─────────────────────────────────────────────────────────────────────
+
+@router.get("/vendors", response_model=list[AdminShopRead])
+async def list_shops(
+    _admin: AdminUser, db: DB, q: str | None = Query(default=None, max_length=100)  # noqa: B008
+) -> list[AdminShopRead]:
+    """Approved shops, open and closed (applications are under /vendor-applications)."""
+    return await back_office_service.list_shops(db, q)
+
+
+@router.patch("/vendors/{vendor_id}", response_model=AdminShopRead)
+async def update_shop(vendor_id: uuid.UUID, body: AdminShopUpdate, admin: AdminUser, db: DB) -> AdminShopRead:
+    """Edit a shop or close it; closing takes all its products off sale until reopened."""
+    return await back_office_service.update_shop(db, admin, vendor_id, body)
 
 
 # ── Audit log ─────────────────────────────────────────────────────────────────

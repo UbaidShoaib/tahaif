@@ -21,6 +21,7 @@ class CartRepository:
                     selectinload(Product.images),
                     selectinload(Product.product_cities),
                     selectinload(Product.variants),
+                    selectinload(Product.vendor),
                 ),
                 selectinload(CartItem.variant),
             )
