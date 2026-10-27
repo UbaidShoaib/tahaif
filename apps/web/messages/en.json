@@ -73,6 +73,7 @@
     "rights": "© {year} {brand}. All rights reserved.",
     "secureCheckout": "Secure checkout",
     "cod": "Cash on delivery",
-    "tracking": "Online order tracking"
+    "tracking": "Online order tracking",
+    "cities": "Delivery cities"
   }
 }

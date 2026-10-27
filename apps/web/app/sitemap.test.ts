@@ -14,14 +14,19 @@ vi.mock("@/lib/catalog", async (importOriginal) => {
       getCategories: vi.fn(),
       getOccasions: vi.fn(),
       getVendors: vi.fn(),
+      getCities: vi.fn(),
     },
   };
 });
 
-const prod = (slug: string, updated_at?: string): Product => ({
-  id: slug, vendor_id: "v", category_id: null, name: slug, slug, description: null, base_price_pkr: 1,
-  is_active: true, images: [], product_cities: [], variants: [], vendor: null, updated_at,
+const prod = (slug: string, updated_at?: string, category_id: string | null = null, cityIds: string[] = []): Product => ({
+  id: slug, vendor_id: "v", category_id, name: slug, slug, description: null, base_price_pkr: 1,
+  is_active: true, images: [], variants: [], vendor: null, updated_at,
+  product_cities: cityIds.map((city_id) => ({
+    city_id, price_override_pkr: null, delivery_fee_pkr: 0, lead_time_hours: 0, same_day_cutoff: null, is_available: true,
+  })),
 });
+const city = (slug: string) => ({ id: slug, name: slug, slug, timezone: "Asia/Karachi", is_active: true });
 const cat = (slug: string, children: Category[] = [], is_active = true): Category => ({
   id: slug, parent_id: null, name: slug, slug, sort_order: 0, is_active, children,
 });
@@ -36,6 +41,7 @@ beforeEach(() => {
   vi.mocked(catalogApi.getCategories).mockResolvedValue([]);
   vi.mocked(catalogApi.getOccasions).mockResolvedValue([]);
   vi.mocked(catalogApi.getVendors).mockResolvedValue([]);
+  vi.mocked(catalogApi.getCities).mockResolvedValue([]);
 });
 
 describe("sitemap", () => {
@@ -78,6 +84,27 @@ describe("sitemap", () => {
     );
     expect(all).not.toContain("/c/old-cakes");
     expect(all).not.toContain("/vendor/closed-shop");
+  });
+
+  it("lists city pages that have gifts, and a category in a city only with enough of them", async () => {
+    vi.mocked(catalogApi.getCategories).mockResolvedValue([cat("flowers"), cat("cakes")]);
+    vi.mocked(catalogApi.getCities).mockResolvedValue([city("gujranwala"), city("lahore"), city("multan")]);
+    vi.mocked(catalogApi.getProducts).mockResolvedValue({
+      items: [
+        prod("roses", undefined, "flowers", ["gujranwala", "lahore"]),
+        prod("tulips", undefined, "flowers", ["gujranwala"]),
+        prod("lilies", undefined, "flowers", ["gujranwala"]),
+        prod("fudge", undefined, "cakes", ["gujranwala"]),
+      ],
+      total: 4, page: 1, page_size: 100,
+    });
+
+    const all = await urls();
+
+    expect(all).toEqual(expect.arrayContaining(["/city/gujranwala", "/city/lahore", "/c/flowers/gujranwala"]));
+    expect(all).not.toContain("/city/multan"); // nothing delivers there
+    expect(all).not.toContain("/c/flowers/lahore"); // 1 gift: below the threshold
+    expect(all).not.toContain("/c/cakes/gujranwala");
   });
 
   it("leaves out missing, private and placeholder pages", async () => {

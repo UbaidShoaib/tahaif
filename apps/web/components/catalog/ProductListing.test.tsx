@@ -115,6 +115,27 @@ describe("ProductListing", () => {
     expect(screen.getByRole("button", { name: "Clear filters" })).toBeInTheDocument();
   });
 
+  it("on a city page, keeps the city in the path rather than a filter the buyer can change", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-10-26T05:00:00Z"));
+    vi.mocked(fetchListing).mockResolvedValue(page(1, 3, 3));
+    useDeliveryStore.setState({ cityId: "lhr" });
+    const gujranwala = { id: "guj", name: "Gujranwala", slug: "gujranwala", timezone: "Asia/Karachi", is_active: true };
+    const { rerender } = render(<ProductListing city={gujranwala} initial={page(1, 3, 3)} />);
+
+    expect(screen.queryByRole("combobox", { name: "Deliver to" })).not.toBeInTheDocument();
+    expect(screen.getByText("3 gifts delivered in Gujranwala")).toBeInTheDocument();
+    // The remembered "Deliver to" city doesn't override the page's city.
+    expect(replace).not.toHaveBeenCalled();
+
+    await userEvent.click(screen.getByRole("button", { name: "Arrives tomorrow" }));
+    expect(replace).toHaveBeenLastCalledWith("/c/cakes?on=2026-10-27", { scroll: false });
+    rerender(<ProductListing city={gujranwala} initial={page(1, 3, 3)} />);
+    await waitFor(() => expect(fetchListing).toHaveBeenLastCalledWith({}, expect.objectContaining({ cityId: "guj", on: "2026-10-27" }), 1));
+    expect(useDeliveryStore.getState().cityId).toBe("lhr");
+    vi.useRealTimers();
+  });
+
   it("hides Newest when searching, since search is ranked by relevance", () => {
     search = "q=roses";
     render(<ProductListing initial={page(1, 1, 1)} showSearch />);

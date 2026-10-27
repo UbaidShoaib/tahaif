@@ -1,16 +1,13 @@
 import type { MetadataRoute } from "next";
 import { brand } from "@/lib/brand";
-import { catalogApi, type Category, type Product } from "@/lib/catalog";
+import { catalogApi, type Category } from "@/lib/catalog";
+import { countByCity, listAllProducts, MIN_CITY_PRODUCTS } from "@/lib/city-seo";
 
 // Built per request from hour-cached API data. An API failure fails the request
 // (search engines retry) rather than publishing a sitemap with no products.
 export const dynamic = "force-dynamic";
 
 const BASE_URL = brand.siteUrl;
-/** The API's page_size limit for /products. */
-const PAGE_SIZE = 100;
-/** One sitemap file holds 50,000 URLs; split with generateSitemaps before this is reached. */
-const MAX_PAGES = 400;
 
 // Only pages with real content. Stubs (FAQ, blog, privacy, refund) join once written.
 const STATIC_PATHS: { path: string; changeFrequency: "daily" | "monthly"; priority: number }[] = [
@@ -20,27 +17,21 @@ const STATIC_PATHS: { path: string; changeFrequency: "daily" | "monthly"; priori
   { path: "/terms", changeFrequency: "monthly", priority: 0.2 },
 ];
 
-async function allProducts(): Promise<Product[]> {
-  const products: Product[] = [];
-  for (let page = 1; page <= MAX_PAGES; page++) {
-    const { items, total } = await catalogApi.getProducts({ page, page_size: PAGE_SIZE });
-    products.push(...items);
-    if (items.length < PAGE_SIZE || products.length >= total) break;
-  }
-  return products;
-}
-
 function flatten(categories: Category[]): Category[] {
   return categories.flatMap((c) => [c, ...flatten(c.children)]);
 }
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const [products, categories, occasions, vendors] = await Promise.all([
-    allProducts(),
+  const [products, categories, occasions, vendors, cities] = await Promise.all([
+    listAllProducts(),
     catalogApi.getCategories(),
     catalogApi.getOccasions(),
     catalogApi.getVendors(),
+    catalogApi.getCities(),
   ]);
+  const activeCategories = flatten(categories).filter((c) => c.is_active);
+  const { byCity, byCategoryCity } = countByCity(products);
+  const activeCities = cities.filter((c) => c.is_active);
 
   return [
     ...STATIC_PATHS.map(({ path, changeFrequency, priority }) => ({
@@ -48,9 +39,20 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency,
       priority,
     })),
-    ...flatten(categories)
-      .filter((c) => c.is_active)
-      .map((c) => ({ url: `${BASE_URL}/c/${c.slug}`, changeFrequency: "weekly" as const, priority: 0.8 })),
+    ...activeCategories.map((c) => ({ url: `${BASE_URL}/c/${c.slug}`, changeFrequency: "weekly" as const, priority: 0.8 })),
+    // City pages, only where they have something to show (the same rule as their robots meta).
+    ...activeCities
+      .filter((city) => (byCity.get(city.id) ?? 0) > 0)
+      .map((city) => ({ url: `${BASE_URL}/city/${city.slug}`, changeFrequency: "weekly" as const, priority: 0.8 })),
+    ...activeCategories.flatMap((c) =>
+      activeCities
+        .filter((city) => (byCategoryCity.get(`${c.id}:${city.id}`) ?? 0) >= MIN_CITY_PRODUCTS)
+        .map((city) => ({
+          url: `${BASE_URL}/c/${c.slug}/${city.slug}`,
+          changeFrequency: "weekly" as const,
+          priority: 0.7,
+        })),
+    ),
     ...occasions.map((o) => ({
       url: `${BASE_URL}/occasion/${o.slug}`,
       changeFrequency: "weekly" as const,
