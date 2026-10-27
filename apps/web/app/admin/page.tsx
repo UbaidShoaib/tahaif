@@ -12,6 +12,7 @@ import { CampaignReport } from "@/components/admin/CampaignReport";
 import { OrderList } from "@/components/admin/OrderList";
 import { AttentionInbox } from "@/components/admin/AttentionInbox";
 import { ActivityLog } from "@/components/admin/ActivityLog";
+import { TeamManager } from "@/components/admin/TeamManager";
 import { BuilderList } from "@/components/admin/BuilderList";
 import { CategoryManager } from "@/components/admin/CategoryManager";
 import { CityManager } from "@/components/admin/CityManager";
@@ -21,13 +22,14 @@ import { OccasionManager } from "@/components/admin/OccasionManager";
 import { ShopManager } from "@/components/admin/ShopManager";
 import { UserManager } from "@/components/admin/UserManager";
 import { useStaffSession } from "@/hooks/use-staff-session";
+import { isAdminRole } from "@/lib/roles";
 import { useAuthStore } from "@/stores/auth.store";
 
 const LABELS = Object.fromEntries(NAV.flatMap((g) => g.items).map((i) => [i.key, i.label])) as Record<Section, string>;
 
 export default function AdminDashboard() {
   const token = useStaffSession("/admin");
-  const isAdmin = useAuthStore((s) => s.user?.role === "admin");
+  const isAdmin = useAuthStore((s) => isAdminRole(s.user?.role));
   const [section, setSection] = useState<Section>("attention");
 
   // The section lives in ?section=… so links from other admin pages, refresh and
@@ -64,13 +66,14 @@ export default function AdminDashboard() {
           {section === "cities" && <CityManager token={token} />}
           {section === "occasions" && <OccasionManager token={token} />}
           {section === "shops" && <ShopManager token={token} />}
-          {section === "coupons" && <CouponManager token={token} />}
-          {section === "fx-rates" && <FxRates token={token} />}
+          {section === "coupons" && isAdmin && <CouponManager token={token} />}
+          {section === "fx-rates" && isAdmin && <FxRates token={token} />}
           {section === "users" && isAdmin && <UserManager token={token} />}
           {section === "note-reports" && <NoteReports token={token} />}
           {section === "new-order" && <AssistedOrderForm token={token} />}
           {section === "messages" && <MessageQueue token={token} />}
           {section === "campaigns" && <CampaignReport token={token} />}
+          {section === "team" && isAdmin && <TeamManager token={token} />}
           {section === "activity" && isAdmin && <ActivityLog token={token} />}
         </>
       )}

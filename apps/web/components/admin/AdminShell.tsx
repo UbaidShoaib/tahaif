@@ -4,11 +4,12 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import { Package } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { isAdminRole } from "@/lib/roles";
 import { useAuthStore } from "@/stores/auth.store";
 
 export type Section =
   | "attention" | "orders" | "new-order" | "messages" | "campaigns" | "applications" | "add-product" | "products" | "note-reports"
-  | "builders" | "categories" | "cities" | "occasions" | "shops" | "coupons" | "fx-rates" | "users" | "activity";
+  | "builders" | "categories" | "cities" | "occasions" | "shops" | "coupons" | "fx-rates" | "users" | "team" | "activity";
 
 type Item = { key: Section; label: string; adminOnly?: boolean };
 
@@ -42,17 +43,19 @@ export const NAV: { group: string; items: Item[] }[] = [
     ],
   },
   {
+    // Money settings: admins only (the API enforces it too).
     group: "Pricing",
     items: [
-      { key: "coupons", label: "Coupons" },
-      { key: "fx-rates", label: "Exchange rates" },
+      { key: "coupons", label: "Coupons", adminOnly: true },
+      { key: "fx-rates", label: "Exchange rates", adminOnly: true },
     ],
   },
   { group: "Reports", items: [{ key: "campaigns", label: "Sales by campaign" }] },
-  // Roles, and every staff member's actions and IPs: admins only (the API enforces it too).
+  // Who has access, and every staff member's actions and IPs: admins only (the API enforces it too).
   {
     group: "Admin",
     items: [
+      { key: "team", label: "Team", adminOnly: true },
       { key: "users", label: "Users & roles", adminOnly: true },
       { key: "activity", label: "Activity", adminOnly: true },
     ],
@@ -77,7 +80,7 @@ export function AdminShell({
   onSelect?: (s: Section) => void;
   children: ReactNode;
 }) {
-  const isAdmin = useAuthStore((s) => s.user?.role === "admin");
+  const isAdmin = useAuthStore((s) => isAdminRole(s.user?.role));
   const groups = NAV.map((g) => ({ ...g, items: g.items.filter((i) => isAdmin || !i.adminOnly) }))
     .filter((g) => g.items.length > 0);
 

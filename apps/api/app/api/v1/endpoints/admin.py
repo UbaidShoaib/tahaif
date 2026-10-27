@@ -1,17 +1,20 @@
-"""Admin API: orders, payments, products, catalog set-up (categories, cities, occasions, shops), FX, coupons, users."""
+"""Admin API: orders, payments, products, catalog set-up (categories, cities, occasions, shops), FX, coupons, users, team.
+
+Staff and admins share most of it. Money settings (FX rates, coupons, refunds), the user
+list and roles, the team and the activity log are admins only."""
 
 import uuid
 from datetime import date
 from decimal import Decimal
 from typing import Annotated, Any
 
-from fastapi import APIRouter, BackgroundTasks, Header, HTTPException, Query, status
+from fastapi import APIRouter, BackgroundTasks, Header, Query, status
 from pydantic import BaseModel, Field
 
 from app.core.deps import DB, require_roles
 from app.models.catalog import VendorApprovalStatus
 from app.models.order import OrderSource, OrderStatus
-from app.models.user import User, UserRole
+from app.models.user import ADMIN_ROLES, BACK_OFFICE_ROLES, User, UserRole
 from app.schemas.admin import (
     AdminOccasionRead,
     AdminShopRead,
@@ -54,6 +57,7 @@ from app.schemas.social_order import (
     WhatsAppMessageRead,
     WhatsAppQueueEntry,
 )
+from app.schemas.team import TeamMemberAdd, TeamMemberRead, TeamMemberUpdate
 from app.schemas.vendor import (
     AdminProductRead,
     AdminVendorApplicationRead,
@@ -68,11 +72,13 @@ from app.services import (
     note_service,
     report_service,
     social_order_service,
+    team_service,
     vendor_application_service,
     whatsapp_bot_service,
 )
 
-AdminUser = Annotated[User, require_roles(UserRole.admin, UserRole.staff)]
+AdminUser = Annotated[User, require_roles(*BACK_OFFICE_ROLES)]
+AdminOnly = Annotated[User, require_roles(*ADMIN_ROLES)]
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -100,7 +106,7 @@ class FxRateOverride(BaseModel):
 
 @router.get("/orders", response_model=AdminOrderPage)
 async def list_orders(
-    _admin: AdminUser,
+    admin: AdminUser,
     db: DB,
     status: OrderStatus | None = None,
     q: str | None = Query(  # noqa: B008
@@ -116,15 +122,15 @@ async def list_orders(
     limit: int = Query(default=50, ge=1, le=100),  # noqa: B008
 ) -> AdminOrderPage:
     return await admin_order_service.list_orders(
-        db, status=status, q=q, placed_from=placed_from, placed_to=placed_to, offset=offset, limit=limit
+        db, admin, status=status, q=q, placed_from=placed_from, placed_to=placed_to, offset=offset, limit=limit
     )
 
 
 @router.get("/orders/{order_id}", response_model=AdminOrderDetail)
-async def get_order(order_id: uuid.UUID, _admin: AdminUser, db: DB) -> AdminOrderDetail:
+async def get_order(order_id: uuid.UUID, admin: AdminUser, db: DB) -> AdminOrderDetail:
     """One order with everything staff need: buyer contact, each recipient's full address and shop,
     payment and receipt, internal notes and a timeline."""
-    return await admin_order_service.get_order_detail(db, order_id)
+    return await admin_order_service.get_order_detail(db, order_id, admin)
 
 
 @router.post(
@@ -411,13 +417,13 @@ async def list_fx_rates(_admin: AdminUser, db: DB) -> list[FxCurrencyRead]:
 
 
 @router.post("/fx-rates/override", response_model=FxRateRead)
-async def override_fx_rate(body: FxRateOverride, admin: AdminUser, db: DB) -> FxRateRead:
+async def override_fx_rate(body: FxRateOverride, admin: AdminOnly, db: DB) -> FxRateRead:
     """Fix a currency's rate by hand; it wins over the automatic one until cleared."""
     return FxRateRead.model_validate(await back_office_service.override_fx(db, admin, body.quote_currency, body.rate))
 
 
 @router.delete("/fx-rates/override/{quote_currency}", status_code=status.HTTP_204_NO_CONTENT)
-async def clear_fx_override(quote_currency: str, admin: AdminUser, db: DB) -> None:
+async def clear_fx_override(quote_currency: str, admin: AdminOnly, db: DB) -> None:
     """Drop the manual rate and charge the automatic one again."""
     await back_office_service.clear_fx_override(db, admin, quote_currency)
 
@@ -436,18 +442,18 @@ async def list_coupons(
     "/coupons", response_model=CouponRead, status_code=status.HTTP_201_CREATED,
     responses={409: {"description": "That code is taken"}},
 )
-async def create_coupon(body: CouponCreate, admin: AdminUser, db: DB) -> CouponRead:
+async def create_coupon(body: CouponCreate, admin: AdminOnly, db: DB) -> CouponRead:
     return await back_office_service.create_coupon(db, admin, body)
 
 
 @router.patch("/coupons/{coupon_id}", response_model=CouponRead)
-async def update_coupon(coupon_id: uuid.UUID, body: CouponUpdate, admin: AdminUser, db: DB) -> CouponRead:
+async def update_coupon(coupon_id: uuid.UUID, body: CouponUpdate, admin: AdminOnly, db: DB) -> CouponRead:
     """Change the amount, limits or dates; null removes a limit or date."""
     return await back_office_service.update_coupon(db, admin, coupon_id, body)
 
 
 @router.patch("/coupons/{coupon_id}/active", response_model=CouponRead)
-async def set_coupon_active(coupon_id: uuid.UUID, body: ProductActiveUpdate, admin: AdminUser, db: DB) -> CouponRead:
+async def set_coupon_active(coupon_id: uuid.UUID, body: ProductActiveUpdate, admin: AdminOnly, db: DB) -> CouponRead:
     return await back_office_service.set_coupon_active(db, admin, coupon_id, body.is_active)
 
 
@@ -455,7 +461,7 @@ async def set_coupon_active(coupon_id: uuid.UUID, body: ProductActiveUpdate, adm
 
 @router.get("/users", response_model=list[AdminUserRead])
 async def list_users(
-    _admin: AdminUser,
+    _admin: AdminOnly,
     db: DB,
     q: str | None = Query(default=None, max_length=100, description="Part of the email, name or phone"),  # noqa: B008
     role: UserRole | None = None,
@@ -466,9 +472,13 @@ async def list_users(
 
 @router.patch(
     "/users/{user_id}/role", response_model=AdminUserRead,
-    responses={403: {"description": "Admins only"}, 422: {"description": "Your own role"}},
+    responses={
+        403: {"description": "Admins only; only a super admin sets or changes admins"},
+        409: {"description": "Would leave no active super admin"},
+        422: {"description": "Your own role"},
+    },
 )
-async def update_user_role(user_id: uuid.UUID, role: UserRole, admin: AdminUser, db: DB) -> AdminUserRead:
+async def update_user_role(user_id: uuid.UUID, role: UserRole, admin: AdminOnly, db: DB) -> AdminUserRead:
     return await back_office_service.change_role(db, admin, user_id, role)
 
 
@@ -510,11 +520,39 @@ async def update_shop(vendor_id: uuid.UUID, body: AdminShopUpdate, admin: AdminU
     return await back_office_service.update_shop(db, admin, vendor_id, body)
 
 
+# ── Team (admins only) ────────────────────────────────────────────────────────
+
+@router.get("/team", response_model=list[TeamMemberRead])
+async def list_team(_admin: AdminOnly, db: DB) -> list[TeamMemberRead]:
+    """Everyone with back-office access, including deactivated accounts."""
+    return await team_service.list_team(db)
+
+
+@router.post(
+    "/team",
+    response_model=TeamMemberRead,
+    responses={404: {"description": "No account with that email"}, 409: {"description": "Account can't be added yet"}},
+)
+async def add_team_member(body: TeamMemberAdd, admin: AdminOnly, db: DB) -> TeamMemberRead:
+    """Give an existing, verified account staff or admin access."""
+    return await team_service.add_member(db, admin, body)
+
+
+@router.patch(
+    "/team/{user_id}",
+    response_model=TeamMemberRead,
+    responses={409: {"description": "Would change your own access or leave no active admin"}},
+)
+async def update_team_member(user_id: uuid.UUID, body: TeamMemberUpdate, admin: AdminOnly, db: DB) -> TeamMemberRead:
+    """Change a member's role (`customer` removes them from the team) or (de)activate their account."""
+    return await team_service.update_member(db, admin, user_id, body)
+
+
 # ── Audit log ─────────────────────────────────────────────────────────────────
 
 @router.get("/audit-log", response_model=AuditPage)
 async def list_audit_log(
-    admin: AdminUser,
+    _admin: AdminOnly,
     db: DB,
     entity: str | None = Query(default=None, examples=["order"]),  # noqa: B008
     entity_id: str | None = Query(default=None, max_length=255),  # noqa: B008
@@ -527,8 +565,6 @@ async def list_audit_log(
 ) -> AuditPage:
     """Who changed what in the back office, newest first. Admins only: it shows every staff
     member's actions and IP addresses."""
-    if admin.role != UserRole.admin:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only admins can see the activity log")
     return await audit_service.search(
         db, entity=entity, entity_id=entity_id, actor_user_id=actor_user_id, action=action, offset=offset, limit=limit
     )

@@ -29,12 +29,14 @@ describe("middleware route protection", () => {
   it("lets vendors and admins into the vendor portal", () => {
     expect(visit("/vendor/products", "vendor").status).toBe(200);
     expect(visit("/vendor/orders", "admin").status).toBe(200);
+    expect(visit("/vendor/orders", "super_admin").status).toBe(200);
   });
 
-  it("gates /admin to admin and staff", () => {
+  it("gates /admin to staff, admins and super admins", () => {
     expect(visit("/admin").location).toContain("/login?callbackUrl=%2Fadmin");
     expect(visit("/admin", "vendor").location).toBe("http://localhost:3000/");
     expect(visit("/admin", "staff").status).toBe(200);
+    expect(visit("/admin", "super_admin").status).toBe(200);
   });
 
   it("does not treat look-alike paths as protected", () => {

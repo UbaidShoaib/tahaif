@@ -62,7 +62,7 @@ export type AdminShop = {
   bank_iban: string | null;
 };
 
-export type Role = "customer" | "vendor" | "staff" | "admin";
+export type Role = "customer" | "vendor" | "staff" | "admin" | "super_admin";
 
 export type AdminUser = {
   id: string;

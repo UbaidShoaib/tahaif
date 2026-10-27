@@ -1,4 +1,5 @@
 import Cookies from "js-cookie";
+import { isBackOfficeRole } from "@/lib/roles";
 
 /**
  * Non-httpOnly marker that tells the Next.js middleware a session probably
@@ -25,7 +26,7 @@ export function hasSessionMarker(): boolean {
 
 /** Where a role works from: staff run the shop from /admin, vendors from their portal. */
 export function workspaceFor(role: string | undefined): { href: string; key: "admin" | "vendorPortal" } | null {
-  if (role === "admin" || role === "staff") return { href: "/admin", key: "admin" };
+  if (isBackOfficeRole(role)) return { href: "/admin", key: "admin" };
   if (role === "vendor") return { href: "/vendor/dashboard", key: "vendorPortal" };
   return null;
 }

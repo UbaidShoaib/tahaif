@@ -7,6 +7,14 @@ pre-production-cutover).
 
 ## [Unreleased]
 
+### Added
+- **Team page in the back office** (admins only). Add a verified account by email, switch roles,
+  deactivate (signs them out everywhere) or take someone off the team. `GET/POST /admin/team`,
+  `PATCH /admin/team/{id}`, audited. `scripts/create_admin.py` makes the first super admin without SQL.
+- **Super admin role** above admin (migration 0023 promotes the oldest active admin). Admins manage
+  staff; only a super admin adds, changes or deactivates admins. Nobody can change their own access or
+  remove the last super admin.
+
 ### Fixed
 - **Closing a shop now takes its products off sale.** They used to stay in listings, on their pages
   and in carts; now they are hidden and checkout refuses them until the shop reopens.
@@ -19,6 +27,10 @@ pre-production-cutover).
 - The product editor keeps a product's hidden category instead of dropping it on save.
 
 ### Changed
+- **Staff can no longer refund orders, change coupons or exchange rates, or see users and roles**;
+  those are admins only now (the Coupons, Exchange rates and Users & roles screens are hidden from
+  staff). Staff don't see *Refunded* among an order's next statuses. Role changes on Users & roles
+  follow the Team rules: admins manage staff, only a super admin touches admins.
 - **New page layouts across the site** (ADR 0015). Home asks where, when and what for in the hero.
   Shop, category, occasion and search pages filter from one chip row with *Arrives tomorrow* first.
   The product buy box is three steps: size, when, your card; the chosen day goes on the cart line.

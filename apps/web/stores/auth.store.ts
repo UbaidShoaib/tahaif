@@ -6,7 +6,7 @@ export interface UserRead {
   id: string;
   email: string;
   full_name: string | null;
-  role: "customer" | "vendor" | "staff" | "admin";
+  role: "customer" | "vendor" | "staff" | "admin" | "super_admin";
   locale: string;
   currency_pref: string;
   avatar_url: string | null;

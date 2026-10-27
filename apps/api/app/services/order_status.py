@@ -5,6 +5,9 @@ straight from the kitchen goes preparing → delivered). They never move backwar
 except through `on_hold`, which can return to any open status. Cancelling is only
 possible before the gift leaves the shop; after money is in, the way out is a
 refund. `cancelled` and `refunded` are final.
+
+Refunds give money back, so only admins may make them (`ADMIN_ONLY`); staff
+see every other move.
 """
 
 from app.models.order import OrderStatus
@@ -32,9 +35,11 @@ TRANSITIONS[S.on_hold] = [*_OPEN, S.cancelled, S.refunded]
 TRANSITIONS[S.cancelled] = []
 TRANSITIONS[S.refunded] = []
 
+ADMIN_ONLY = {S.refunded}
 
-def next_statuses(current: OrderStatus) -> list[OrderStatus]:
-    return TRANSITIONS[current]
+
+def next_statuses(current: OrderStatus, *, is_admin: bool = True) -> list[OrderStatus]:
+    return [s for s in TRANSITIONS[current] if is_admin or s not in ADMIN_ONLY]
 
 
 def can_move(current: OrderStatus, new: OrderStatus) -> bool:

@@ -7259,6 +7259,116 @@
         "title": "StaffNoteRead",
         "type": "object"
       },
+      "TeamMemberAdd": {
+        "properties": {
+          "email": {
+            "description": "An existing, verified account; they sign up on the site first",
+            "format": "email",
+            "title": "Email",
+            "type": "string"
+          },
+          "role": {
+            "default": "staff",
+            "enum": [
+              "staff",
+              "admin",
+              "super_admin"
+            ],
+            "title": "Role",
+            "type": "string"
+          }
+        },
+        "required": [
+          "email"
+        ],
+        "title": "TeamMemberAdd",
+        "type": "object"
+      },
+      "TeamMemberRead": {
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "email": {
+            "title": "Email",
+            "type": "string"
+          },
+          "full_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Full Name"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "is_active": {
+            "description": "False once deactivated: they can't sign in or use the back office",
+            "title": "Is Active",
+            "type": "boolean"
+          },
+          "role": {
+            "$ref": "#/components/schemas/UserRole",
+            "examples": [
+              "staff"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "email",
+          "full_name",
+          "role",
+          "is_active",
+          "created_at"
+        ],
+        "title": "TeamMemberRead",
+        "type": "object"
+      },
+      "TeamMemberUpdate": {
+        "properties": {
+          "is_active": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Active"
+          },
+          "role": {
+            "anyOf": [
+              {
+                "enum": [
+                  "customer",
+                  "staff",
+                  "admin",
+                  "super_admin"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "`customer` takes them off the team. Only a super admin sets or changes admins.",
+            "title": "Role"
+          }
+        },
+        "title": "TeamMemberUpdate",
+        "type": "object"
+      },
       "TestimonialRead": {
         "properties": {
           "body": {
@@ -7555,7 +7665,8 @@
           "customer",
           "vendor",
           "staff",
-          "admin"
+          "admin",
+          "super_admin"
         ],
         "title": "UserRole",
         "type": "string"
@@ -10722,6 +10833,150 @@
         ]
       }
     },
+    "/api/v1/admin/team": {
+      "get": {
+        "description": "Everyone with back-office access, including deactivated accounts.",
+        "operationId": "list_team_api_v1_admin_team_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/TeamMemberRead"
+                  },
+                  "title": "Response List Team Api V1 Admin Team Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Team",
+        "tags": [
+          "admin"
+        ]
+      },
+      "post": {
+        "description": "Give an existing, verified account staff or admin access.",
+        "operationId": "add_team_member_api_v1_admin_team_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TeamMemberAdd"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TeamMemberRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "description": "No account with that email"
+          },
+          "409": {
+            "description": "Account can't be added yet"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Add Team Member",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/team/{user_id}": {
+      "patch": {
+        "description": "Change a member's role (`customer` removes them from the team) or (de)activate their account.",
+        "operationId": "update_team_member_api_v1_admin_team__user_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "User Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TeamMemberUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TeamMemberRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "409": {
+            "description": "Would change your own access or leave no active admin"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Update Team Member",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
     "/api/v1/admin/users": {
       "get": {
         "operationId": "list_users_api_v1_admin_users_get",
@@ -10846,7 +11101,10 @@
             "description": "Successful Response"
           },
           "403": {
-            "description": "Admins only"
+            "description": "Admins only; only a super admin sets or changes admins"
+          },
+          "409": {
+            "description": "Would leave no active super admin"
           },
           "422": {
             "description": "Your own role"

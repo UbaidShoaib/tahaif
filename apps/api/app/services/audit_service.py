@@ -52,6 +52,8 @@ ACTION_LABELS: dict[str, str] = {
     "coupon.disabled": "Turned a coupon off",
     "fx_rate.overridden": "Set an exchange rate by hand",
     "user.role_changed": "Changed a user's role",
+    "user.deactivated": "Deactivated an account",
+    "user.reactivated": "Reactivated an account",
 }
 
 

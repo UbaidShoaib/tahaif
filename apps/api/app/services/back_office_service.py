@@ -23,7 +23,7 @@ from app.models.catalog import (
     product_occasions_table,
 )
 from app.models.loyalty import Coupon
-from app.models.user import User, UserRole
+from app.models.user import ADMIN_ROLES, User, UserRole
 from app.repositories.catalog_repository import OccasionRepository
 from app.repositories.loyalty_repository import CouponRepository
 from app.repositories.user_repository import UserRepository
@@ -39,7 +39,7 @@ from app.schemas.admin import (
     FxRateRead,
 )
 from app.schemas.catalog import OccasionCreate, OccasionUpdate
-from app.services import audit_service, catalog_service
+from app.services import audit_service, catalog_service, team_service
 from app.services.fx_service import SUPPORTED_CURRENCIES
 
 
@@ -131,7 +131,8 @@ async def list_users(
 
 
 async def change_role(db: AsyncSession, actor: User, user_id: uuid.UUID, role: UserRole) -> AdminUserRead:
-    if actor.role != UserRole.admin:
+    """Same rules as the Team page: admins manage staff, only a super admin touches admins."""
+    if actor.role not in ADMIN_ROLES:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only admins can change roles")
     if user_id == actor.id:
         # Otherwise the last admin can lock everyone out of the role screen.
@@ -140,6 +141,8 @@ async def change_role(db: AsyncSession, actor: User, user_id: uuid.UUID, role: U
     user = await repo.get_by_id(user_id)
     if not user:
         raise _not_found("User")
+    team_service.ensure_can_manage(actor, user, role)
+    await team_service.ensure_a_super_admin_remains(db, user, role=role, is_active=user.is_active)
     await audit_service.record(
         db, actor, "user.role_changed", "user", user.id,
         before={"role": user.role}, after={"role": role}, context={"email": user.email},

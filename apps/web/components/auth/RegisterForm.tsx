@@ -48,7 +48,7 @@ export function RegisterForm() {
   const onSubmit = async (data: FormData) => {
     setError(null);
     try {
-      const res = await apiFetch<{ access_token: string; user: { id: string; email: string; full_name: string | null; role: "customer" | "vendor" | "staff" | "admin"; locale: string; currency_pref: string; avatar_url: string | null; is_verified: boolean; created_at: string } }>(
+      const res = await apiFetch<{ access_token: string; user: { id: string; email: string; full_name: string | null; role: "customer" | "vendor" | "staff" | "admin" | "super_admin"; locale: string; currency_pref: string; avatar_url: string | null; is_verified: boolean; created_at: string } }>(
         "/auth/register",
         { method: "POST", body: data },
       );

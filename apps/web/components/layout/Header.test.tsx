@@ -57,6 +57,7 @@ describe("Header", () => {
 
   it.each([
     ["admin", "Admin", "/admin"],
+    ["super_admin", "Admin", "/admin"],
     ["staff", "Admin", "/admin"],
     ["vendor", "Vendor portal", "/vendor/dashboard"],
   ])("gives a signed-in %s a link to their workspace", (role, label, href) => {

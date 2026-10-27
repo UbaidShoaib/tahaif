@@ -15,16 +15,29 @@ export const ROLE_LABELS: Record<Role, string> = {
   vendor: "Shop owner",
   staff: "Staff",
   admin: "Admin",
+  super_admin: "Super admin",
 };
 
-const ROLE_HINT = "Staff run orders and the catalog. Admins can also change roles and see the activity log.";
+const ALL_ROLES = Object.keys(ROLE_LABELS) as Role[];
+const ADMINS: Role[] = ["admin", "super_admin"];
+
+/** Roles this viewer may give: admins manage everyone below admin; a super admin manages everyone. */
+export const assignableRoles = (iAmSuper: boolean): Role[] =>
+  iAmSuper ? ALL_ROLES : ALL_ROLES.filter((r) => !ADMINS.includes(r));
+
+const ROLE_HINT =
+  "Staff run orders and the catalog. Admins also handle refunds, coupons, exchange rates and roles. " +
+  "Only a super admin can make or change admins.";
 
 /**
  * Find people and change what they can do. Admins only (the API enforces it). You can't
- * change your own role, so the last admin can't lock everyone out.
+ * change your own role, so the last admin can't lock everyone out; admins and super admins
+ * are read-only unless you are a super admin.
  */
 export function UserManager({ token }: { token: string }) {
   const me = useAuthStore((s) => s.user?.id);
+  const iAmSuper = useAuthStore((s) => s.user?.role === "super_admin");
+  const assignable = assignableRoles(iAmSuper);
   const [users, setUsers] = useState<AdminUser[] | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
@@ -59,7 +72,7 @@ export function UserManager({ token }: { token: string }) {
           {(p) => (
             <Select {...p} value={roleFilter} onChange={(e) => setRoleFilter(e.target.value as Role | "")}>
               <option value="">Everyone</option>
-              {(Object.keys(ROLE_LABELS) as Role[]).map((r) => <option key={r} value={r}>{ROLE_LABELS[r]}</option>)}
+              {ALL_ROLES.map((r) => <option key={r} value={r}>{ROLE_LABELS[r]}</option>)}
             </Select>
           )}
         </FormField>
@@ -74,6 +87,7 @@ export function UserManager({ token }: { token: string }) {
           {users.map((u) => {
             const chosen = pending[u.id] ?? u.role;
             const self = u.id === me;
+            const locked = !iAmSuper && ADMINS.includes(u.role);
             return (
               <li key={u.id} className="flex flex-wrap items-center gap-3 p-3">
                 <div className="min-w-0 flex-1">
@@ -83,13 +97,13 @@ export function UserManager({ token }: { token: string }) {
                   </p>
                 </div>
                 {!u.is_verified && <Badge variant="neutral">Email not verified</Badge>}
-                {self ? (
-                  <Badge variant="brand">{ROLE_LABELS[u.role]} (you)</Badge>
+                {self || locked ? (
+                  <Badge variant="brand">{`${ROLE_LABELS[u.role]}${self ? " (you)" : ""}`}</Badge>
                 ) : (
                   <>
                     <Select aria-label={`Role for ${u.email}`} className="w-40" value={chosen} disabled={busy}
                       onChange={(e) => setPending((p) => ({ ...p, [u.id]: e.target.value as Role }))}>
-                      {(Object.keys(ROLE_LABELS) as Role[]).map((r) => <option key={r} value={r}>{ROLE_LABELS[r]}</option>)}
+                      {assignable.map((r) => <option key={r} value={r}>{ROLE_LABELS[r]}</option>)}
                     </Select>
                     {chosen !== u.role && (
                       <Button size="sm" disabled={busy} onClick={() => void apply(u)}>
