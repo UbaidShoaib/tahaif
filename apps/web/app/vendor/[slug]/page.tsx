@@ -1,4 +1,5 @@
 import Image from "next/image";
+import Link from "next/link";
 import { isOptimizable } from "@/lib/image-hosts";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
@@ -8,6 +9,8 @@ import { MapPin } from "lucide-react";
 import { fetchListing, parseListingParams } from "@/lib/listing";
 import { ProductListing } from "@/components/catalog/ProductListing";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
+import { canonical } from "@/lib/seo";
+import { cityCopy } from "@/lib/city-seo";
 
 type Props = {
   params: Promise<{ slug: string }>;
@@ -18,7 +21,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const vendor = await catalogApi.getVendor(slug).catch(() => null);
   if (!vendor) return { title: "Vendor Not Found" };
-  return { title: vendor.name, description: vendor.description ?? undefined };
+  // "Bouquet Bar, Gujranwala": people search a shop by name and city.
+  const city = (await catalogApi.getCities().catch(() => [])).find((c) => c.id === vendor.city_id);
+  return {
+    title: cityCopy.vendorTitle(vendor.name, city?.name),
+    description: cityCopy.vendorDescription(vendor.name, city?.name, vendor.description),
+    ...canonical(`/vendor/${vendor.slug}`),
+  };
 }
 
 export default async function VendorPage({ params, searchParams }: Props) {
@@ -37,7 +46,13 @@ export default async function VendorPage({ params, searchParams }: Props) {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <Breadcrumb items={[{ label: "Home", href: "/" }, { label: vendor.name }]} />
+      <Breadcrumb
+        items={[
+          { label: "Home", href: "/" },
+          ...(city ? [{ label: city.name, href: `/city/${city.slug}` }] : []),
+          { label: vendor.name },
+        ]}
+      />
 
       {/* Vendor header */}
       <div className="mb-8 p-6 rounded-2xl border bg-muted/30 flex items-start gap-5">
@@ -59,8 +74,10 @@ export default async function VendorPage({ params, searchParams }: Props) {
           <h1 className="text-h1">{vendor.name}</h1>
           {city && (
             <div className="flex items-center gap-1 text-sm text-muted-foreground mt-1">
-              <MapPin className="h-3.5 w-3.5" />
-              <span>{city.name}</span>
+              <MapPin aria-hidden className="h-3.5 w-3.5" />
+              <Link href={`/city/${city.slug}`} className="hover:text-foreground hover:underline">
+                {city.name}
+              </Link>
             </div>
           )}
           {vendor.description && (

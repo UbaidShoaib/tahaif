@@ -1,53 +1,71 @@
 import type { MetadataRoute } from "next";
 import { brand } from "@/lib/brand";
+import { catalogApi, type Category } from "@/lib/catalog";
+import { countByCity, listAllProducts, MIN_CITY_PRODUCTS } from "@/lib/city-seo";
+
+// Built per request from hour-cached API data. An API failure fails the request
+// (search engines retry) rather than publishing a sitemap with no products.
+export const dynamic = "force-dynamic";
 
 const BASE_URL = brand.siteUrl;
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api/v1";
 
-async function fetchJson<T>(path: string): Promise<T | null> {
-  try {
-    const resp = await fetch(`${API_URL}${path}`, { next: { revalidate: 3600 } });
-    if (!resp.ok) return null;
-    return resp.json() as Promise<T>;
-  } catch {
-    return null;
-  }
+// Only pages with real content. Stubs (FAQ, blog, privacy, refund) join once written.
+const STATIC_PATHS: { path: string; changeFrequency: "daily" | "monthly"; priority: number }[] = [
+  { path: "", changeFrequency: "daily", priority: 1 },
+  { path: "/contact", changeFrequency: "monthly", priority: 0.4 },
+  { path: "/sell", changeFrequency: "monthly", priority: 0.3 },
+  { path: "/terms", changeFrequency: "monthly", priority: 0.2 },
+];
+
+function flatten(categories: Category[]): Category[] {
+  return categories.flatMap((c) => [c, ...flatten(c.children)]);
 }
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const staticRoutes: MetadataRoute.Sitemap = [
-    { url: BASE_URL, changeFrequency: "daily", priority: 1 },
-    { url: `${BASE_URL}/search`, changeFrequency: "daily", priority: 0.9 },
-    { url: `${BASE_URL}/login`, changeFrequency: "monthly", priority: 0.3 },
-    { url: `${BASE_URL}/register`, changeFrequency: "monthly", priority: 0.3 },
-    { url: `${BASE_URL}/about`, changeFrequency: "monthly", priority: 0.4 },
-    { url: `${BASE_URL}/contact`, changeFrequency: "monthly", priority: 0.4 },
-    { url: `${BASE_URL}/faq`, changeFrequency: "monthly", priority: 0.5 },
-    { url: `${BASE_URL}/blog`, changeFrequency: "weekly", priority: 0.6 },
-  ];
+  const [products, categories, occasions, vendors, cities] = await Promise.all([
+    listAllProducts(),
+    catalogApi.getCategories(),
+    catalogApi.getOccasions(),
+    catalogApi.getVendors(),
+    catalogApi.getCities(),
+  ]);
+  const activeCategories = flatten(categories).filter((c) => c.is_active);
+  const { byCity, byCategoryCity } = countByCity(products);
+  const activeCities = cities.filter((c) => c.is_active);
 
-  // Product pages
-  const products = await fetchJson<Array<{ slug: string; updated_at?: string }>>(
-    "/products?page_size=500&active_only=true"
-  );
-  const productUrls: MetadataRoute.Sitemap =
-    (products as Array<{ slug: string; updated_at?: string }> | null)?.map?.((p) => ({
-      url: `${BASE_URL}/p/${p.slug}`,
-      changeFrequency: "weekly" as const,
-      priority: 0.8,
-      lastModified: p.updated_at ? new Date(p.updated_at) : undefined,
-    })) ?? [];
-
-  // Category pages
-  const categories = await fetchJson<Array<{ slug: string }>>(
-    "/categories"
-  );
-  const categoryUrls: MetadataRoute.Sitemap =
-    (categories as Array<{ slug: string }> | null)?.map?.((c) => ({
-      url: `${BASE_URL}/c/${c.slug}`,
+  return [
+    ...STATIC_PATHS.map(({ path, changeFrequency, priority }) => ({
+      url: `${BASE_URL}${path}`,
+      changeFrequency,
+      priority,
+    })),
+    ...activeCategories.map((c) => ({ url: `${BASE_URL}/c/${c.slug}`, changeFrequency: "weekly" as const, priority: 0.8 })),
+    // City pages, only where they have something to show (the same rule as their robots meta).
+    ...activeCities
+      .filter((city) => (byCity.get(city.id) ?? 0) > 0)
+      .map((city) => ({ url: `${BASE_URL}/city/${city.slug}`, changeFrequency: "weekly" as const, priority: 0.8 })),
+    ...activeCategories.flatMap((c) =>
+      activeCities
+        .filter((city) => (byCategoryCity.get(`${c.id}:${city.id}`) ?? 0) >= MIN_CITY_PRODUCTS)
+        .map((city) => ({
+          url: `${BASE_URL}/c/${c.slug}/${city.slug}`,
+          changeFrequency: "weekly" as const,
+          priority: 0.7,
+        })),
+    ),
+    ...occasions.map((o) => ({
+      url: `${BASE_URL}/occasion/${o.slug}`,
       changeFrequency: "weekly" as const,
       priority: 0.7,
-    })) ?? [];
-
-  return [...staticRoutes, ...productUrls, ...categoryUrls];
+    })),
+    ...products.map((p) => ({
+      url: `${BASE_URL}/p/${p.slug}`,
+      changeFrequency: "weekly" as const,
+      priority: 0.6,
+      ...(p.updated_at && { lastModified: new Date(p.updated_at) }),
+    })),
+    ...vendors
+      .filter((v) => v.is_active)
+      .map((v) => ({ url: `${BASE_URL}/vendor/${v.slug}`, changeFrequency: "weekly" as const, priority: 0.5 })),
+  ];
 }

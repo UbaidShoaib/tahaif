@@ -6,11 +6,14 @@ import { NAV_LINKS } from "@/components/layout/nav-links";
 import { SupportWhatsApp } from "@/components/support/SupportWhatsApp";
 import { BrandLogo } from "@/components/brand/BrandLogo";
 import { brand } from "@/lib/brand";
+import { catalogApi } from "@/lib/catalog";
 
 const linkClass = "inline-flex min-h-9 items-center hover:text-foreground transition-colors";
 
 export async function Footer() {
   const t = await getTranslations();
+  // Every page links to each city's landing page, which is how search engines find them.
+  const cities = await catalogApi.getCities().catch(() => []);
 
   const columns: { heading: string; links: { href: string; label: string }[] }[] = [
     { heading: t("footer.shop"), links: NAV_LINKS.map((l) => ({ href: l.href, label: t(`nav.${l.key}`) })) },
@@ -34,12 +37,15 @@ export async function Footer() {
         { href: "/refund", label: t("footer.refund") },
       ],
     },
+    ...(cities.length > 0
+      ? [{ heading: t("footer.cities"), links: cities.map((c) => ({ href: `/city/${c.slug}`, label: c.name })) }]
+      : []),
   ];
 
   return (
     <footer className="border-t bg-muted/40 print:hidden">
       <div className="container mx-auto px-4 py-10">
-        <div className="grid grid-cols-2 gap-8 md:grid-cols-4">
+        <div className="grid grid-cols-2 gap-8 md:grid-cols-4 lg:grid-cols-5">
           <div className="col-span-2 md:col-span-1">
             <Link href="/" className="flex items-center gap-2 text-lg font-bold text-link">
               <BrandLogo markClassName="h-5 w-5" />

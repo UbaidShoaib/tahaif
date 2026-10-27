@@ -59,6 +59,15 @@ pre-production-cutover).
 - **Build-your-own from Add product.** The form now asks for the product type: ready-made, or a
   build-your-own hamper or bouquet with its fewest and most items. A builder links straight to
   adding its items. Subcategories can be picked in Add product and the product editor.
+- SEO (Phase 10 P2.1): **city landing pages** for searches like "flowers gujranwala" or "cake
+  delivery lahore". `/city/{city}` lists every gift delivered there, with links to its categories
+  ("Cakes in Lahore 7") and the shops that deliver there; `/c/{category}/{city}` is that category
+  filtered to the city on the server. Both have keyword titles ("Flowers Delivery in Gujranwala —
+  Order Flowers Online"), descriptions with the real gift count, and canonicals, and stay `noindex`
+  until they have enough gifts (1 for a city, 3 for a category in a city). The sitemap lists the
+  ones that qualify. Shop pages are titled with their city ("Bouquet Bar, Gujranwala — Order Online
+  for Home Delivery"); category pages target national searches and link to each city; the footer
+  links every city. Listings take a fixed `city` (no city chip, not in the URL).
 - **Filter gifts by arrival day.** `GET /products?deliver_on=YYYY-MM-DD` (with `city_id`) keeps only
   gifts that can arrive that day, counting same-day cutoffs and lead times.
 - **Set up build-your-own hampers and bouquets in the admin** (ADR 0014). New *Catalog →
@@ -114,6 +123,18 @@ pre-production-cutover).
   shop approvals; card-note take-downs; coupons; exchange-rate overrides; and role changes record who,
   what changed (before → after) and the IP. Admin-only **Activity** tab (`GET /admin/audit-log`); the
   order page timeline now shows status changes and who made them.
+- SEO (Phase 10 P0): the **sitemap lists the whole catalog** — every live product (paged within the
+  API's 100-per-page limit, with `lastmod`), categories and subcategories, occasions and shop pages;
+  missing (`/about`), private (`/login`, `/register`, `/search`) and placeholder pages are gone. An API
+  failure now fails the sitemap request instead of publishing one without products.
+  **Canonical URLs** on the home, product, category, occasion, shop, contact, sell and terms pages
+  (filtered listings point at the unfiltered page) via `metadataBase`. Private and token pages
+  (`/track`, `/send`, `/note`, `/thanks`, `/checkout`, `/cart`, `/search`, sign-in, account, admin,
+  shop portal) send `X-Robots-Tag: noindex`; "Coming soon" pages (FAQ, blog, privacy, refund) are
+  `noindex` until written. `robots.txt` no longer blocks `/_next/`. `/c/{slug}/{anything}` is a 404.
+  Search Console / Bing verification via `NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION` /
+  `NEXT_PUBLIC_BING_SITE_VERIFICATION`. **Production builds fail without `NEXT_PUBLIC_SITE_URL`.**
+  API: products include `updated_at`.
 - Back office (Phase 9 P0): **order page** at `/admin/orders/{id}` — every recipient's full address,
   landmark, delivery day/slot, shop and shop phone (tap to call); items with card message and
   customisation; totals and charged currency; buyer contact, source and who took the order; payment

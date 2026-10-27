@@ -1,7 +1,9 @@
 import path from "path";
 import type { NextConfig } from "next";
+import { PHASE_PRODUCTION_BUILD } from "next/constants";
 import createNextIntlPlugin from "next-intl/plugin";
 import { imageHosts } from "./lib/image-hosts";
+import { noindexHeaders, requireSiteUrl } from "./lib/seo";
 
 // Locale from a cookie, no URL prefix (i18n/request.ts, ADR 0005).
 const withNextIntl = createNextIntlPlugin("./i18n/request.ts");
@@ -71,6 +73,8 @@ const nextConfig: NextConfig = {
         source: "/",
         headers: [{ key: "Service-Worker-Allowed", value: "/" }],
       },
+      // Keep private and token pages out of search results (lib/seo.ts).
+      ...noindexHeaders(),
     ];
   },
 
@@ -83,7 +87,7 @@ const nextConfig: NextConfig = {
 
 // withSentryConfig is safe to apply unconditionally: without SENTRY_AUTH_TOKEN
 // (source map upload) or NEXT_PUBLIC_SENTRY_DSN (runtime init) it's inert.
-export default withSentryConfig(withNextIntl(nextConfig), {
+const config = withSentryConfig(withNextIntl(nextConfig), {
   org: process.env.SENTRY_ORG,
   project: process.env.SENTRY_PROJECT,
   authToken: process.env.SENTRY_AUTH_TOKEN,
@@ -94,3 +98,9 @@ export default withSentryConfig(withNextIntl(nextConfig), {
     automaticVercelMonitors: true,
   },
 });
+
+export default function nextConfigFor(phase: string) {
+  // `next lint` loads the config in the build phase too, but builds nothing.
+  if (phase === PHASE_PRODUCTION_BUILD && !process.argv.includes("lint")) requireSiteUrl(process.env);
+  return config;
+}
