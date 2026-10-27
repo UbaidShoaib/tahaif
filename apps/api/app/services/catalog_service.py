@@ -25,6 +25,8 @@ from app.repositories.catalog_repository import (
     VendorRepository,
 )
 from app.schemas.catalog import (
+    AdminCategoryRead,
+    AdminCityRead,
     CategoryCreate,
     CategoryUpdate,
     CityCreate,
@@ -90,7 +92,9 @@ async def create_city(db: AsyncSession, data: CityCreate, user: User) -> City:
     repo = CityRepository(db)
     if await repo.get_by_slug(data.slug):
         raise _CONFLICT("City")
-    return await repo.create(**data.model_dump())
+    city = await repo.create(**data.model_dump())
+    await audit_service.record(db, user, "city.created", "city", city.id, after=data.model_dump())
+    return city
 
 
 async def update_city(db: AsyncSession, slug: str, data: CityUpdate, user: User) -> City:
@@ -102,7 +106,42 @@ async def update_city(db: AsyncSession, slug: str, data: CityUpdate, user: User)
     updates = data.model_dump(exclude_none=True)
     if not updates:
         return city
-    return await repo.update(city, **updates)
+    before = audit_service.snapshot(city, list(updates))
+    city = await repo.update(city, **updates)
+    await audit_service.record(db, user, "city.updated", "city", city.id, before=before, after=updates)
+    return city
+
+
+async def list_admin_cities(db: AsyncSession) -> list[AdminCityRead]:
+    return [
+        AdminCityRead(
+            id=c.id, name=c.name, slug=c.slug, timezone=c.timezone, is_active=c.is_active,
+            vendor_count=vendors, product_count=products, delivery_count=deliveries,
+        )
+        for c, vendors, products, deliveries in await CityRepository(db).list_with_usage()
+    ]
+
+
+async def delete_city(db: AsyncSession, city_id: uuid.UUID, user: User) -> None:
+    """Only a city nothing uses can go; one with shops or deliveries is switched off instead,
+    so past orders keep their address."""
+    _require_staff(user)
+    repo = CityRepository(db)
+    city = await repo.get_by_id(city_id)
+    if not city:
+        raise _NOT_FOUND("City")
+    [(_, vendors, products, deliveries)] = await repo.list_with_usage(city_id)
+    if vendors or products or deliveries:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                f"{city.name} is still used by {vendors} shop(s), {products} product(s) and {deliveries} "
+                "delivery(ies). Switch it off instead."
+            ),
+        )
+    before = audit_service.snapshot(city, ["name", "slug", "timezone", "is_active"])
+    await repo.delete(city)
+    await audit_service.record(db, user, "city.deleted", "city", city_id, before=before)
 
 
 # ── Vendors ───────────────────────────────────────────────────────────────────
@@ -161,6 +200,24 @@ async def list_categories(db: AsyncSession) -> list[Category]:
     return await CategoryRepository(db).list_roots()
 
 
+async def _check_parent(
+    repo: CategoryRepository, parent_id: uuid.UUID, category: Category | None = None
+) -> None:
+    """Categories go two levels deep, as the store menu shows them: a parent must be top-level."""
+    parent = await repo.get_by_id(parent_id)
+    if not parent:
+        raise _NOT_FOUND("Parent category")
+    if category and parent.id == category.id:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="A category can't be its own parent")
+    if parent.parent_id is not None:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Pick a top-level category as the parent")
+    if category and await repo.has_children(category.id):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="This category has subcategories, so it must stay top-level",
+        )
+
+
 async def create_category(
     db: AsyncSession, data: CategoryCreate, user: User
 ) -> Category:
@@ -168,9 +225,11 @@ async def create_category(
     repo = CategoryRepository(db)
     if await repo.get_by_slug(data.slug):
         raise _CONFLICT("Category")
-    if data.parent_id and not await repo.get_by_id(data.parent_id):
-        raise _NOT_FOUND("Parent category")
-    return await repo.create(**data.model_dump())
+    if data.parent_id:
+        await _check_parent(repo, data.parent_id)
+    category = await repo.create(**data.model_dump())
+    await audit_service.record(db, user, "category.created", "category", category.id, after=data.model_dump())
+    return category
 
 
 async def update_category(
@@ -182,9 +241,48 @@ async def update_category(
     if not category:
         raise _NOT_FOUND("Category")
     updates = data.model_dump(exclude_none=True)
+    # parent_id: null is meaningful (move to the top level), so honour it when sent.
+    if "parent_id" in data.model_fields_set:
+        updates["parent_id"] = data.parent_id
+        if data.parent_id:
+            await _check_parent(repo, data.parent_id, category)
     if not updates:
         return category
-    return await repo.update(category, **updates)
+    before = audit_service.snapshot(category, list(updates))
+    category = await repo.update(category, **updates)
+    await audit_service.record(db, user, "category.updated", "category", category.id, before=before, after=updates)
+    return category
+
+
+async def list_admin_categories(db: AsyncSession) -> list[AdminCategoryRead]:
+    return [
+        AdminCategoryRead(
+            id=c.id, parent_id=c.parent_id, name=c.name, slug=c.slug, sort_order=c.sort_order,
+            is_active=c.is_active, product_count=products, child_count=children,
+        )
+        for c, products, children in await CategoryRepository(db).list_with_usage()
+    ]
+
+
+async def delete_category(db: AsyncSession, category_id: uuid.UUID, user: User) -> None:
+    """Only an empty category can go; one with products or subcategories is switched off instead."""
+    _require_staff(user)
+    repo = CategoryRepository(db)
+    category = await repo.get_by_id(category_id)
+    if not category:
+        raise _NOT_FOUND("Category")
+    [(_, products, children)] = await repo.list_with_usage(category_id)
+    if products or children:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                f"{category.name} still has {products} product(s) and {children} subcategory(ies). "
+                "Move them or switch it off instead."
+            ),
+        )
+    before = audit_service.snapshot(category, ["name", "slug", "parent_id", "is_active"])
+    await repo.delete(category)
+    await audit_service.record(db, user, "category.deleted", "category", category_id, before=before)
 
 
 # ── Products ──────────────────────────────────────────────────────────────────
@@ -277,9 +375,9 @@ def _deliverable_window(day: date, tz: ZoneInfo, now: datetime) -> tuple[time | 
 
 
 async def get_product(db: AsyncSession, slug: str) -> Product:
-    """Public product lookup. Deactivated products are hidden like missing ones."""
+    """Public product lookup. Deactivated products, and those of a closed shop, are hidden like missing ones."""
     product = await ProductRepository(db).get_by_slug(slug)
-    if not product or not product.is_active:
+    if not product or not product.is_active or not product.vendor.is_active:
         raise _NOT_FOUND("Product")
     return product
 

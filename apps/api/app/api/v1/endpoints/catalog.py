@@ -5,6 +5,7 @@ from typing import Annotated
 from fastapi import APIRouter, Form, Query, Response, UploadFile, status
 
 from app.core.deps import DB, CurrentUser
+from app.models.catalog import Category
 from app.schemas.catalog import (
     CategoryCreate,
     CategoryRead,
@@ -99,7 +100,18 @@ async def update_vendor(slug: str, body: VendorUpdate, db: DB, user: CurrentUser
 async def list_categories(db: DB, response: Response) -> list[CategoryRead]:
     response.headers["Cache-Control"] = _CACHE_STATIC
     cats = await catalog_service.list_categories(db)
-    return [CategoryRead.model_validate(c) for c in cats]
+    # Built by hand: the menu is two levels, so a subcategory's own children are never
+    # loaded (reading them would lazy-load). Switched-off subcategories stay out of it.
+    def read(c: Category, children: list[CategoryRead]) -> CategoryRead:
+        return CategoryRead(
+            id=c.id, parent_id=c.parent_id, name=c.name, slug=c.slug,
+            sort_order=c.sort_order, is_active=c.is_active, children=children,
+        )
+
+    return [
+        read(c, [read(ch, []) for ch in sorted(c.children, key=lambda x: (x.sort_order, x.name)) if ch.is_active])
+        for c in cats
+    ]
 
 
 @router.post("/categories", response_model=CategoryRead, status_code=status.HTTP_201_CREATED)

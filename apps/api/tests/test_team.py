@@ -5,12 +5,14 @@ import uuid
 from pathlib import Path
 
 import pytest
+from fastapi import HTTPException
 from httpx import AsyncClient
 from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.user import User, UserRole
 from app.repositories.user_repository import UserRepository
+from app.services import team_service
 from tests.test_audit_log import _admin, _log, _order
 from tests.test_social_orders import _login, _make_user, _staff_headers
 
@@ -151,9 +153,16 @@ async def test_last_active_super_admin_is_kept(client: AsyncClient, db: AsyncSes
     await db.commit()
     try:
         assert (await client.patch(f"{TEAM}/{other.id}", json={"is_active": False}, headers=boss)).status_code == 200
-        # `me` is the only active super admin now: the old role endpoint can't demote them either.
+        # `me` is the only active super admin now. Through the API only `me` could demote `me`,
+        # which the self-change rule already refuses; the guard is the backstop behind it.
         resp = await client.patch(f"/api/v1/admin/users/{me}/role", params={"role": "admin"}, headers=boss)
-        assert resp.status_code == 409 and "last super admin" in resp.json()["detail"]
+        assert resp.status_code == 422
+        last = await UserRepository(db).get_by_id(me)
+        assert last is not None
+        for role, active in ((UserRole.admin, True), (UserRole.super_admin, False)):
+            with pytest.raises(HTTPException) as refused:
+                await team_service.ensure_a_super_admin_remains(db, last, role=role, is_active=active)
+            assert refused.value.status_code == 409 and "last super admin" in refused.value.detail
     finally:
         await db.execute(update(User).where(User.id.in_(parked)).values(is_active=True))
         await db.commit()

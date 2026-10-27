@@ -14,6 +14,13 @@ import { AttentionInbox } from "@/components/admin/AttentionInbox";
 import { ActivityLog } from "@/components/admin/ActivityLog";
 import { TeamManager } from "@/components/admin/TeamManager";
 import { BuilderList } from "@/components/admin/BuilderList";
+import { CategoryManager } from "@/components/admin/CategoryManager";
+import { CityManager } from "@/components/admin/CityManager";
+import { CouponManager } from "@/components/admin/CouponManager";
+import { FxRates } from "@/components/admin/FxRates";
+import { OccasionManager } from "@/components/admin/OccasionManager";
+import { ShopManager } from "@/components/admin/ShopManager";
+import { UserManager } from "@/components/admin/UserManager";
 import { useStaffSession } from "@/hooks/use-staff-session";
 import { isAdminRole } from "@/lib/roles";
 import { useAuthStore } from "@/stores/auth.store";
@@ -55,6 +62,13 @@ export default function AdminDashboard() {
           {section === "add-product" && <AddProductForm token={token} />}
           {section === "products" && <ProductList token={token} />}
           {section === "builders" && <BuilderList token={token} />}
+          {section === "categories" && <CategoryManager token={token} />}
+          {section === "cities" && <CityManager token={token} />}
+          {section === "occasions" && <OccasionManager token={token} />}
+          {section === "shops" && <ShopManager token={token} />}
+          {section === "coupons" && isAdmin && <CouponManager token={token} />}
+          {section === "fx-rates" && isAdmin && <FxRates token={token} />}
+          {section === "users" && isAdmin && <UserManager token={token} />}
           {section === "note-reports" && <NoteReports token={token} />}
           {section === "new-order" && <AssistedOrderForm token={token} />}
           {section === "messages" && <MessageQueue token={token} />}

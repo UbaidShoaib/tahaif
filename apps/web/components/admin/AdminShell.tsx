@@ -9,7 +9,7 @@ import { useAuthStore } from "@/stores/auth.store";
 
 export type Section =
   | "attention" | "orders" | "new-order" | "messages" | "campaigns" | "applications" | "add-product" | "products" | "note-reports"
-  | "builders" | "team" | "activity";
+  | "builders" | "categories" | "cities" | "occasions" | "shops" | "coupons" | "fx-rates" | "users" | "team" | "activity";
 
 type Item = { key: Section; label: string; adminOnly?: boolean };
 
@@ -29,13 +29,25 @@ export const NAV: { group: string; items: Item[] }[] = [
       { key: "products", label: "Products" },
       { key: "add-product", label: "Add product" },
       { key: "builders", label: "Build-your-own" },
+      { key: "categories", label: "Categories" },
+      { key: "occasions", label: "Occasions" },
+      { key: "cities", label: "Cities" },
     ],
   },
   {
     group: "Shops & content",
     items: [
+      { key: "shops", label: "Shops" },
       { key: "applications", label: "Shop applications" },
       { key: "note-reports", label: "Reported notes" },
+    ],
+  },
+  {
+    // Money settings: admins only (the API enforces it too).
+    group: "Pricing",
+    items: [
+      { key: "coupons", label: "Coupons", adminOnly: true },
+      { key: "fx-rates", label: "Exchange rates", adminOnly: true },
     ],
   },
   { group: "Reports", items: [{ key: "campaigns", label: "Sales by campaign" }] },
@@ -44,6 +56,7 @@ export const NAV: { group: string; items: Item[] }[] = [
     group: "Admin",
     items: [
       { key: "team", label: "Team", adminOnly: true },
+      { key: "users", label: "Users & roles", adminOnly: true },
       { key: "activity", label: "Activity", adminOnly: true },
     ],
   },
