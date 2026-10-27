@@ -1759,6 +1759,11 @@
             "title": "Slug",
             "type": "string"
           },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
           "variants": {
             "default": [],
             "items": {
@@ -1792,6 +1797,7 @@
           "description",
           "base_price_pkr",
           "is_active",
+          "updated_at",
           "occasions"
         ],
         "title": "AdminProductDetail",
@@ -6509,6 +6515,11 @@
             "title": "Slug",
             "type": "string"
           },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
           "variants": {
             "default": [],
             "items": {
@@ -6541,7 +6552,8 @@
           "slug",
           "description",
           "base_price_pkr",
-          "is_active"
+          "is_active",
+          "updated_at"
         ],
         "title": "ProductRead",
         "type": "object"
