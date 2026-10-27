@@ -8,6 +8,8 @@ pre-production-cutover).
 ## [Unreleased]
 
 ### Fixed
+- **Closing a shop now takes its products off sale.** They used to stay in listings, on their pages
+  and in carts; now they are hidden and checkout refuses them until the shop reopens.
 - `GET /categories` no longer fails (500) once any subcategory exists, and leaves switched-off
   subcategories out of the menu.
 - `PATCH /categories/{slug}` with `"parent_id": null` now moves a category to the top level (it was
@@ -27,6 +29,26 @@ pre-production-cutover).
   attention*: receipts to verify, WhatsApp messages due and late orders.
 
 ### Added
+- **Coupons, occasions, shops, users and exchange rates in the admin.** Every back-office API now has
+  a screen:
+  - *Pricing → Coupons*: create percent, rupees-off or free-delivery codes with the smallest order,
+    total uses, uses per customer and first/last day (Pakistan time); edit amounts, limits and dates;
+    switch off. See uses and whether a code is live, used up or ended. New `PATCH /admin/coupons/{id}`;
+    duplicate codes are refused (409) instead of failing, and a percent coupon can't exceed 100%.
+  - *Pricing → Exchange rates*: each currency buyers can pay in, with the daily rate, any manual
+    rate and the one charged, in rupees per unit. Set a manual rate or go back to the daily one
+    (new `DELETE /admin/fx-rates/override/{currency}`). Only chargeable currencies can be set.
+  - *Catalog → Occasions*: add, edit (Urdu name, banner, dates, menu position), hide or show, with
+    product counts. New `GET/POST /admin/occasions`, `PATCH /admin/occasions/{id}`; null now clears
+    the Urdu name, banner or a date.
+  - *Shops & content → Shops*: approved shops with city, owner, contact, payout details and live
+    product counts; edit, close (after a confirm) or reopen; open a house shop. New
+    `GET /admin/vendors`, `PATCH /admin/vendors/{id}`.
+  - *Admin → Users & roles* (admins): find people by email, name or phone, filter by role, change a
+    role. `GET /admin/users` takes `q` and `role`. You can't change your own role.
+  - All of these changes are in the activity log.
+- **Sizes and occasions in Add product.** Sizes (name, extra price, stock) and occasion pages can
+  be set while adding a product instead of afterwards in the editor.
 - **Manage categories and cities in the admin.** New *Catalog → Categories* and *Catalog → Cities*
   pages list every one, switched-off ones too, with what uses them (products and subcategories; shops,
   products and deliveries). Add, rename, re-file a category under another (two levels, as the store

@@ -3,7 +3,7 @@ import uuid
 from datetime import time
 from typing import Any
 
-from sqlalchemy import exists, func, or_, select
+from sqlalchemy import and_, exists, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased, selectinload
 
@@ -282,7 +282,12 @@ class OccasionRepository:
 # Delivered to at least one city. Products without one (build-your-own parts, or
 # ones not set up yet) can't be ordered, so the storefront doesn't show them.
 _any_city = aliased(ProductCity)  # aliased: some queries also join ProductCity for a city filter
-_SELLABLE_SOMEWHERE = exists().where(_any_city.product_id == Product.id, _any_city.is_available.is_(True))
+# ...and from a shop that is open: closing a shop takes all its products off sale.
+_shop = aliased(Vendor)
+_SELLABLE_SOMEWHERE = and_(
+    exists().where(_any_city.product_id == Product.id, _any_city.is_available.is_(True)),
+    exists().where(_shop.id == Product.vendor_id, _shop.is_active.is_(True)),
+)
 
 
 class ProductRepository:

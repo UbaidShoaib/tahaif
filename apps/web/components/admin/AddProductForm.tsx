@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Plus } from "lucide-react";
+import { Plus, X } from "lucide-react";
+import { deltaPaisa, stockValue } from "@/components/admin/VariantsEditor";
 import { Button } from "@/components/ui/button";
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
@@ -17,6 +18,30 @@ const MAX_PHOTO_BYTES = 10 * 1024 * 1024;
 
 type CreatedProduct = { id: string; slug: string; name: string };
 type Kind = "regular" | BuilderKind;
+/** A size as typed: name, extra rupees (may be negative), stock (blank = made to order). */
+type SizeRow = { name: string; extra: string; stock: string };
+type SizeBody = { name: string; price_delta_pkr: number; stock_qty: number | null; is_active: true };
+
+/** Every filled-in size row ready to send, or the first problem to show. */
+export function sizeBodies(rows: SizeRow[]): SizeBody[] | string {
+  const filled = rows.filter((r) => r.name.trim() || r.stock.trim() || (r.extra.trim() && r.extra.trim() !== "0"));
+  const names = new Set<string>();
+  const out: SizeBody[] = [];
+  for (const r of filled) {
+    const name = r.name.trim();
+    if (!name) return "Give each size a name, e.g. 2 lb or Dozen.";
+    if (names.has(name.toLowerCase())) return `There are two sizes called ${name}.`;
+    names.add(name.toLowerCase());
+    const extra = deltaPaisa(r.extra || "0");
+    if (extra === null) return `${name}: the extra price must be whole rupees (can be negative).`;
+    const stock = stockValue(r.stock);
+    if (stock === undefined) return `${name}: stock must be a whole number, or blank if you don't count it.`;
+    out.push({ name, price_delta_pkr: extra, stock_qty: stock, is_active: true });
+  }
+  return out;
+}
+
+const NEW_SIZE: SizeRow = { name: "", extra: "0", stock: "" };
 
 export function slugify(name: string): string {
   return name.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
@@ -56,6 +81,9 @@ export function AddProductForm({ token }: { token: string }) {
   const [cityIds, setCityIds] = useState<string[]>([]);
   const [deliveryFee, setDeliveryFee] = useState("0");
   const [leadTime, setLeadTime] = useState("24");
+  const [occasions, setOccasions] = useState<Option[]>([]);
+  const [occasionIds, setOccasionIds] = useState<string[]>([]);
+  const [sizes, setSizes] = useState<SizeRow[]>([]);
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -64,18 +92,20 @@ export function AddProductForm({ token }: { token: string }) {
   useEffect(() => {
     void (async () => {
       try {
-        const [v, c, ci] = await Promise.all([
+        const [v, c, ci, occ] = await Promise.all([
           apiFetch<Vendor[]>("/vendors", { token }),
           apiFetch<Parameters<typeof categoryOptions>[0]>("/categories", { token }),
           apiFetch<Option[]>("/cities", { token }),
+          apiFetch<Option[]>("/occasions", { token }),
         ]);
         setVendors(v);
         setCategories(categoryOptions(c));
         setCities(ci);
+        setOccasions(occ);
         const house = v.find((x) => x.owner_user_id === null) ?? v[0];
         if (house) setVendorId(house.id);
       } catch (e) {
-        setLoadError(e instanceof ApiError ? e.detail : "Could not load vendors, categories and cities.");
+        setLoadError(e instanceof ApiError ? e.detail : "Could not load vendors, categories, cities and occasions.");
       }
     })();
   }, [token]);
@@ -92,7 +122,11 @@ export function AddProductForm({ token }: { token: string }) {
   function reset() {
     setName(""); setSlug(""); setSlugEdited(false); setDescription("");
     setPrice(""); setPhoto(null); setPhotoInputKey((k) => k + 1); setCityIds([]); setCategoryId("");
-    setKind("regular"); setMinItems("1"); setMaxItems("");
+    setKind("regular"); setMinItems("1"); setMaxItems(""); setOccasionIds([]); setSizes([]);
+  }
+
+  function setSize(i: number, patch: Partial<SizeRow>) {
+    setSizes((rows) => rows.map((r, j) => (j === i ? { ...r, ...patch } : r)));
   }
 
   async function submit(e: React.FormEvent) {
@@ -117,6 +151,9 @@ export function AddProductForm({ token }: { token: string }) {
       if (maxItems.trim() && most === null) return setError("The most items must be a whole number from 1 to 200, or blank.");
       if (most !== null && most < least) return setError("The most items can't be fewer than the fewest.");
     }
+    // A builder is priced by what goes in it, so it has no sizes of its own.
+    const variants = kind === "regular" ? sizeBodies(sizes) : [];
+    if (typeof variants === "string") return setError(variants);
 
     setSubmitting(true);
     let product: CreatedProduct | null = null;
@@ -146,6 +183,12 @@ export function AddProductForm({ token }: { token: string }) {
           token,
           body: cityIds.map((city_id) => ({ city_id, delivery_fee_pkr: fee, lead_time_hours: lead })),
         });
+      }
+      for (const body of variants) {
+        await apiFetch(`/products/${product.slug}/variants`, { method: "POST", token, body });
+      }
+      if (occasionIds.length) {
+        await apiFetch(`/products/${product.slug}/occasions`, { method: "PUT", token, body: { occasion_ids: occasionIds } });
       }
       if (kind !== "regular") {
         await buildersAdminApi.saveSettings(token, product.id, { builder_kind: kind, min_items: least ?? 1, max_items: most });
@@ -177,7 +220,7 @@ export function AddProductForm({ token }: { token: string }) {
             View it →
           </a>{" "}
           <a href={`/admin/products/${created.id}`} className="text-link hover:underline">
-            Add sizes, occasions and more photos →
+            Add more photos or edit it →
           </a>
         </div>
       )}
@@ -263,6 +306,49 @@ export function AddProductForm({ token }: { token: string }) {
           )}
         </FormField>
       </div>
+
+      {kind === "regular" && (
+        <fieldset className="space-y-3 rounded-xl border p-4">
+          <legend className="px-1 text-sm font-medium">Sizes</legend>
+          <p className="text-sm text-muted-foreground">
+            Optional, e.g. 1 lb / 2 lb or 6 / 12 roses. The extra price is added to the main price (use a minus for a smaller size).
+            Leave stock blank for things made to order.
+          </p>
+          {sizes.map((r, i) => (
+            <div key={i} className="grid grid-cols-[1fr_6rem_6rem_auto] items-end gap-2">
+              <Input aria-label={`Size ${i + 1} name`} placeholder="Name" value={r.name} maxLength={255}
+                onChange={(e) => setSize(i, { name: e.target.value })} />
+              <Input aria-label={`Size ${i + 1} extra price (Rs)`} inputMode="numeric" value={r.extra}
+                onChange={(e) => setSize(i, { extra: e.target.value })} />
+              <Input aria-label={`Size ${i + 1} stock`} placeholder="Stock" inputMode="numeric" value={r.stock}
+                onChange={(e) => setSize(i, { stock: e.target.value })} />
+              <Button type="button" variant="ghost" size="sm" aria-label={`Remove size ${i + 1}`}
+                onClick={() => setSizes((rows) => rows.filter((_, j) => j !== i))}>
+                <X aria-hidden className="h-4 w-4" />
+              </Button>
+            </div>
+          ))}
+          <Button type="button" variant="outline" size="sm" className="gap-1" onClick={() => setSizes((rows) => [...rows, NEW_SIZE])}>
+            <Plus aria-hidden className="h-3 w-3" /> Add a size
+          </Button>
+        </fieldset>
+      )}
+
+      {occasions.length > 0 && (
+        <fieldset className="space-y-3 rounded-xl border p-4">
+          <legend className="px-1 text-sm font-medium">Occasions</legend>
+          <p className="text-sm text-muted-foreground">It shows on each ticked occasion&apos;s page, e.g. Mother&apos;s Day.</p>
+          <div className="flex flex-wrap gap-x-5 gap-y-2">
+            {occasions.map((o) => (
+              <label key={o.id} className="flex items-center gap-2 text-sm">
+                <input type="checkbox" checked={occasionIds.includes(o.id)}
+                  onChange={() => setOccasionIds((ids) => (ids.includes(o.id) ? ids.filter((x) => x !== o.id) : [...ids, o.id]))} />
+                {o.name}
+              </label>
+            ))}
+          </div>
+        </fieldset>
+      )}
 
       <fieldset className="space-y-3 rounded-xl border p-4">
         <legend className="px-1 text-sm font-medium">Delivers to</legend>

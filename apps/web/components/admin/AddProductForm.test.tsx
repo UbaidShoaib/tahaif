@@ -16,12 +16,14 @@ const vendors = [
 ];
 const categories = [{ id: "cat1", name: "Flowers", children: [{ id: "cat2", name: "Roses" }] }];
 const cities = [{ id: "lhr", name: "Lahore" }];
+const occasions = [{ id: "eid", name: "Eid" }, { id: "mday", name: "Mother's Day" }];
 
 function mockLists() {
   vi.mocked(apiFetch).mockImplementation((path: string) => {
     if (path === "/vendors") return Promise.resolve(vendors);
     if (path === "/categories") return Promise.resolve(categories);
     if (path === "/cities") return Promise.resolve(cities);
+    if (path === "/occasions") return Promise.resolve(occasions);
     if (path === "/products") return Promise.resolve({ id: "p1", slug: "red-roses", name: "Red Roses" });
     return Promise.resolve({});
   });
@@ -98,6 +100,7 @@ describe("AddProductForm", () => {
     vi.mocked(apiFetch).mockImplementationOnce(() => Promise.resolve(vendors))
       .mockImplementationOnce(() => Promise.resolve(categories))
       .mockImplementationOnce(() => Promise.resolve(cities))
+      .mockImplementationOnce(() => Promise.resolve(occasions))
       .mockImplementationOnce(() => Promise.reject(new ApiError(409, "Product already exists")));
     render(<AddProductForm token="tok" />);
     await screen.findByRole("option", { name: "Bouquet Bar (house)" });
@@ -165,5 +168,55 @@ describe("AddProductForm", () => {
     await userEvent.click(screen.getByRole("button", { name: /Add product/ }));
     expect(await screen.findByText(/“Red Roses” is live/)).toBeInTheDocument();
     expect(apiFetch).not.toHaveBeenCalledWith("/admin/products/p1/builder", expect.anything());
+  });
+
+  it("adds sizes and occasions with the product", async () => {
+    mockLists();
+    render(<AddProductForm token="tok" />);
+    await screen.findByRole("option", { name: "Bouquet Bar (house)" });
+    await userEvent.type(screen.getByLabelText(/Product name/), "Chocolate Cake");
+    await userEvent.type(screen.getByLabelText(/^Price/), "3000");
+    await userEvent.click(screen.getByRole("button", { name: /Add a size/ }));
+    await userEvent.click(screen.getByRole("button", { name: /Add a size/ }));
+    await userEvent.type(screen.getByLabelText("Size 1 name"), "1 lb");
+    await userEvent.type(screen.getByLabelText("Size 2 name"), "2 lb");
+    const extra = screen.getByLabelText("Size 2 extra price (Rs)");
+    await userEvent.clear(extra);
+    await userEvent.type(extra, "1500");
+    await userEvent.click(screen.getByLabelText("Mother's Day"));
+    await userEvent.click(screen.getByRole("button", { name: /Add product/ }));
+
+    expect(await screen.findByText(/“Red Roses” is live/)).toBeInTheDocument();
+    const variantBodies = vi.mocked(apiFetch).mock.calls
+      .filter(([path]) => path === "/products/red-roses/variants")
+      .map(([, opts]) => opts?.body);
+    expect(variantBodies).toEqual([
+      { name: "1 lb", price_delta_pkr: 0, stock_qty: null, is_active: true },
+      { name: "2 lb", price_delta_pkr: 150000, stock_qty: null, is_active: true },
+    ]);
+    expect(apiFetch).toHaveBeenCalledWith("/products/red-roses/occasions", {
+      method: "PUT", token: "tok", body: { occasion_ids: ["mday"] },
+    });
+  });
+
+  it("checks sizes before creating anything", async () => {
+    mockLists();
+    render(<AddProductForm token="tok" />);
+    await screen.findByRole("option", { name: "Bouquet Bar (house)" });
+    await userEvent.type(screen.getByLabelText(/Product name/), "Cake");
+    await userEvent.type(screen.getByLabelText(/^Price/), "3000");
+    await userEvent.click(screen.getByRole("button", { name: /Add a size/ }));
+    await userEvent.type(screen.getByLabelText("Size 1 stock"), "12");
+    await userEvent.click(screen.getByRole("button", { name: /Add product/ }));
+    expect(await screen.findByText(/Give each size a name/)).toBeInTheDocument();
+    expect(apiFetch).not.toHaveBeenCalledWith("/products", expect.anything());
+  });
+
+  it("has no sizes for a build-your-own product", async () => {
+    mockLists();
+    render(<AddProductForm token="tok" />);
+    await screen.findByRole("option", { name: "Bouquet Bar (house)" });
+    await userEvent.selectOptions(screen.getByLabelText(/Product type/), "hamper");
+    expect(screen.queryByRole("button", { name: /Add a size/ })).not.toBeInTheDocument();
   });
 });

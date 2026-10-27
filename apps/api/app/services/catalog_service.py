@@ -375,9 +375,9 @@ def _deliverable_window(day: date, tz: ZoneInfo, now: datetime) -> tuple[time | 
 
 
 async def get_product(db: AsyncSession, slug: str) -> Product:
-    """Public product lookup. Deactivated products are hidden like missing ones."""
+    """Public product lookup. Deactivated products, and those of a closed shop, are hidden like missing ones."""
     product = await ProductRepository(db).get_by_slug(slug)
-    if not product or not product.is_active:
+    if not product or not product.is_active or not product.vendor.is_active:
         raise _NOT_FOUND("Product")
     return product
 

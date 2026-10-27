@@ -8,7 +8,7 @@ import { useAuthStore } from "@/stores/auth.store";
 
 export type Section =
   | "attention" | "orders" | "new-order" | "messages" | "campaigns" | "applications" | "add-product" | "products" | "note-reports"
-  | "builders" | "categories" | "cities" | "activity";
+  | "builders" | "categories" | "cities" | "occasions" | "shops" | "coupons" | "fx-rates" | "users" | "activity";
 
 type Item = { key: Section; label: string; adminOnly?: boolean };
 
@@ -29,19 +29,34 @@ export const NAV: { group: string; items: Item[] }[] = [
       { key: "add-product", label: "Add product" },
       { key: "builders", label: "Build-your-own" },
       { key: "categories", label: "Categories" },
+      { key: "occasions", label: "Occasions" },
       { key: "cities", label: "Cities" },
     ],
   },
   {
     group: "Shops & content",
     items: [
+      { key: "shops", label: "Shops" },
       { key: "applications", label: "Shop applications" },
       { key: "note-reports", label: "Reported notes" },
     ],
   },
+  {
+    group: "Pricing",
+    items: [
+      { key: "coupons", label: "Coupons" },
+      { key: "fx-rates", label: "Exchange rates" },
+    ],
+  },
   { group: "Reports", items: [{ key: "campaigns", label: "Sales by campaign" }] },
-  // Shows every staff member's actions and IPs, so admins only (the API enforces it too).
-  { group: "Admin", items: [{ key: "activity", label: "Activity", adminOnly: true }] },
+  // Roles, and every staff member's actions and IPs: admins only (the API enforces it too).
+  {
+    group: "Admin",
+    items: [
+      { key: "users", label: "Users & roles", adminOnly: true },
+      { key: "activity", label: "Activity", adminOnly: true },
+    ],
+  },
 ];
 
 export function visibleSections(isAdmin: boolean): Item[] {

@@ -895,6 +895,96 @@
         "title": "AdminFulfillmentRead",
         "type": "object"
       },
+      "AdminOccasionRead": {
+        "properties": {
+          "banner_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Banner Url"
+          },
+          "ends_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ends At"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "is_active": {
+            "title": "Is Active",
+            "type": "boolean"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "name_ur": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name Ur"
+          },
+          "product_count": {
+            "description": "Products shown on the occasion's page",
+            "title": "Product Count",
+            "type": "integer"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          },
+          "sort_order": {
+            "title": "Sort Order",
+            "type": "integer"
+          },
+          "starts_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Starts At"
+          }
+        },
+        "required": [
+          "id",
+          "slug",
+          "name",
+          "name_ur",
+          "banner_url",
+          "starts_at",
+          "ends_at",
+          "sort_order",
+          "is_active",
+          "product_count"
+        ],
+        "title": "AdminOccasionRead",
+        "type": "object"
+      },
       "AdminOrderDetail": {
         "description": "Everything staff need on one order. Extends the buyer-facing order with contact\ndetails, payment, internal notes and a timeline.",
         "properties": {
@@ -1768,6 +1858,282 @@
           "updated_at"
         ],
         "title": "AdminProductRead",
+        "type": "object"
+      },
+      "AdminShopRead": {
+        "description": "An approved shop (applications live in their own list), open or closed.",
+        "properties": {
+          "bank_account_title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bank Account Title"
+          },
+          "bank_iban": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bank Iban"
+          },
+          "bank_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bank Name"
+          },
+          "city_id": {
+            "format": "uuid",
+            "title": "City Id",
+            "type": "string"
+          },
+          "city_name": {
+            "title": "City Name",
+            "type": "string"
+          },
+          "contact_phone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contact Phone"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "is_active": {
+            "title": "Is Active",
+            "type": "boolean"
+          },
+          "is_house": {
+            "description": "No owner account: run by staff",
+            "title": "Is House",
+            "type": "boolean"
+          },
+          "live_product_count": {
+            "title": "Live Product Count",
+            "type": "integer"
+          },
+          "logo_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Logo Url"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "owner_email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Owner Email"
+          },
+          "product_count": {
+            "title": "Product Count",
+            "type": "integer"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "slug",
+          "description",
+          "logo_url",
+          "contact_phone",
+          "city_id",
+          "city_name",
+          "is_active",
+          "is_house",
+          "owner_email",
+          "product_count",
+          "live_product_count",
+          "bank_account_title",
+          "bank_name",
+          "bank_iban"
+        ],
+        "title": "AdminShopRead",
+        "type": "object"
+      },
+      "AdminShopUpdate": {
+        "properties": {
+          "city_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "City Id"
+          },
+          "contact_phone": {
+            "anyOf": [
+              {
+                "maxLength": 30,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contact Phone"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "is_active": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "false closes the shop: its products go off sale",
+            "title": "Is Active"
+          },
+          "logo_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Logo Url"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 255,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          }
+        },
+        "title": "AdminShopUpdate",
+        "type": "object"
+      },
+      "AdminUserRead": {
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "email": {
+            "title": "Email",
+            "type": "string"
+          },
+          "full_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Full Name"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "is_verified": {
+            "title": "Is Verified",
+            "type": "boolean"
+          },
+          "phone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone"
+          },
+          "role": {
+            "$ref": "#/components/schemas/UserRole"
+          }
+        },
+        "required": [
+          "id",
+          "email",
+          "full_name",
+          "phone",
+          "role",
+          "is_verified",
+          "created_at"
+        ],
+        "title": "AdminUserRead",
         "type": "object"
       },
       "AdminVendorApplicationRead": {
@@ -4102,6 +4468,7 @@
           "code": {
             "maxLength": 50,
             "minLength": 2,
+            "pattern": "^[A-Za-z0-9_-]+$",
             "title": "Code",
             "type": "string"
           },
@@ -4123,6 +4490,7 @@
           "min_order_pkr": {
             "anyOf": [
               {
+                "minimum": 0.0,
                 "type": "integer"
               },
               {
@@ -4143,6 +4511,18 @@
             ],
             "description": "How many orders one buyer may use it on; 1 for a first-order code",
             "title": "Per Customer Limit"
+          },
+          "starts_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Starts At"
           },
           "usage_limit": {
             "anyOf": [
@@ -4178,6 +4558,115 @@
         "title": "CouponCreate",
         "type": "object"
       },
+      "CouponRead": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "coupon_type": {
+            "$ref": "#/components/schemas/CouponType"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "ends_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ends At"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "is_active": {
+            "title": "Is Active",
+            "type": "boolean"
+          },
+          "min_order_pkr": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Smallest subtotal it works on, in paisa",
+            "title": "Min Order Pkr"
+          },
+          "per_customer_limit": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Per Customer Limit"
+          },
+          "starts_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Starts At"
+          },
+          "usage_limit": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Usage Limit"
+          },
+          "used_count": {
+            "title": "Used Count",
+            "type": "integer"
+          },
+          "value": {
+            "description": "Percent off, or rupees off for a fixed coupon; unused for free delivery",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Value",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "coupon_type",
+          "value",
+          "min_order_pkr",
+          "usage_limit",
+          "per_customer_limit",
+          "used_count",
+          "is_active",
+          "starts_at",
+          "ends_at",
+          "created_at"
+        ],
+        "title": "CouponRead",
+        "type": "object"
+      },
       "CouponType": {
         "enum": [
           "percent",
@@ -4186,6 +4675,89 @@
         ],
         "title": "CouponType",
         "type": "string"
+      },
+      "CouponUpdate": {
+        "description": "Limits and dates; send null to remove one. The code and type stay as they are,\nsince orders already placed refer to them.",
+        "properties": {
+          "ends_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ends At"
+          },
+          "min_order_pkr": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Min Order Pkr"
+          },
+          "per_customer_limit": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Per Customer Limit"
+          },
+          "starts_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Starts At"
+          },
+          "usage_limit": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Usage Limit"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          }
+        },
+        "title": "CouponUpdate",
+        "type": "object"
       },
       "CouponValidateRead": {
         "properties": {
@@ -4427,6 +4999,56 @@
         "title": "FulfillmentStatusUpdate",
         "type": "object"
       },
+      "FxCurrencyRead": {
+        "description": "One currency buyers can pay in: the automatic rate, any manual override, and which is charged.",
+        "properties": {
+          "auto": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FxRateRead"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "effective_rate": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Manual wins over automatic; null = not chargeable yet",
+            "title": "Effective Rate"
+          },
+          "manual": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FxRateRead"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "quote_currency": {
+            "title": "Quote Currency",
+            "type": "string"
+          }
+        },
+        "required": [
+          "quote_currency",
+          "auto",
+          "manual",
+          "effective_rate"
+        ],
+        "title": "FxCurrencyRead",
+        "type": "object"
+      },
       "FxRateOverride": {
         "properties": {
           "quote_currency": {
@@ -4455,6 +5077,50 @@
         ],
         "title": "FxRateOverride",
         "type": "object"
+      },
+      "FxRateRead": {
+        "properties": {
+          "fetched_at": {
+            "format": "date-time",
+            "title": "Fetched At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "quote_currency": {
+            "title": "Quote Currency",
+            "type": "string"
+          },
+          "rate": {
+            "description": "How much of the currency one rupee buys",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Rate",
+            "type": "string"
+          },
+          "source": {
+            "$ref": "#/components/schemas/FxRateSource"
+          }
+        },
+        "required": [
+          "id",
+          "quote_currency",
+          "rate",
+          "source",
+          "fetched_at"
+        ],
+        "title": "FxRateRead",
+        "type": "object"
+      },
+      "FxRateSource": {
+        "enum": [
+          "auto",
+          "manual"
+        ],
+        "title": "FxRateSource",
+        "type": "string"
       },
       "FxRatesRead": {
         "description": "PKR\u2192currency rates buyers can currently be charged in (PKR is always 1).",
@@ -8282,15 +8948,34 @@
     },
     "/api/v1/admin/coupons": {
       "get": {
+        "description": "Newest first; `q` matches part of the code.",
         "operationId": "list_coupons_api_v1_admin_coupons_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 50,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Q"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
               "application/json": {
                 "schema": {
                   "items": {
-                    "additionalProperties": true,
-                    "type": "object"
+                    "$ref": "#/components/schemas/CouponRead"
                   },
                   "title": "Response List Coupons Api V1 Admin Coupons Get",
                   "type": "array"
@@ -8298,6 +8983,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
         "security": [
@@ -8327,9 +9022,69 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Create Coupon Api V1 Admin Coupons Post",
-                  "type": "object"
+                  "$ref": "#/components/schemas/CouponRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "409": {
+            "description": "That code is taken"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Create Coupon",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/coupons/{coupon_id}": {
+      "patch": {
+        "description": "Change the amount, limits or dates; null removes a limit or date.",
+        "operationId": "update_coupon_api_v1_admin_coupons__coupon_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "coupon_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Coupon Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CouponUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CouponRead"
                 }
               }
             },
@@ -8351,7 +9106,7 @@
             "HTTPBearer": []
           }
         ],
-        "summary": "Create Coupon",
+        "summary": "Update Coupon",
         "tags": [
           "admin"
         ]
@@ -8387,9 +9142,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Set Coupon Active Api V1 Admin Coupons  Coupon Id  Active Patch",
-                  "type": "object"
+                  "$ref": "#/components/schemas/CouponRead"
                 }
               }
             },
@@ -8419,6 +9172,7 @@
     },
     "/api/v1/admin/fx-rates": {
       "get": {
+        "description": "Each currency buyers can pay in, with its automatic and manual rate and which one is charged.",
         "operationId": "list_fx_rates_api_v1_admin_fx_rates_get",
         "responses": {
           "200": {
@@ -8426,8 +9180,7 @@
               "application/json": {
                 "schema": {
                   "items": {
-                    "additionalProperties": true,
-                    "type": "object"
+                    "$ref": "#/components/schemas/FxCurrencyRead"
                   },
                   "title": "Response List Fx Rates Api V1 Admin Fx Rates Get",
                   "type": "array"
@@ -8450,6 +9203,7 @@
     },
     "/api/v1/admin/fx-rates/override": {
       "post": {
+        "description": "Fix a currency's rate by hand; it wins over the automatic one until cleared.",
         "operationId": "override_fx_rate_api_v1_admin_fx_rates_override_post",
         "requestBody": {
           "content": {
@@ -8466,9 +9220,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Override Fx Rate Api V1 Admin Fx Rates Override Post",
-                  "type": "object"
+                  "$ref": "#/components/schemas/FxRateRead"
                 }
               }
             },
@@ -8491,6 +9243,47 @@
           }
         ],
         "summary": "Override Fx Rate",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/fx-rates/override/{quote_currency}": {
+      "delete": {
+        "description": "Drop the manual rate and charge the automatic one again.",
+        "operationId": "clear_fx_override_api_v1_admin_fx_rates_override__quote_currency__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "quote_currency",
+            "required": true,
+            "schema": {
+              "title": "Quote Currency",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Clear Fx Override",
         "tags": [
           "admin"
         ]
@@ -8671,6 +9464,143 @@
           }
         ],
         "summary": "Restore Reported Note",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/occasions": {
+      "get": {
+        "description": "Every occasion, switched-off ones too, with how many products are on its page.",
+        "operationId": "list_occasions_api_v1_admin_occasions_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/AdminOccasionRead"
+                  },
+                  "title": "Response List Occasions Api V1 Admin Occasions Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Occasions",
+        "tags": [
+          "admin"
+        ]
+      },
+      "post": {
+        "operationId": "create_occasion_api_v1_admin_occasions_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OccasionCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OccasionRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "409": {
+            "description": "URL name taken"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Create Occasion",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/occasions/{occasion_id}": {
+      "patch": {
+        "description": "Null removes the Urdu name, banner or a date.",
+        "operationId": "update_occasion_api_v1_admin_occasions__occasion_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "occasion_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Occasion Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OccasionUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OccasionRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Update Occasion",
         "tags": [
           "admin"
         ]
@@ -9785,11 +10715,48 @@
         "operationId": "list_users_api_v1_admin_users_get",
         "parameters": [
           {
+            "description": "Part of the email, name or phone",
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 100,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Part of the email, name or phone",
+              "title": "Q"
+            }
+          },
+          {
+            "in": "query",
+            "name": "role",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/UserRole"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Role"
+            }
+          },
+          {
             "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
               "default": 50,
+              "maximum": 200,
+              "minimum": 1,
               "title": "Limit",
               "type": "integer"
             }
@@ -9801,8 +10768,7 @@
               "application/json": {
                 "schema": {
                   "items": {
-                    "additionalProperties": true,
-                    "type": "object"
+                    "$ref": "#/components/schemas/AdminUserRead"
                   },
                   "title": "Response List Users Api V1 Admin Users Get",
                   "type": "array"
@@ -9861,23 +10827,17 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Update User Role Api V1 Admin Users  User Id  Role Patch",
-                  "type": "object"
+                  "$ref": "#/components/schemas/AdminUserRead"
                 }
               }
             },
             "description": "Successful Response"
           },
+          "403": {
+            "description": "Admins only"
+          },
           "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
+            "description": "Your own role"
           }
         },
         "security": [
@@ -10053,6 +11013,125 @@
           }
         ],
         "summary": "Reject Vendor Application",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/vendors": {
+      "get": {
+        "description": "Approved shops, open and closed (applications are under /vendor-applications).",
+        "operationId": "list_shops_api_v1_admin_vendors_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 100,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Q"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/AdminShopRead"
+                  },
+                  "title": "Response List Shops Api V1 Admin Vendors Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Shops",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/vendors/{vendor_id}": {
+      "patch": {
+        "description": "Edit a shop or close it; closing takes all its products off sale until reopened.",
+        "operationId": "update_shop_api_v1_admin_vendors__vendor_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "vendor_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Vendor Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminShopUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminShopRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Update Shop",
         "tags": [
           "admin"
         ]
