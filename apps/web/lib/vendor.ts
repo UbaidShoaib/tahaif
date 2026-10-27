@@ -32,6 +32,8 @@ export interface VendorLineItem {
   greeting_message: string | null;
   /** Print a QR code to /note/{note_token} on the card when set. */
   note_token: string | null;
+  /** Build-your-own hamper/bouquet: what to pack, e.g. "6 × Red Rose". */
+  bucket_contents?: string[];
 }
 
 export interface VendorFulfillmentRead {
@@ -63,6 +65,15 @@ export interface VendorFulfillmentRead {
   /** Surprise gift: don't call the recipient ahead, and include no receipt or price. */
   surprise: boolean;
 }
+
+/** The one forward step a vendor takes from each status. */
+export const NEXT_STATUS: Partial<Record<FulfillmentStatus, FulfillmentStatus>> = {
+  pending: "preparing",
+  preparing: "ready",
+  ready: "dispatched",
+  dispatched: "out_for_delivery",
+  out_for_delivery: "delivered",
+};
 
 export interface FulfillmentStatusUpdate {
   status: FulfillmentStatus;

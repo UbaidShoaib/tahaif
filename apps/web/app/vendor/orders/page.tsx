@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useAuthStore } from "@/stores/auth.store";
 import {
+  NEXT_STATUS,
   vendorApi,
   type FulfillmentStatus,
   type VendorFulfillmentRead,
@@ -32,14 +33,6 @@ const ACTION_LABELS: Record<FulfillmentStatus, string> = {
   out_for_delivery: "Out for Delivery",
   delivered: "Delivered",
   failed: "Failed",
-};
-
-const NEXT_STATUS: Partial<Record<FulfillmentStatus, FulfillmentStatus>> = {
-  pending: "preparing",
-  preparing: "ready",
-  ready: "dispatched",
-  dispatched: "out_for_delivery",
-  out_for_delivery: "delivered",
 };
 
 // Once the gift has left the shop, the rider can confirm delivery with a photo.
@@ -252,6 +245,14 @@ export default function VendorOrdersPage() {
                       {f.courier_tracking}
                     </p>
                   )}
+                  {f.items
+                    .filter((i) => i.bucket_contents && i.bucket_contents.length > 0)
+                    .map((i, n) => (
+                      <div key={`bucket-${n}`} className="sm:col-span-2">
+                        <span className="text-muted-foreground">{i.product_name}, pack: </span>
+                        {i.bucket_contents?.join(", ")}
+                      </div>
+                    ))}
                   {f.items.some((i) => i.greeting_message || i.note_token) && (
                     <div className="sm:col-span-2 mt-1 space-y-1">
                       <span className="text-muted-foreground">Card messages: </span>

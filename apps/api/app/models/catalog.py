@@ -179,6 +179,10 @@ class Product(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     base_price_pkr: Mapped[int] = mapped_column(BigInteger, nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    # Set on a builder base (basket, wrap): buyers fill it with components (ADR 0014).
+    builder_kind: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    builder_min_items: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    builder_max_items: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     vendor: Mapped["Vendor"] = relationship(back_populates="products")
     images: Mapped[list["ProductImage"]] = relationship(back_populates="product", cascade="all, delete-orphan", order_by="ProductImage.sort_order")
@@ -197,11 +201,15 @@ class ProductVariant(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     sku: Mapped[str | None] = mapped_column(String(100), unique=True, nullable=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     price_delta_pkr: Mapped[int] = mapped_column(BigInteger, default=0, nullable=False)
-    stock_qty: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    # None = made to order, not counted. A number is a real count; 0 is sold out.
+    stock_qty: Mapped[int | None] = mapped_column(Integer, nullable=True)
     attrs: Mapped[dict[str, object] | None] = mapped_column(JSONB, nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 
     product: Mapped["Product"] = relationship(back_populates="variants")
+
+    def has_stock(self, qty: int) -> bool:
+        return self.stock_qty is None or self.stock_qty >= qty
 
 
 # ── ProductImage ───────────────────────────────────────────────────────────────

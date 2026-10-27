@@ -1,5 +1,6 @@
 from app.models.address import Address
 from app.models.base import Base
+from app.models.bucket import BuilderComponent, CustomBucket
 from app.models.catalog import (
     Category,
     City,
@@ -35,17 +36,20 @@ from app.models.order import (
 )
 from app.models.reminder import OccasionReminderSent
 from app.models.user import OAuthAccount, PasswordResetToken, RefreshToken, User
+from app.models.whatsapp import WhatsAppConversation, WhatsAppInboundMessage
 
 __all__ = [
     "Address",
     "AuditLog",
     "Banner",
     "Base",
+    "BuilderComponent",
     "Cart",
     "CartItem",
     "Category",
     "City",
     "Coupon",
+    "CustomBucket",
     "CustomizationField",
     "Fulfillment",
     "FxRate",
@@ -71,4 +75,6 @@ __all__ = [
     "Testimonial",
     "User",
     "Vendor",
+    "WhatsAppConversation",
+    "WhatsAppInboundMessage",
 ]

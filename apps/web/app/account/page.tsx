@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { brandSlug } from "@/lib/brand";
+import { PeopleDashboard } from "@/components/account/PeopleDashboard";
 
 const CONFIRM_WORD = "DELETE";
 
@@ -120,9 +121,12 @@ export default function AccountPage() {
   };
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-2xl space-y-8">
+    <div className="container mx-auto max-w-5xl space-y-10 px-4 py-8">
+      <PeopleDashboard token={accessToken} firstName={user.full_name?.trim().split(/\s+/)[0] || null} />
+
+      <div className="max-w-2xl space-y-8 border-t pt-8">
       <div>
-        <h1 className="text-2xl font-bold">My Account</h1>
+        <h2 className="font-display text-xl">Settings</h2>
         <p className="text-sm text-muted-foreground">{user.email}</p>
       </div>
 
@@ -244,6 +248,7 @@ export default function AccountPage() {
       </section>
 
       {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
+      </div>
     </div>
   );
 }

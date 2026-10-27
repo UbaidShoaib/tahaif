@@ -23,6 +23,11 @@ const product: EditableProduct = {
     { id: "i1", url: "https://img.example/1.jpg", alt_text: null, sort_order: 0, is_primary: true },
     { id: "i2", url: "https://img.example/2.jpg", alt_text: null, sort_order: 1, is_primary: false },
   ],
+  variants: [
+    { id: "va", name: "Dozen", price_delta_pkr: 0, stock_qty: null, is_active: true },
+    { id: "vb", name: "Gift box", price_delta_pkr: 150000, stock_qty: 0, is_active: true },
+  ],
+  occasions: [{ id: "eid", name: "Eid" }],
   product_cities: [
     { city_id: "lhr", price_override_pkr: null, delivery_fee_pkr: 30000, lead_time_hours: 24, same_day_cutoff: "14:00:00", is_available: true },
   ],
@@ -38,7 +43,13 @@ function serve(overrides: Record<string, unknown> = {}) {
     }
     if (path === "/admin/products/p1") return Promise.resolve(product);
     if (path === "/categories") return Promise.resolve([{ id: "cat1", name: "Flowers" }]);
+    if (path === "/occasions") return Promise.resolve([{ id: "eid", name: "Eid" }, { id: "mom", name: "Mother's Day" }]);
     if (path === "/cities") return Promise.resolve([{ id: "lhr", name: "Lahore" }, { id: "khi", name: "Karachi" }]);
+    // The Build-your-own section loads on its own.
+    if (path === "/admin/products/p1/builder") {
+      return Promise.resolve({ product_id: "p1", vendor_id: "v1", builder_kind: null, min_items: 1, max_items: null, components: [] });
+    }
+    if (path?.startsWith("/admin/products?vendor_id=")) return Promise.resolve([]);
     return Promise.resolve({});
   });
 }
@@ -157,5 +168,77 @@ describe("ProductEditor", () => {
 
     expect(await screen.findByRole("alert")).toHaveTextContent("Product not found");
     expect(screen.getByRole("link", { name: /All products/ })).toHaveAttribute("href", "/admin?section=products");
+  });
+
+  it("shows sizes with their price and stock state", async () => {
+    serve();
+    render(<ProductEditor token="tok" productId="p1" />);
+
+    expect(await screen.findByLabelText("Dozen stock")).toHaveValue("");
+    expect(screen.getByText("Sells at Rs 4,000", { exact: false })).toBeInTheDocument();
+    expect(screen.getByText("Sold out")).toBeInTheDocument();
+  });
+
+  it("restocks a size and sends a cleared count as null", async () => {
+    serve();
+    render(<ProductEditor token="tok" productId="p1" />);
+
+    const stock = await screen.findByLabelText("Gift box stock");
+    await userEvent.clear(stock);
+    await userEvent.type(stock, "12");
+    const row = stock.closest("li")!;
+    await userEvent.click(within(row as HTMLElement).getByRole("button", { name: "Save" }));
+
+    await waitFor(() => expect(apiFetch).toHaveBeenCalledWith("/products/red-roses/variants/vb", expect.objectContaining({
+      method: "PATCH", body: { name: "Gift box", price_delta_pkr: 150000, stock_qty: 12, is_active: true },
+    })));
+
+    await userEvent.type(screen.getByLabelText("New size name"), "Half dozen");
+    await userEvent.clear(screen.getByLabelText("New size extra price (Rs)"));
+    await userEvent.type(screen.getByLabelText("New size extra price (Rs)"), "-800");
+    await userEvent.click(screen.getByRole("button", { name: "Add" }));
+
+    await waitFor(() => expect(apiFetch).toHaveBeenCalledWith("/products/red-roses/variants", expect.objectContaining({
+      method: "POST", body: { name: "Half dozen", price_delta_pkr: -80000, stock_qty: null, is_active: true },
+    })));
+  });
+
+  it("rejects a stock count that isn't a whole number", async () => {
+    serve();
+    render(<ProductEditor token="tok" productId="p1" />);
+
+    await userEvent.type(await screen.findByLabelText("New size name"), "Jar");
+    await userEvent.type(screen.getByLabelText("New size stock"), "lots");
+    await userEvent.click(screen.getByRole("button", { name: "Add" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("stock must be a whole number");
+    expect(apiFetch).not.toHaveBeenCalledWith("/products/red-roses/variants", expect.anything());
+  });
+
+  it("ticks the product's occasions and saves the full set", async () => {
+    serve();
+    render(<ProductEditor token="tok" productId="p1" />);
+
+    expect(await screen.findByRole("checkbox", { name: "Eid" })).toBeChecked();
+    await userEvent.click(screen.getByRole("checkbox", { name: "Mother's Day" }));
+    await userEvent.click(screen.getByRole("checkbox", { name: "Eid" }));
+    await userEvent.click(screen.getByRole("button", { name: "Save occasions" }));
+
+    await waitFor(() => expect(apiFetch).toHaveBeenCalledWith("/products/red-roses/occasions", expect.objectContaining({
+      method: "PUT", body: { occasion_ids: ["mom"] },
+    })));
+  });
+
+  it("moves a photo and saves the new order", async () => {
+    serve();
+    render(<ProductEditor token="tok" productId="p1" />);
+
+    expect(await screen.findByRole("button", { name: "Move photo 1 earlier" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Move photo 2 later" })).toBeDisabled();
+    await userEvent.click(screen.getByRole("button", { name: "Move photo 2 earlier" }));
+
+    await waitFor(() => expect(apiFetch).toHaveBeenCalledWith("/products/red-roses/images/order", expect.objectContaining({
+      method: "PUT", body: { image_ids: ["i2", "i1"] },
+    })));
   });
 });

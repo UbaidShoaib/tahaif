@@ -3,6 +3,8 @@ from datetime import date, datetime
 
 from pydantic import BaseModel, Field, model_validator
 
+from app.core.phone import OptionalTypedPhone, TypedPhone
+
 
 class MonthDay(BaseModel):
     """A yearly date without a year (birthdays, anniversaries). 29 Feb is allowed."""
@@ -26,12 +28,12 @@ _RELATIONSHIP = Field(
 
 class AddressCreate(BaseModel):
     recipient_name: str = Field(max_length=255)
-    recipient_phone: str = Field(max_length=30)
-    line1: str
-    line2: str | None = None
+    recipient_phone: TypedPhone = Field(max_length=30)
+    line1: str = Field(min_length=1, max_length=500)
+    line2: str | None = Field(default=None, max_length=255)
     city_name: str = Field(max_length=100)
-    landmark: str | None = None
-    alt_phone: str | None = Field(default=None, max_length=30)
+    landmark: str | None = Field(default=None, max_length=255)
+    alt_phone: OptionalTypedPhone = Field(default=None, max_length=30)
     is_default: bool = False
     relationship: str | None = _RELATIONSHIP
     birthday: MonthDay | None = None
@@ -40,12 +42,12 @@ class AddressCreate(BaseModel):
 
 class AddressUpdate(BaseModel):
     recipient_name: str | None = Field(default=None, max_length=255)
-    recipient_phone: str | None = Field(default=None, max_length=30)
-    line1: str | None = None
-    line2: str | None = None
+    recipient_phone: OptionalTypedPhone = Field(default=None, max_length=30)
+    line1: str | None = Field(default=None, min_length=1, max_length=500)
+    line2: str | None = Field(default=None, max_length=255)
     city_name: str | None = Field(default=None, max_length=100)
-    landmark: str | None = None
-    alt_phone: str | None = Field(default=None, max_length=30)
+    landmark: str | None = Field(default=None, max_length=255)
+    alt_phone: OptionalTypedPhone = Field(default=None, max_length=30)
     is_default: bool | None = None
     relationship: str | None = _RELATIONSHIP
     birthday: MonthDay | None = None

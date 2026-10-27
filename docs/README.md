@@ -10,11 +10,16 @@
 | [decisions/0009-social-orders-manual-whatsapp.md](decisions/0009-social-orders-manual-whatsapp.md) | Instagram/WhatsApp orders entered by staff through checkout; buyer confirms on the order link; WhatsApp sent by hand via `wa.me` + admin queue |
 | [decisions/0010-card-note-safety.md](decisions/0010-card-note-safety.md) | Card voice/video notes: consent before upload, public report link, admin review/take-down, play/report rate limits, 90-day expiry after delivery |
 | [decisions/0011-public-product-images.md](decisions/0011-public-product-images.md) | Product photos uploaded to `products/` in the media bucket, the only publicly readable prefix |
+| [decisions/0012-audit-log.md](decisions/0012-audit-log.md) | Audit log: services record who/what/before→after/IP in the change's transaction; admin-only Activity tab |
+| [decisions/0014-collaborative-bucket-builder.md](decisions/0014-collaborative-bucket-builder.md) | Build-your-own hampers and bouquets, edited together live over a WebSocket with Redis fan-out; server-owned state, one payer |
+| [decisions/0015-page-layouts.md](decisions/0015-page-layouts.md) | The layout picked for each page from the layout book, the arrival-day filter, what counts as "needs attention", and what wasn't built yet |
+| [decisions/0013-whatsapp-ordering-bot.md](decisions/0013-whatsapp-ordering-bot.md) | Shopping inside WhatsApp: catalog feed for Meta, cart orders through the website checkout, bank details and receipt photos in the chat, staff verification sent back to the customer |
 | [questions.md](questions.md) | Open questions with defaults (legal review of card-note rules, retention) |
 | [whatsapp-order-sop.md](whatsapp-order-sop.md) | SOP for staff taking orders in Instagram DMs and WhatsApp |
 | [compliance-social-orders.md](compliance-social-orders.md) | Compliance note: WhatsApp policy, PECA, consumer protection, GDPR/PECR, PCI for chat orders |
 | [whatsapp-integration-options.md](whatsapp-integration-options.md) | Free/low-cost WhatsApp integration options, workflow value, market practice |
 | [phases/phase-8.md](phases/phase-8.md) | Phase 8 — social orders: P0 done, P1/P2 backlog |
+| [phases/phase-10-bucket-builder.md](phases/phase-10-bucket-builder.md) | Phase 10 — build-your-own buckets: what shipped, API, what's left |
 | [phases/phase-9-back-office.md](phases/phase-9-back-office.md) | Phase 9 — back-office evaluation and staged plan; P0 catalog editor done |
 | [decisions/0008-vendor-applications.md](decisions/0008-vendor-applications.md) | How a shop joins: application at `/sell`, staff approval (bank details + CNIC required), vendor products hidden until published |
 | [decisions/0007-single-vps-deploy.md](decisions/0007-single-vps-deploy.md) | Active deploy target: whole stack on one VPS (Docker Compose + Caddy) |

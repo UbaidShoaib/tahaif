@@ -5,6 +5,7 @@ from typing import Literal
 
 from pydantic import BaseModel, EmailStr, Field
 
+from app.core.phone import OptionalTypedPhone, TypedPhone
 from app.models.order import FulfillmentStatus, OrderSource, OrderStatus, PaymentMethod
 
 
@@ -13,16 +14,16 @@ class CheckoutPlace(BaseModel):
     delivery_city_id: uuid.UUID
     delivery_date: date
     recipient_name: str = Field(min_length=2, max_length=255)
-    recipient_phone: str = Field(min_length=7, max_length=30)
+    recipient_phone: TypedPhone = Field(min_length=7, max_length=30)
     address_line1: str = Field(min_length=5, max_length=500)
-    address_line2: str | None = None
-    landmark: str | None = None
+    address_line2: str | None = Field(default=None, max_length=255)
+    landmark: str | None = Field(default=None, max_length=255)
     notes: str | None = Field(default=None, max_length=500)
     coupon_code: str | None = Field(default=None, max_length=50)
     use_loyalty_points: bool = False
     # Required for guest checkout (no signed-in user); ignored for signed-in buyers. ADR 0004.
     contact_email: EmailStr | None = None
-    contact_phone: str | None = Field(default=None, min_length=7, max_length=30)
+    contact_phone: OptionalTypedPhone = Field(default=None, min_length=7, max_length=30)
     surprise: bool = Field(
         default=False,
         description="Keep it a surprise: no message to the recipient before delivery; the rider doesn't call ahead",
@@ -42,6 +43,7 @@ class CheckoutPlace(BaseModel):
 
 
 class QuoteLineItem(BaseModel):
+    cart_item_id: uuid.UUID | None = Field(default=None, description="The cart line this prices")
     product_name: str
     variant_name: str | None
     qty: int
@@ -121,6 +123,11 @@ class OrderItemRead(BaseModel):
     can_edit_note: bool = Field(
         default=False, description="The note can still be added or replaced (the card isn't printed yet)"
     )
+    bucket_contents: list[str] = Field(
+        default_factory=list,
+        description="For a build-your-own hamper or bouquet: what goes in it",
+        examples=[["6 × Red Rose (stem)", "1 × Kraft Paper Wrap"]],
+    )
 
 
 class CardNoteRead(BaseModel):
@@ -195,6 +202,7 @@ class AdminOrderSummary(BaseModel):
     id: uuid.UUID
     public_token: uuid.UUID
     status: OrderStatus
+    next_statuses: list[OrderStatus] = Field(description="Statuses staff may move this order to", examples=[["preparing", "cancelled", "refunded", "on_hold"]])
     user_id: uuid.UUID | None
     total_pkr: int
     currency: str
@@ -251,7 +259,8 @@ class AdminPaymentRead(BaseModel):
 
 class OrderEvent(BaseModel):
     at: datetime
-    label: str = Field(examples=["Payment verified"])
+    label: str = Field(examples=["Status: paid → preparing"])
+    by: str | None = Field(default=None, description="Who did it, when it was a person")
 
 
 class AdminOrderDetail(OrderRead):
@@ -261,6 +270,7 @@ class AdminOrderDetail(OrderRead):
     items: list[AdminOrderItemRead]  # type: ignore[assignment]
     fulfillments: list[AdminFulfillmentRead]  # type: ignore[assignment]
     user_id: uuid.UUID | None
+    next_statuses: list[OrderStatus] = Field(description="Statuses staff may move this order to")
     buyer_name: str | None
     buyer_email: str | None
     buyer_phone: str | None

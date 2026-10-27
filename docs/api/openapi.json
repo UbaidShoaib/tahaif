@@ -1,6 +1,47 @@
 {
   "components": {
     "schemas": {
+      "AddOp": {
+        "properties": {
+          "component_id": {
+            "format": "uuid",
+            "title": "Component Id",
+            "type": "string"
+          },
+          "op": {
+            "const": "add",
+            "title": "Op",
+            "type": "string"
+          },
+          "qty": {
+            "default": 1,
+            "maximum": 50.0,
+            "minimum": 1.0,
+            "title": "Qty",
+            "type": "integer"
+          },
+          "x": {
+            "default": 0.5,
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "X",
+            "type": "number"
+          },
+          "y": {
+            "default": 0.5,
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Y",
+            "type": "number"
+          }
+        },
+        "required": [
+          "op",
+          "component_id"
+        ],
+        "title": "AddOp",
+        "type": "object"
+      },
       "AddressCreate": {
         "properties": {
           "alt_phone": {
@@ -353,6 +394,209 @@
         "title": "AddressUpdate",
         "type": "object"
       },
+      "AdminBuilderComponentRead": {
+        "properties": {
+          "component_product_id": {
+            "format": "uuid",
+            "title": "Component Product Id",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "image": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Image"
+          },
+          "is_active": {
+            "title": "Is Active",
+            "type": "boolean"
+          },
+          "max_qty": {
+            "title": "Max Qty",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "price_pkr": {
+            "title": "Price Pkr",
+            "type": "integer"
+          },
+          "product_is_active": {
+            "description": "False = hidden from the catalog; buyers can still add it here while the item is switched on",
+            "title": "Product Is Active",
+            "type": "boolean"
+          },
+          "role": {
+            "title": "Role",
+            "type": "string"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          },
+          "sort_order": {
+            "title": "Sort Order",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "component_product_id",
+          "name",
+          "slug",
+          "image",
+          "price_pkr",
+          "product_is_active",
+          "role",
+          "max_qty",
+          "sort_order",
+          "is_active"
+        ],
+        "title": "AdminBuilderComponentRead",
+        "type": "object"
+      },
+      "AdminBuilderConfig": {
+        "properties": {
+          "builder_kind": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Builder Kind"
+          },
+          "components": {
+            "items": {
+              "$ref": "#/components/schemas/AdminBuilderComponentRead"
+            },
+            "title": "Components",
+            "type": "array"
+          },
+          "max_items": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Items"
+          },
+          "min_items": {
+            "title": "Min Items",
+            "type": "integer"
+          },
+          "product_id": {
+            "format": "uuid",
+            "title": "Product Id",
+            "type": "string"
+          },
+          "vendor_id": {
+            "format": "uuid",
+            "title": "Vendor Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "product_id",
+          "vendor_id",
+          "builder_kind",
+          "min_items",
+          "max_items",
+          "components"
+        ],
+        "title": "AdminBuilderConfig",
+        "type": "object"
+      },
+      "AdminBuilderSummary": {
+        "properties": {
+          "base_price_pkr": {
+            "title": "Base Price Pkr",
+            "type": "integer"
+          },
+          "bucket_count": {
+            "description": "Buckets ever started from this builder",
+            "title": "Bucket Count",
+            "type": "integer"
+          },
+          "builder_kind": {
+            "title": "Builder Kind",
+            "type": "string"
+          },
+          "component_count": {
+            "description": "Switched-on items buyers can add",
+            "title": "Component Count",
+            "type": "integer"
+          },
+          "is_active": {
+            "title": "Is Active",
+            "type": "boolean"
+          },
+          "max_items": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Items"
+          },
+          "min_items": {
+            "title": "Min Items",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "product_id": {
+            "format": "uuid",
+            "title": "Product Id",
+            "type": "string"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          },
+          "vendor_name": {
+            "title": "Vendor Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "product_id",
+          "name",
+          "slug",
+          "vendor_name",
+          "builder_kind",
+          "is_active",
+          "base_price_pkr",
+          "min_items",
+          "max_items",
+          "component_count",
+          "bucket_count"
+        ],
+        "title": "AdminBuilderSummary",
+        "type": "object"
+      },
       "AdminFulfillmentRead": {
         "properties": {
           "address_line1": {
@@ -660,6 +904,14 @@
             "title": "Needs Confirmation",
             "type": "boolean"
           },
+          "next_statuses": {
+            "description": "Statuses staff may move this order to",
+            "items": {
+              "$ref": "#/components/schemas/OrderStatus"
+            },
+            "title": "Next Statuses",
+            "type": "array"
+          },
           "payment": {
             "anyOf": [
               {
@@ -785,6 +1037,7 @@
           "fulfillments",
           "payment_method",
           "user_id",
+          "next_statuses",
           "buyer_name",
           "buyer_email",
           "buyer_phone",
@@ -802,6 +1055,20 @@
       },
       "AdminOrderItemRead": {
         "properties": {
+          "bucket_contents": {
+            "description": "For a build-your-own hamper or bouquet: what goes in it",
+            "examples": [
+              [
+                "6 \u00d7 Red Rose (stem)",
+                "1 \u00d7 Kraft Paper Wrap"
+              ]
+            ],
+            "items": {
+              "type": "string"
+            },
+            "title": "Bucket Contents",
+            "type": "array"
+          },
           "can_edit_note": {
             "default": false,
             "description": "The note can still be added or replaced (the card isn't printed yet)",
@@ -1004,6 +1271,22 @@
             "title": "Id",
             "type": "string"
           },
+          "next_statuses": {
+            "description": "Statuses staff may move this order to",
+            "examples": [
+              [
+                "preparing",
+                "cancelled",
+                "refunded",
+                "on_hold"
+              ]
+            ],
+            "items": {
+              "$ref": "#/components/schemas/OrderStatus"
+            },
+            "title": "Next Statuses",
+            "type": "array"
+          },
           "payment_method": {
             "anyOf": [
               {
@@ -1088,6 +1371,7 @@
           "id",
           "public_token",
           "status",
+          "next_statuses",
           "user_id",
           "total_pkr",
           "currency",
@@ -1176,6 +1460,130 @@
           "verified_at"
         ],
         "title": "AdminPaymentRead",
+        "type": "object"
+      },
+      "AdminProductDetail": {
+        "description": "The product editor's view: everything buyers see plus what only staff edit.",
+        "properties": {
+          "base_price_pkr": {
+            "title": "Base Price Pkr",
+            "type": "integer"
+          },
+          "builder_kind": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Set on a build-your-own base (hamper or bouquet): send buyers to /build/{slug} instead of adding it to the cart",
+            "examples": [
+              "bouquet"
+            ],
+            "title": "Builder Kind"
+          },
+          "category_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category Id"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "images": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/ProductImageRead"
+            },
+            "title": "Images",
+            "type": "array"
+          },
+          "is_active": {
+            "title": "Is Active",
+            "type": "boolean"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "occasions": {
+            "description": "Occasion pages the product appears on",
+            "items": {
+              "$ref": "#/components/schemas/OccasionSummary"
+            },
+            "title": "Occasions",
+            "type": "array"
+          },
+          "product_cities": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/ProductCityRead"
+            },
+            "title": "Product Cities",
+            "type": "array"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          },
+          "variants": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/ProductVariantRead"
+            },
+            "title": "Variants",
+            "type": "array"
+          },
+          "vendor": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/VendorSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "vendor_id": {
+            "format": "uuid",
+            "title": "Vendor Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "vendor_id",
+          "category_id",
+          "name",
+          "slug",
+          "description",
+          "base_price_pkr",
+          "is_active",
+          "occasions"
+        ],
+        "title": "AdminProductDetail",
         "type": "object"
       },
       "AdminProductRead": {
@@ -1665,6 +2073,165 @@
         "title": "AssistedOrderRead",
         "type": "object"
       },
+      "AuditEntryRead": {
+        "properties": {
+          "action": {
+            "examples": [
+              "order.status_changed"
+            ],
+            "title": "Action",
+            "type": "string"
+          },
+          "actor_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Name, else email; null for system or deleted accounts",
+            "title": "Actor Name"
+          },
+          "actor_user_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actor User Id"
+          },
+          "after": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "examples": [
+              {
+                "status": "preparing"
+              }
+            ],
+            "title": "After"
+          },
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "before": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "examples": [
+              {
+                "status": "paid"
+              }
+            ],
+            "title": "Before"
+          },
+          "entity": {
+            "examples": [
+              "order"
+            ],
+            "title": "Entity",
+            "type": "string"
+          },
+          "entity_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Entity Id"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "ip_address": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ip Address"
+          },
+          "label": {
+            "examples": [
+              "Changed order status"
+            ],
+            "title": "Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "at",
+          "action",
+          "label",
+          "entity",
+          "entity_id",
+          "actor_user_id",
+          "actor_name",
+          "ip_address"
+        ],
+        "title": "AuditEntryRead",
+        "type": "object"
+      },
+      "AuditPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/AuditEntryRead"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "offset": {
+            "title": "Offset",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "offset",
+          "limit"
+        ],
+        "title": "AuditPage",
+        "type": "object"
+      },
       "AuthResponse": {
         "description": "Returned by /login and /register \u2014 includes user so the client can hydrate state immediately.",
         "properties": {
@@ -1921,6 +2488,489 @@
           "file"
         ],
         "title": "Body_upload_transfer_proof_by_token_api_v1_orders_by_token__public_token__proof_post",
+        "type": "object"
+      },
+      "BucketCreate": {
+        "properties": {
+          "builder_slug": {
+            "maxLength": 255,
+            "title": "Builder Slug",
+            "type": "string"
+          }
+        },
+        "required": [
+          "builder_slug"
+        ],
+        "title": "BucketCreate",
+        "type": "object"
+      },
+      "BucketOpRequest": {
+        "properties": {
+          "edit": {
+            "discriminator": {
+              "mapping": {
+                "add": "#/components/schemas/AddOp",
+                "clear": "#/components/schemas/ClearOp",
+                "move": "#/components/schemas/MoveOp",
+                "remove": "#/components/schemas/RemoveOp",
+                "set_qty": "#/components/schemas/SetQtyOp"
+              },
+              "propertyName": "op"
+            },
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/AddOp"
+              },
+              {
+                "$ref": "#/components/schemas/MoveOp"
+              },
+              {
+                "$ref": "#/components/schemas/SetQtyOp"
+              },
+              {
+                "$ref": "#/components/schemas/RemoveOp"
+              },
+              {
+                "$ref": "#/components/schemas/ClearOp"
+              }
+            ],
+            "title": "Edit"
+          }
+        },
+        "required": [
+          "edit"
+        ],
+        "title": "BucketOpRequest",
+        "type": "object"
+      },
+      "BucketPiece": {
+        "properties": {
+          "component_id": {
+            "format": "uuid",
+            "title": "Component Id",
+            "type": "string"
+          },
+          "image": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Image"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "qty": {
+            "title": "Qty",
+            "type": "integer"
+          },
+          "rotation": {
+            "default": 0,
+            "title": "Rotation",
+            "type": "number"
+          },
+          "unit_price_pkr": {
+            "title": "Unit Price Pkr",
+            "type": "integer"
+          },
+          "x": {
+            "title": "X",
+            "type": "number"
+          },
+          "y": {
+            "title": "Y",
+            "type": "number"
+          },
+          "z": {
+            "default": 0,
+            "title": "Z",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "key",
+          "component_id",
+          "qty",
+          "x",
+          "y",
+          "name",
+          "image",
+          "unit_price_pkr"
+        ],
+        "title": "BucketPiece",
+        "type": "object"
+      },
+      "BucketRead": {
+        "properties": {
+          "builder": {
+            "$ref": "#/components/schemas/BuilderRead"
+          },
+          "components_total_pkr": {
+            "title": "Components Total Pkr",
+            "type": "integer"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "item_count": {
+            "title": "Item Count",
+            "type": "integer"
+          },
+          "pieces": {
+            "items": {
+              "$ref": "#/components/schemas/BucketPiece"
+            },
+            "title": "Pieces",
+            "type": "array"
+          },
+          "share_token": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Only returned when the bucket is created. It is the edit link's secret; anyone holding it can edit the bucket.",
+            "title": "Share Token"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "total_pkr": {
+            "title": "Total Pkr",
+            "type": "integer"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "builder",
+          "status",
+          "version",
+          "pieces",
+          "item_count",
+          "components_total_pkr",
+          "total_pkr"
+        ],
+        "title": "BucketRead",
+        "type": "object"
+      },
+      "BuilderComponentCreate": {
+        "properties": {
+          "component_product_id": {
+            "format": "uuid",
+            "title": "Component Product Id",
+            "type": "string"
+          },
+          "max_qty": {
+            "default": 10,
+            "maximum": 100.0,
+            "minimum": 1.0,
+            "title": "Max Qty",
+            "type": "integer"
+          },
+          "role": {
+            "default": "item",
+            "enum": [
+              "item",
+              "stem",
+              "filler",
+              "wrap",
+              "ribbon"
+            ],
+            "title": "Role",
+            "type": "string"
+          }
+        },
+        "required": [
+          "component_product_id"
+        ],
+        "title": "BuilderComponentCreate",
+        "type": "object"
+      },
+      "BuilderComponentRead": {
+        "properties": {
+          "image": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Image"
+          },
+          "max_qty": {
+            "title": "Max Qty",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "price_pkr": {
+            "title": "Price Pkr",
+            "type": "integer"
+          },
+          "product_id": {
+            "format": "uuid",
+            "title": "Product Id",
+            "type": "string"
+          },
+          "role": {
+            "title": "Role",
+            "type": "string"
+          }
+        },
+        "required": [
+          "product_id",
+          "name",
+          "image",
+          "role",
+          "price_pkr",
+          "max_qty"
+        ],
+        "title": "BuilderComponentRead",
+        "type": "object"
+      },
+      "BuilderComponentUpdate": {
+        "properties": {
+          "is_active": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Active"
+          },
+          "max_qty": {
+            "anyOf": [
+              {
+                "maximum": 100.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Qty"
+          },
+          "role": {
+            "anyOf": [
+              {
+                "enum": [
+                  "item",
+                  "stem",
+                  "filler",
+                  "wrap",
+                  "ribbon"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Role"
+          },
+          "sort_order": {
+            "anyOf": [
+              {
+                "maximum": 1000.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sort Order"
+          }
+        },
+        "title": "BuilderComponentUpdate",
+        "type": "object"
+      },
+      "BuilderRead": {
+        "properties": {
+          "base_price_pkr": {
+            "title": "Base Price Pkr",
+            "type": "integer"
+          },
+          "components": {
+            "items": {
+              "$ref": "#/components/schemas/BuilderComponentRead"
+            },
+            "title": "Components",
+            "type": "array"
+          },
+          "image": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Image"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "max_items": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Items"
+          },
+          "min_items": {
+            "title": "Min Items",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "product_id": {
+            "format": "uuid",
+            "title": "Product Id",
+            "type": "string"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          }
+        },
+        "required": [
+          "product_id",
+          "slug",
+          "name",
+          "kind",
+          "image",
+          "base_price_pkr",
+          "min_items",
+          "max_items",
+          "components"
+        ],
+        "title": "BuilderRead",
+        "type": "object"
+      },
+      "BuilderSettingsUpdate": {
+        "properties": {
+          "builder_kind": {
+            "anyOf": [
+              {
+                "enum": [
+                  "hamper",
+                  "bouquet"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "null turns the product back into an ordinary one",
+            "examples": [
+              "bouquet"
+            ],
+            "title": "Builder Kind"
+          },
+          "max_items": {
+            "anyOf": [
+              {
+                "maximum": 200.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "null = no limit",
+            "title": "Max Items"
+          },
+          "min_items": {
+            "default": 1,
+            "maximum": 100.0,
+            "minimum": 1.0,
+            "title": "Min Items",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "builder_kind"
+        ],
+        "title": "BuilderSettingsUpdate",
+        "type": "object"
+      },
+      "BuilderSummary": {
+        "description": "A builder buyers can start, for listing on the storefront.",
+        "properties": {
+          "base_price_pkr": {
+            "title": "Base Price Pkr",
+            "type": "integer"
+          },
+          "image": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Image"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          }
+        },
+        "required": [
+          "slug",
+          "name",
+          "kind",
+          "image",
+          "base_price_pkr"
+        ],
+        "title": "BuilderSummary",
         "type": "object"
       },
       "CampaignSalesReport": {
@@ -2905,6 +3955,20 @@
         "title": "CityUpdate",
         "type": "object"
       },
+      "ClearOp": {
+        "properties": {
+          "op": {
+            "const": "clear",
+            "title": "Op",
+            "type": "string"
+          }
+        },
+        "required": [
+          "op"
+        ],
+        "title": "ClearOp",
+        "type": "object"
+      },
       "CouponCreate": {
         "properties": {
           "code": {
@@ -3419,6 +4483,54 @@
         "title": "MonthDay",
         "type": "object"
       },
+      "MoveOp": {
+        "properties": {
+          "key": {
+            "maxLength": 32,
+            "title": "Key",
+            "type": "string"
+          },
+          "op": {
+            "const": "move",
+            "title": "Op",
+            "type": "string"
+          },
+          "rotation": {
+            "default": 0,
+            "maximum": 360.0,
+            "minimum": -360.0,
+            "title": "Rotation",
+            "type": "number"
+          },
+          "x": {
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "X",
+            "type": "number"
+          },
+          "y": {
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Y",
+            "type": "number"
+          },
+          "z": {
+            "default": 0,
+            "maximum": 1000.0,
+            "minimum": 0.0,
+            "title": "Z",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "op",
+          "key",
+          "x",
+          "y"
+        ],
+        "title": "MoveOp",
+        "type": "object"
+      },
       "NewsletterSubscribeRequest": {
         "properties": {
           "email": {
@@ -3637,6 +4749,30 @@
           "is_active"
         ],
         "title": "OccasionRead",
+        "type": "object"
+      },
+      "OccasionSummary": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "slug",
+          "name"
+        ],
+        "title": "OccasionSummary",
         "type": "object"
       },
       "OccasionUpdate": {
@@ -3868,9 +5004,21 @@
             "title": "At",
             "type": "string"
           },
+          "by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Who did it, when it was a person",
+            "title": "By"
+          },
           "label": {
             "examples": [
-              "Payment verified"
+              "Status: paid \u2192 preparing"
             ],
             "title": "Label",
             "type": "string"
@@ -3885,6 +5033,20 @@
       },
       "OrderItemRead": {
         "properties": {
+          "bucket_contents": {
+            "description": "For a build-your-own hamper or bouquet: what goes in it",
+            "examples": [
+              [
+                "6 \u00d7 Red Rose (stem)",
+                "1 \u00d7 Kraft Paper Wrap"
+              ]
+            ],
+            "items": {
+              "type": "string"
+            },
+            "title": "Bucket Contents",
+            "type": "array"
+          },
           "can_edit_note": {
             "default": false,
             "description": "The note can still be added or replaced (the card isn't printed yet)",
@@ -4382,6 +5544,26 @@
         "title": "ProductCreate",
         "type": "object"
       },
+      "ProductImageOrder": {
+        "properties": {
+          "image_ids": {
+            "description": "Every photo of the product, first to last",
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "maxItems": 50,
+            "minItems": 1,
+            "title": "Image Ids",
+            "type": "array"
+          }
+        },
+        "required": [
+          "image_ids"
+        ],
+        "title": "ProductImageOrder",
+        "type": "object"
+      },
       "ProductImageRead": {
         "properties": {
           "alt_text": {
@@ -4423,11 +5605,45 @@
         "title": "ProductImageRead",
         "type": "object"
       },
+      "ProductOccasionsSet": {
+        "properties": {
+          "occasion_ids": {
+            "description": "The full set; occasions left out are removed",
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "maxItems": 50,
+            "title": "Occasion Ids",
+            "type": "array"
+          }
+        },
+        "required": [
+          "occasion_ids"
+        ],
+        "title": "ProductOccasionsSet",
+        "type": "object"
+      },
       "ProductRead": {
         "properties": {
           "base_price_pkr": {
             "title": "Base Price Pkr",
             "type": "integer"
+          },
+          "builder_kind": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Set on a build-your-own base (hamper or bouquet): send buyers to /build/{slug} instead of adding it to the cart",
+            "examples": [
+              "bouquet"
+            ],
+            "title": "Builder Kind"
           },
           "category_id": {
             "anyOf": [
@@ -4618,8 +5834,16 @@
             "type": "integer"
           },
           "stock_qty": {
-            "title": "Stock Qty",
-            "type": "integer"
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "null = made to order, not counted; 0 = sold out",
+            "title": "Stock Qty"
           }
         },
         "required": [
@@ -4631,6 +5855,108 @@
           "is_active"
         ],
         "title": "ProductVariantRead",
+        "type": "object"
+      },
+      "ProductVariantUpdate": {
+        "properties": {
+          "is_active": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Active"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 255,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "price_delta_pkr": {
+            "anyOf": [
+              {
+                "maximum": 1000000000.0,
+                "minimum": -1000000000.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Price Delta Pkr"
+          },
+          "stock_qty": {
+            "anyOf": [
+              {
+                "maximum": 1000000.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stock Qty"
+          }
+        },
+        "title": "ProductVariantUpdate",
+        "type": "object"
+      },
+      "ProductVariantWrite": {
+        "description": "Add or change a size/option. On PATCH, omitted fields are left alone.",
+        "properties": {
+          "is_active": {
+            "default": true,
+            "title": "Is Active",
+            "type": "boolean"
+          },
+          "name": {
+            "examples": [
+              "2 lb"
+            ],
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "price_delta_pkr": {
+            "default": 0,
+            "description": "Added to the base price, in paisa",
+            "maximum": 1000000000.0,
+            "minimum": -1000000000.0,
+            "title": "Price Delta Pkr",
+            "type": "integer"
+          },
+          "stock_qty": {
+            "anyOf": [
+              {
+                "maximum": 1000000.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "null = not counted",
+            "title": "Stock Qty"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "ProductVariantWrite",
         "type": "object"
       },
       "QuoteLineItem": {
@@ -4717,6 +6043,26 @@
           "password"
         ],
         "title": "RegisterRequest",
+        "type": "object"
+      },
+      "RemoveOp": {
+        "properties": {
+          "key": {
+            "maxLength": 32,
+            "title": "Key",
+            "type": "string"
+          },
+          "op": {
+            "const": "remove",
+            "title": "Op",
+            "type": "string"
+          }
+        },
+        "required": [
+          "op",
+          "key"
+        ],
+        "title": "RemoveOp",
         "type": "object"
       },
       "ReportedNoteRead": {
@@ -4994,6 +6340,33 @@
           "created_at"
         ],
         "title": "ReviewRead",
+        "type": "object"
+      },
+      "SetQtyOp": {
+        "properties": {
+          "key": {
+            "maxLength": 32,
+            "title": "Key",
+            "type": "string"
+          },
+          "op": {
+            "const": "set_qty",
+            "title": "Op",
+            "type": "string"
+          },
+          "qty": {
+            "maximum": 50.0,
+            "minimum": 1.0,
+            "title": "Qty",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "op",
+          "key",
+          "qty"
+        ],
+        "title": "SetQtyOp",
         "type": "object"
       },
       "StaffNoteCreate": {
@@ -6060,6 +7433,20 @@
       "VendorLineItem": {
         "description": "One product in a fulfillment, with the card to print for it.",
         "properties": {
+          "bucket_contents": {
+            "description": "For a build-your-own hamper or bouquet: what goes in it",
+            "examples": [
+              [
+                "6 \u00d7 Red Rose (stem)",
+                "1 \u00d7 Kraft Paper Wrap"
+              ]
+            ],
+            "items": {
+              "type": "string"
+            },
+            "title": "Bucket Contents",
+            "type": "array"
+          },
           "greeting_message": {
             "anyOf": [
               {
@@ -6422,6 +7809,171 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/api/v1/admin/audit-log": {
+      "get": {
+        "description": "Who changed what in the back office, newest first. Admins only: it shows every staff\nmember's actions and IP addresses.",
+        "operationId": "list_audit_log_api_v1_admin_audit_log_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "entity",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "examples": [
+                "order"
+              ],
+              "title": "Entity"
+            }
+          },
+          {
+            "in": "query",
+            "name": "entity_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 255,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Entity Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "actor_user_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Actor User Id"
+            }
+          },
+          {
+            "description": "Action or prefix, e.g. `payment.` or `product.updated`",
+            "in": "query",
+            "name": "action",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 100,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Action or prefix, e.g. `payment.` or `product.updated`",
+              "title": "Action"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Audit Log",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/builders": {
+      "get": {
+        "description": "Every product set up as a builder, hidden ones included, with how many items buyers can add.",
+        "operationId": "list_builders_api_v1_admin_builders_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/AdminBuilderSummary"
+                  },
+                  "title": "Response List Builders Api V1 Admin Builders Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Builders",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
     "/api/v1/admin/coupons": {
       "get": {
         "operationId": "list_coupons_api_v1_admin_coupons_get",
@@ -7166,6 +8718,9 @@
             },
             "description": "Successful Response"
           },
+          "409": {
+            "description": "That status change isn't allowed from the current status"
+          },
           "422": {
             "content": {
               "application/json": {
@@ -7467,7 +9022,7 @@
     },
     "/api/v1/admin/products/{product_id}": {
       "get": {
-        "description": "One product for the editor, hidden or live.",
+        "description": "One product for the editor, hidden or live, with its occasions.",
         "operationId": "get_product_api_v1_admin_products__product_id__get",
         "parameters": [
           {
@@ -7486,7 +9041,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProductRead"
+                  "$ref": "#/components/schemas/AdminProductDetail"
                 }
               }
             },
@@ -7569,6 +9124,300 @@
           }
         ],
         "summary": "Set Product Active",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/products/{product_id}/builder": {
+      "get": {
+        "description": "The product's builder settings and items (an ordinary product has `builder_kind` null).",
+        "operationId": "get_builder_config_api_v1_admin_products__product_id__builder_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "product_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Product Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminBuilderConfig"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Builder Config",
+        "tags": [
+          "admin"
+        ]
+      },
+      "put": {
+        "description": "Turn a product into a hamper or bouquet builder (or back), and set how many items it holds.",
+        "operationId": "update_builder_settings_api_v1_admin_products__product_id__builder_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "product_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Product Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BuilderSettingsUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminBuilderConfig"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Update Builder Settings",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/products/{product_id}/builder/components": {
+      "post": {
+        "description": "Let buyers put this product in the builder. It must be from the builder's own shop.",
+        "operationId": "add_builder_component_api_v1_admin_products__product_id__builder_components_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "product_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Product Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BuilderComponentCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminBuilderConfig"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "409": {
+            "description": "Not a builder yet, another shop's product, or already added"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Add Builder Component",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/products/{product_id}/builder/components/{component_id}": {
+      "delete": {
+        "description": "Take the item out. Buckets already in carts keep their copy of it.",
+        "operationId": "remove_builder_component_api_v1_admin_products__product_id__builder_components__component_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "product_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Product Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "component_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Component Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminBuilderConfig"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Remove Builder Component",
+        "tags": [
+          "admin"
+        ]
+      },
+      "patch": {
+        "description": "Change an item's role, most allowed, position in the list, or switch it off.",
+        "operationId": "update_builder_component_api_v1_admin_products__product_id__builder_components__component_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "product_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Product Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "component_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Component Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BuilderComponentUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminBuilderConfig"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Update Builder Component",
         "tags": [
           "admin"
         ]
@@ -8462,6 +10311,337 @@
         "summary": "List Banners",
         "tags": [
           "marketing"
+        ]
+      }
+    },
+    "/api/v1/buckets": {
+      "post": {
+        "description": "Start an empty bucket. The response's `share_token` is the only copy of the edit link's secret.",
+        "operationId": "create_bucket_api_v1_buckets_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-cart-token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 128,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Cart-Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BucketCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BucketRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Create Bucket",
+        "tags": [
+          "buckets"
+        ]
+      }
+    },
+    "/api/v1/buckets/{bucket_id}": {
+      "get": {
+        "operationId": "get_bucket_api_v1_buckets__bucket_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "bucket_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Bucket Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "t",
+            "required": true,
+            "schema": {
+              "maxLength": 64,
+              "minLength": 16,
+              "title": "T",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BucketRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Bucket",
+        "tags": [
+          "buckets"
+        ]
+      }
+    },
+    "/api/v1/buckets/{bucket_id}/cart": {
+      "post": {
+        "description": "Put the bucket in the caller's cart as one line priced base + components, and lock it.",
+        "operationId": "add_bucket_to_cart_api_v1_buckets__bucket_id__cart_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "bucket_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Bucket Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "t",
+            "required": true,
+            "schema": {
+              "maxLength": 64,
+              "minLength": 16,
+              "title": "T",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-cart-token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 128,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Cart-Token"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CartRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Add Bucket To Cart",
+        "tags": [
+          "buckets"
+        ]
+      }
+    },
+    "/api/v1/buckets/{bucket_id}/edits": {
+      "post": {
+        "description": "Apply one edit. 409 when it breaks a limit or targets a piece someone else removed.",
+        "operationId": "edit_bucket_api_v1_buckets__bucket_id__edits_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "bucket_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Bucket Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "t",
+            "required": true,
+            "schema": {
+              "maxLength": 64,
+              "minLength": 16,
+              "title": "T",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BucketOpRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BucketRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Edit Bucket",
+        "tags": [
+          "buckets"
+        ]
+      }
+    },
+    "/api/v1/builders": {
+      "get": {
+        "description": "Builders buyers can start: live, with at least one item to add.",
+        "operationId": "list_builders_api_v1_builders_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/BuilderSummary"
+                  },
+                  "title": "Response List Builders Api V1 Builders Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Builders",
+        "tags": [
+          "buckets"
+        ]
+      }
+    },
+    "/api/v1/builders/{slug}": {
+      "get": {
+        "description": "A builder base and the components that can go in it.",
+        "operationId": "get_builder_api_v1_builders__slug__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BuilderRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Builder",
+        "tags": [
+          "buckets"
         ]
       }
     },
@@ -10622,6 +12802,28 @@
               "description": "Maximum price in paisa",
               "title": "Max Price Pkr"
             }
+          },
+          {
+            "description": "Only gifts that can arrive on this date (YYYY-MM-DD) in city_id, counting same-day cutoffs and lead times. Needs city_id.",
+            "in": "query",
+            "name": "deliver_on",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Only gifts that can arrive on this date (YYYY-MM-DD) in city_id, counting same-day cutoffs and lead times. Needs city_id.",
+              "examples": [
+                "2026-10-27"
+              ],
+              "title": "Deliver On"
+            }
           }
         ],
         "responses": {
@@ -10974,6 +13176,57 @@
         ]
       }
     },
+    "/api/v1/products/{slug}/images/order": {
+      "put": {
+        "description": "Set the order photos appear in on the product page, first to last.",
+        "operationId": "reorder_product_images_api_v1_products__slug__images_order_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProductImageOrder"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "The list must hold every photo of the product exactly once"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Reorder Product Images",
+        "tags": [
+          "catalog"
+        ]
+      }
+    },
     "/api/v1/products/{slug}/images/upload": {
       "post": {
         "description": "Upload a product photo (JPEG/PNG/WebP, max 10 MB). It is stored publicly and\nadded to the product; the first photo becomes the main one.",
@@ -11135,6 +13388,196 @@
           }
         ],
         "summary": "Set Primary Product Image",
+        "tags": [
+          "catalog"
+        ]
+      }
+    },
+    "/api/v1/products/{slug}/occasions": {
+      "put": {
+        "description": "Choose the occasion pages this product appears on. Send the full list; an empty list removes it from all.",
+        "operationId": "set_product_occasions_api_v1_products__slug__occasions_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProductOccasionsSet"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Set Product Occasions",
+        "tags": [
+          "catalog"
+        ]
+      }
+    },
+    "/api/v1/products/{slug}/variants": {
+      "post": {
+        "description": "Add a size or option. Leave `stock_qty` out for made-to-order items; give a number to count stock.",
+        "operationId": "add_product_variant_api_v1_products__slug__variants_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProductVariantWrite"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "409": {
+            "description": "The product already has a size with that name"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Add Product Variant",
+        "tags": [
+          "catalog"
+        ]
+      }
+    },
+    "/api/v1/products/{slug}/variants/{variant_id}": {
+      "patch": {
+        "description": "Rename, reprice, restock or switch off a size. Sizes are never deleted: past orders point at them.\nSend `stock_qty: null` to stop counting stock.",
+        "operationId": "update_product_variant_api_v1_products__slug__variants__variant_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "variant_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Variant Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProductVariantUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "409": {
+            "description": "The product already has a size with that name"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Update Product Variant",
         "tags": [
           "catalog"
         ]

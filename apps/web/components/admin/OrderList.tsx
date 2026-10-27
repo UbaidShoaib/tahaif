@@ -16,6 +16,8 @@ export interface OrderSummary {
   id: string;
   public_token: string;
   status: string;
+  /** Statuses this order may move to; the API refuses anything else. */
+  next_statuses: string[];
   user_id: string | null;
   total_pkr: number;
   currency: string;
@@ -51,8 +53,11 @@ export const STATUS_BADGE: Record<string, string> = {
 
 export const ORDER_STATUSES = [
   "pending_payment", "paid", "preparing", "dispatched",
-  "out_for_delivery", "delivered", "completed", "cancelled", "on_hold",
+  "out_for_delivery", "delivered", "completed", "cancelled", "refunded", "on_hold",
 ];
+
+/** The current status plus the ones it may move to, for a status dropdown. */
+export const statusOptions = (o: { status: string; next_statuses: string[] }): string[] => [o.status, ...o.next_statuses];
 
 export const PAGE_SIZE = 25;
 const SEARCH_DELAY_MS = 300;
@@ -245,9 +250,9 @@ export function OrderList({ token }: { token: string }) {
                     className="rounded border px-2 py-1 text-xs"
                     value={order.status}
                     onChange={(e) => void act(order.id, `/admin/orders/${order.id}/status`, "PATCH", { status: e.target.value })}
-                    disabled={actionInProgress === order.id}
+                    disabled={actionInProgress === order.id || order.next_statuses.length === 0}
                   >
-                    {ORDER_STATUSES.map((s) => (
+                    {statusOptions(order).map((s) => (
                       <option key={s} value={s}>{s.replace(/_/g, " ")}</option>
                     ))}
                   </select>

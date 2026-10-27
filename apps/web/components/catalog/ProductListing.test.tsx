@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ProductListing } from "@/components/catalog/ProductListing";
 import { useDeliveryStore } from "@/stores/delivery.store";
@@ -58,21 +58,35 @@ describe("ProductListing", () => {
   it("filters by city and remembers the city", async () => {
     vi.mocked(fetchListing).mockResolvedValue(page(1, 1, 1));
     render(<ProductListing initial={page(1, 3, 3)} />);
-    const sidebar = screen.getByRole("complementary", { name: "Filters" });
-    await userEvent.click(within(sidebar).getByRole("radio", { name: "Lahore" }));
+    await userEvent.selectOptions(screen.getByRole("combobox", { name: "Deliver to" }), "lhr");
     expect(replace).toHaveBeenLastCalledWith("/c/cakes?city_id=lhr", { scroll: false });
     expect(useDeliveryStore.getState().cityId).toBe("lhr");
   });
 
-  it("shows active filter chips that remove one filter or all", async () => {
-    search = "city_id=lhr&price=under-2000";
+  it("puts Arrives tomorrow first and only enables it once a city is chosen", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-10-26T05:00:00Z"));
+    vi.mocked(fetchListing).mockResolvedValue(page(1, 3, 3));
+    const { rerender } = render(<ProductListing initial={page(1, 3, 3)} />);
+    const chip = screen.getByRole("button", { name: "Arrives tomorrow" });
+    expect(chip).toBeDisabled();
+    search = "city_id=lhr";
+    rerender(<ProductListing initial={page(1, 3, 3)} />);
+    await userEvent.click(screen.getByRole("button", { name: "Arrives tomorrow" }));
+    expect(replace).toHaveBeenLastCalledWith("/c/cakes?city_id=lhr&on=2026-10-27", { scroll: false });
+    vi.useRealTimers();
+  });
+
+  it("names a chosen day other than tomorrow and clears every filter at once", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-10-26T05:00:00Z"));
+    search = "city_id=lhr&price=under-2000&on=2026-10-29";
     vi.mocked(fetchListing).mockResolvedValue(page(1, 1, 1));
     render(<ProductListing initial={null} />);
-    const chips = screen.getByRole("list", { name: "Active filters" });
-    await userEvent.click(within(chips).getByRole("button", { name: "Remove filter: Under Rs 2,000" }));
-    expect(replace).toHaveBeenLastCalledWith("/c/cakes?city_id=lhr", { scroll: false });
-    await userEvent.click(within(chips).getByRole("button", { name: "Clear all" }));
+    expect(screen.getByRole("button", { name: "Arrives Thu, 29 Oct" })).toHaveAttribute("aria-pressed", "true");
+    await userEvent.click(screen.getByRole("button", { name: "Clear all" }));
     expect(replace).toHaveBeenLastCalledWith("/c/cakes", { scroll: false });
+    vi.useRealTimers();
   });
 
   it("loads more, appends results and focuses the first new one", async () => {

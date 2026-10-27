@@ -71,6 +71,8 @@ export interface CheckoutPlace {
 }
 
 export interface QuoteLineItem {
+  /** The cart line this prices (city prices can differ from the cart's). */
+  cart_item_id?: string | null;
   product_name: string;
   variant_name: string | null;
   qty: number;
@@ -148,6 +150,8 @@ export interface OrderItemRead {
   note_content_type?: string | null;
   /** The note can still be added or replaced (the card isn't printed yet). */
   can_edit_note?: boolean;
+  /** Build-your-own hamper/bouquet: what goes in it, e.g. "6 × Red Rose". */
+  bucket_contents?: string[];
 }
 
 export interface OrderRead {

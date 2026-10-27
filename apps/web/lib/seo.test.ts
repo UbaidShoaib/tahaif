@@ -8,7 +8,7 @@ const noindexed = (path: string) =>
 
 describe("noindexHeaders", () => {
   it("covers private and token pages and everything beneath them", () => {
-    for (const path of ["/track/tok", "/send/addr-1", "/note/tok", "/thanks/tok", "/checkout/success/tok", "/cart", "/search", "/login", "/admin/orders/1", "/vendor/orders"]) {
+    for (const path of ["/track/tok", "/send/addr-1", "/note/tok", "/thanks/tok", "/checkout/success/tok", "/cart", "/search", "/login", "/admin/orders/1", "/vendor/orders", "/build/hamper", "/build/b/bkt-1"]) {
       expect(noindexed(path), path).toBe(true);
     }
   });

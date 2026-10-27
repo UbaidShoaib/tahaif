@@ -1,10 +1,11 @@
 import builtins
 import uuid
+from datetime import time
 from typing import Any
 
-from sqlalchemy import func, or_, select
+from sqlalchemy import exists, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import aliased, selectinload
 
 from app.models.catalog import (
     Category,
@@ -13,6 +14,7 @@ from app.models.catalog import (
     Product,
     ProductCity,
     ProductImage,
+    ProductVariant,
     Vendor,
     VendorDocument,
     product_occasions_table,
@@ -215,6 +217,12 @@ class OccasionRepository:
         await self._db.refresh(occasion)
         return occasion
 
+    async def get_by_ids(self, occasion_ids: list[uuid.UUID]) -> list[Occasion]:
+        if not occasion_ids:
+            return []
+        result = await self._db.execute(select(Occasion).where(Occasion.id.in_(occasion_ids)))
+        return list(result.scalars().all())
+
     async def update(self, occasion: Occasion, **kwargs: Any) -> Occasion:
         for key, value in kwargs.items():
             setattr(occasion, key, value)
@@ -223,9 +231,28 @@ class OccasionRepository:
         return occasion
 
 
+# Delivered to at least one city. Products without one (build-your-own parts, or
+# ones not set up yet) can't be ordered, so the storefront doesn't show them.
+_any_city = aliased(ProductCity)  # aliased: some queries also join ProductCity for a city filter
+_SELLABLE_SOMEWHERE = exists().where(_any_city.product_id == Product.id, _any_city.is_available.is_(True))
+
+
 class ProductRepository:
     def __init__(self, db: AsyncSession) -> None:
         self._db = db
+
+    async def lock_variants(self, variant_ids: builtins.list[uuid.UUID]) -> None:
+        """Lock these variants' rows and refresh their stock, so concurrent checkouts
+        can't sell the same units. Locked in id order so two carts never deadlock."""
+        if not variant_ids:
+            return
+        await self._db.execute(
+            select(ProductVariant)
+            .where(ProductVariant.id.in_(variant_ids))
+            .order_by(ProductVariant.id)
+            .with_for_update()
+            .execution_options(populate_existing=True)
+        )
 
     async def list_for_admin(
         self,
@@ -266,16 +293,22 @@ class ProductRepository:
         sort: str = "recommended",
         min_price_pkr: int | None = None,
         max_price_pkr: int | None = None,
+        deliverable: tuple[time | None, float] | None = None,
     ) -> tuple[list[Product], int]:
         """Paginated products.
 
         Price filters and price sorting use the city's price override when
         ``city_id`` is given (what the buyer will actually pay there), and the
         base price otherwise.
+
+        ``deliverable`` is ``(same_day_before, max_lead_hours)`` worked out by
+        the service for one city and date: keep products whose same-day cutoff
+        is still ahead of ``same_day_before`` (None = same-day doesn't count),
+        or whose lead time is under ``max_lead_hours``. Needs ``city_id``.
         """
         q = self._with_relations()
         if active_only:
-            q = q.where(Product.is_active.is_(True))
+            q = q.where(Product.is_active.is_(True), _SELLABLE_SOMEWHERE)
         if vendor_id:
             q = q.where(Product.vendor_id == vendor_id)
         if category_id:
@@ -287,6 +320,12 @@ class ProductRepository:
                 ProductCity.is_available.is_(True),
             )
             price = func.coalesce(ProductCity.price_override_pkr, Product.base_price_pkr)
+            if deliverable is not None:
+                same_day_before, max_lead_hours = deliverable
+                ok: Any = ProductCity.lead_time_hours < max_lead_hours
+                if same_day_before is not None:
+                    ok = or_(ok, ProductCity.same_day_cutoff > same_day_before)
+                q = q.where(ok)
         if occasion_id:
             q = q.join(
                 product_occasions_table,
@@ -315,7 +354,7 @@ class ProductRepository:
     ) -> builtins.list[Product]:
         """Case-insensitive match on product name, description or vendor name.
 
-        Fallback for when Meilisearch is unavailable; active products only.
+        Fallback for when Meilisearch is unavailable; active products delivered somewhere.
         """
         pattern = f"%{query.strip()}%"
         q = (
@@ -323,6 +362,7 @@ class ProductRepository:
             .join(Product.vendor)
             .where(
                 Product.is_active.is_(True),
+                _SELLABLE_SOMEWHERE,
                 or_(
                     Product.name.ilike(pattern),
                     Product.description.ilike(pattern),
@@ -339,17 +379,17 @@ class ProductRepository:
         return builtins.list((await self._db.execute(q)).scalars().unique().all())
 
     async def get_active_by_ids(self, product_ids: builtins.list[uuid.UUID]) -> builtins.list[Product]:
-        """Active products for the given ids, in the order the ids were given."""
+        """Active, deliverable products for the given ids, in the order the ids were given."""
         if not product_ids:
             return []
         q = self._with_relations().where(
-            Product.id.in_(product_ids), Product.is_active.is_(True)
+            Product.id.in_(product_ids), Product.is_active.is_(True), _SELLABLE_SOMEWHERE
         )
         found = {p.id: p for p in (await self._db.execute(q)).scalars().unique().all()}
         return [found[pid] for pid in product_ids if pid in found]
 
     async def list_all_active(self) -> builtins.list[Product]:
-        q = self._with_relations().where(Product.is_active.is_(True))
+        q = self._with_relations().where(Product.is_active.is_(True), _SELLABLE_SOMEWHERE)
         return builtins.list((await self._db.execute(q)).scalars().unique().all())
 
     async def get_by_slug(self, slug: str) -> Product | None:
@@ -363,6 +403,17 @@ class ProductRepository:
             self._with_relations().where(Product.id == product_id)
         )
         return result.scalar_one_or_none()
+
+    async def get_with_occasions(self, product_id: uuid.UUID) -> Product | None:
+        result = await self._db.execute(
+            self._with_relations().options(selectinload(Product.occasions)).where(Product.id == product_id)
+        )
+        return result.scalar_one_or_none()
+
+    async def set_occasions(self, product: Product, occasions: builtins.list[Occasion]) -> None:
+        """`product` must have been loaded with its occasions (get_with_occasions)."""
+        product.occasions = occasions
+        await self._db.flush()
 
     async def create(self, **kwargs: Any) -> Product:
         product = Product(**kwargs)
@@ -387,6 +438,23 @@ class ProductRepository:
         await self._db.refresh(image)
         return image
 
+    async def add_variant(self, product_id: uuid.UUID, **kwargs: Any) -> ProductVariant:
+        variant = ProductVariant(product_id=product_id, **kwargs)
+        self._db.add(variant)
+        await self._db.flush()
+        await self._db.refresh(variant)
+        return variant
+
+    async def get_variant(self, variant_id: uuid.UUID) -> ProductVariant | None:
+        result = await self._db.execute(select(ProductVariant).where(ProductVariant.id == variant_id))
+        return result.scalar_one_or_none()
+
+    async def update_variant(self, variant: ProductVariant, **kwargs: Any) -> ProductVariant:
+        for key, value in kwargs.items():
+            setattr(variant, key, value)
+        await self._db.flush()
+        return variant
+
     async def get_image(self, image_id: uuid.UUID) -> ProductImage | None:
         result = await self._db.execute(
             select(ProductImage).where(ProductImage.id == image_id)
@@ -395,6 +463,13 @@ class ProductRepository:
 
     async def delete_image(self, image: ProductImage) -> None:
         await self._db.delete(image)
+        await self._db.flush()
+
+    async def reorder_images(self, product_id: uuid.UUID, image_ids: builtins.list[uuid.UUID]) -> None:
+        result = await self._db.execute(select(ProductImage).where(ProductImage.product_id == product_id))
+        position = {image_id: i for i, image_id in enumerate(image_ids)}
+        for image in result.scalars().all():
+            image.sort_order = position[image.id]
         await self._db.flush()
 
     async def set_primary_image(self, product_id: uuid.UUID, image_id: uuid.UUID) -> None:

@@ -19,6 +19,7 @@ This document covers every external service, credential, and environment variabl
 | JazzCash | Free account | Per-transaction | Pakistan only; merchant agreement required |
 | EasyPaisa | Free account | Per-transaction | Pakistan only; merchant agreement required |
 | Twilio | Free trial ($15 credit) | Yes after trial | ~$0.0075/SMS, ~$0.005/WhatsApp msg |
+| Meta WhatsApp Cloud API | Free to set up | Per message after 1,000 free a month | Shopping bot (ADR 0013); about USD 0.015 a message in Pakistan (check Meta's rate card) |
 | Resend | Free up to 3,000/month | Yes above free tier | Free tier sufficient for dev/small prod |
 | Google OAuth | Free | No | Google Cloud project required |
 | Open Exchange Rates | Free (1,000 req/month) | Yes above free tier | Free tier sufficient |
@@ -216,6 +217,29 @@ These run locally via `docker compose up` — no accounts or credentials needed 
   TWILIO_AUTH_TOKEN=your_auth_token
   TWILIO_WHATSAPP_FROM=whatsapp:+14155238886
   TWILIO_SMS_FROM=+1234567890
+  ```
+
+---
+
+### Meta WhatsApp Cloud API (Ordering bot)
+
+- **Purpose:** Customers browse the catalog, order and send bank receipts inside WhatsApp (ADR 0013)
+- **Cost:** No setup or monthly fee. From 1 October 2026 the first 1,000 service messages (replies
+  within 24 hours of the customer's last message) per number per month are free, then about
+  USD 0.015 each in Pakistan; templates outside that window are charged per message. About
+  USD 0.20–0.25 per bot order after the free allowance. Check Meta's pricing page before budgeting
+- **Account creation and credentials:** step by step in [runbook.md](runbook.md), "WhatsApp ordering bot"
+- **Env vars:**
+  ```
+  WHATSAPP_BOT_ENABLED=true
+  WHATSAPP_PHONE_NUMBER_ID=123456789012345
+  WHATSAPP_ACCESS_TOKEN=EAAG...            # system user token, never expiring
+  WHATSAPP_APP_SECRET=abc123...            # App settings → Basic
+  WHATSAPP_VERIFY_TOKEN=any-long-random-string
+  WHATSAPP_TEAM_NUMBER=+923001234567       # optional: sent when a customer types "help"
+  WHATSAPP_CATALOG_ID=123456789012345      # optional: Commerce Manager catalog fed from /api/v1/whatsapp/catalog.csv
+  BANK_ACCOUNT_NAME="Tahaif Gifts, MCB Bank"
+  BANK_IBAN=PK36MUCB0000001234567890
   ```
 
 ---
@@ -452,6 +476,17 @@ TWILIO_AUTH_TOKEN=
 TWILIO_WHATSAPP_FROM=whatsapp:+14155238886
 TWILIO_SMS_FROM=
 
+# ── WhatsApp ordering bot (Meta Cloud API) ────────────────────────────────────
+WHATSAPP_BOT_ENABLED=false
+WHATSAPP_PHONE_NUMBER_ID=
+WHATSAPP_ACCESS_TOKEN=
+WHATSAPP_APP_SECRET=
+WHATSAPP_VERIFY_TOKEN=
+WHATSAPP_TEAM_NUMBER=
+WHATSAPP_CATALOG_ID=
+BANK_ACCOUNT_NAME=
+BANK_IBAN=
+
 # ── Resend (Email) ────────────────────────────────────────────────────────────
 RESEND_API_KEY=re_
 EMAIL_FROM=noreply@tahaif.com
@@ -503,6 +538,7 @@ NEXT_PUBLIC_BANK_ACCOUNT_NAME=Tahaif Gifts — MCB Bank
 | Variable | What breaks without it |
 |---|---|
 | `TWILIO_*` | WhatsApp/SMS notifications silently skipped |
+| `WHATSAPP_*` (bot) | No ordering inside WhatsApp; the webhook returns 404 |
 | `JAZZCASH_*` | JazzCash payment option hidden |
 | `EASYPAISA_*` | EasyPaisa payment option hidden |
 | `OPENEXCHANGERATES_APP_ID` | Multi-currency FX disabled; PKR only |

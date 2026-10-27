@@ -117,6 +117,8 @@ class Coupon(UUIDPrimaryKeyMixin, Base):
     starts_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     ends_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     usage_limit: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # How many of one buyer's (non-cancelled) orders may use it; None = no cap.
+    per_customer_limit: Mapped[int | None] = mapped_column(Integer, nullable=True)
     used_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
@@ -175,6 +177,11 @@ class NewsletterSubscriber(UUIDPrimaryKeyMixin, Base):
 # ── Audit Log ─────────────────────────────────────────────────────────────────
 
 class AuditLog(UUIDPrimaryKeyMixin, Base):
+    """Who changed what in the back office. Written by audit_service in the same
+    transaction as the change. `before`/`after` hold only the fields that changed.
+    Rows from before 2026-10-17 came from a request middleware and have only the
+    HTTP method as `action` and no actor."""
+
     __tablename__ = "audit_logs"
 
     actor_user_id: Mapped[uuid.UUID | None] = mapped_column(
@@ -189,3 +196,5 @@ class AuditLog(UUIDPrimaryKeyMixin, Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utcnow, nullable=False
     )
+
+    actor: Mapped["User | None"] = relationship()

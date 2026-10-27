@@ -13,6 +13,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.core.config import get_settings
+from app.models.bucket import BuilderComponent, BuilderKind, ComponentRole
 from app.models.catalog import (
     Category,
     City,
@@ -208,6 +209,64 @@ PRODUCTS = [
 ]
 
 
+# Build-your-own bases (ADR 0014): (vendor, slug, name, kind, base price, min, max, components)
+# Each component: (slug, name, price, role, max_qty). Components belong to the base's vendor.
+BUILDERS = [
+    (
+        "premium-florist-karachi", "build-your-own-bouquet", "Build Your Own Bouquet",
+        BuilderKind.BOUQUET, 50000, 3, 30,
+        [
+            ("stem-red-rose", "Red Rose (stem)", 25000, ComponentRole.STEM, 24),
+            ("stem-white-lily", "White Lily (stem)", 35000, ComponentRole.STEM, 12),
+            ("stem-pink-carnation", "Pink Carnation (stem)", 15000, ComponentRole.STEM, 24),
+            ("filler-babys-breath", "Baby's Breath", 20000, ComponentRole.FILLER, 3),
+            ("wrap-kraft", "Kraft Paper Wrap", 0, ComponentRole.WRAP, 1),
+            ("ribbon-satin-red", "Red Satin Ribbon", 10000, ComponentRole.RIBBON, 1),
+        ],
+    ),
+    (
+        "premium-florist-karachi", "build-your-own-hamper", "Build Your Own Gift Hamper",
+        BuilderKind.HAMPER, 80000, 2, 8,
+        [
+            ("hamper-chocolate-box", "Assorted Chocolate Box", 150000, ComponentRole.ITEM, 2),
+            ("hamper-scented-candle", "Scented Candle", 120000, ComponentRole.ITEM, 2),
+            ("hamper-teddy", "Small Teddy Bear", 180000, ComponentRole.ITEM, 1),
+            ("hamper-rose-trio", "Three Red Roses", 75000, ComponentRole.ITEM, 2),
+        ],
+    ),
+]
+
+
+async def seed_builders(db: AsyncSession, vendor_map: dict[str, Vendor]) -> None:
+    from sqlalchemy import select
+
+    for vendor_slug, slug, name, kind, price, min_items, max_items, parts in BUILDERS:
+        if (await db.execute(select(Product).where(Product.slug == slug))).scalar_one_or_none():
+            continue
+        vendor = vendor_map[vendor_slug]
+        base = Product(
+            vendor_id=vendor.id, name=name, slug=slug, base_price_pkr=price,
+            builder_kind=kind, builder_min_items=min_items, builder_max_items=max_items,
+        )
+        db.add(base)
+        await db.flush()
+        db.add(ProductImage(product_id=base.id, url=PLACEHOLDER_IMAGE, alt_text=name, is_primary=True))
+        db.add(ProductCity(product_id=base.id, city_id=vendor.city_id, delivery_fee_pkr=25000))
+        for order, (part_slug, part_name, part_price, role, max_qty) in enumerate(parts):
+            part = (await db.execute(select(Product).where(Product.slug == part_slug))).scalar_one_or_none()
+            if not part:
+                part = Product(vendor_id=vendor.id, name=part_name, slug=part_slug, base_price_pkr=part_price)
+                db.add(part)
+                await db.flush()
+                db.add(ProductImage(product_id=part.id, url=PLACEHOLDER_IMAGE, alt_text=part_name, is_primary=True))
+            db.add(BuilderComponent(
+                builder_product_id=base.id, component_product_id=part.id,
+                role=role, max_qty=max_qty, sort_order=order,
+            ))
+        await db.flush()
+    print(f"  {len(BUILDERS)} builders")
+
+
 async def seed(db: AsyncSession) -> None:
     from sqlalchemy import select
 
@@ -315,6 +374,9 @@ async def seed(db: AsyncSession) -> None:
         count += 1
 
     print(f"  {count} products seeded")
+
+    print("Seeding builders...")
+    await seed_builders(db, vendor_map)
     await db.commit()
     print("✓ Seed complete")
 

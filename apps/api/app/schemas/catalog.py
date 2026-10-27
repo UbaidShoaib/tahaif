@@ -129,9 +129,25 @@ class ProductVariantRead(BaseModel):
     id: uuid.UUID
     name: str
     price_delta_pkr: int
-    stock_qty: int
+    stock_qty: int | None = Field(description="null = made to order, not counted; 0 = sold out")
     attrs: dict[str, object] | None
     is_active: bool
+
+
+class ProductVariantWrite(BaseModel):
+    """Add or change a size/option. On PATCH, omitted fields are left alone."""
+
+    name: str = Field(min_length=1, max_length=255, examples=["2 lb"])
+    price_delta_pkr: int = Field(default=0, ge=-10_000_000_00, le=10_000_000_00, description="Added to the base price, in paisa")
+    stock_qty: int | None = Field(default=None, ge=0, le=1_000_000, description="null = not counted")
+    is_active: bool = True
+
+
+class ProductVariantUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=255)
+    price_delta_pkr: int | None = Field(default=None, ge=-10_000_000_00, le=10_000_000_00)
+    stock_qty: int | None = Field(default=None, ge=0, le=1_000_000)
+    is_active: bool | None = None
 
 
 # ── VendorSummary (embedded in ProductRead) ───────────────────────────────────
@@ -162,6 +178,34 @@ class ProductRead(BaseModel):
     variants: list[ProductVariantRead] = []
     vendor: VendorSummary | None = None
     updated_at: datetime
+    builder_kind: str | None = Field(
+        default=None,
+        description="Set on a build-your-own base (hamper or bouquet): send buyers to /build/{slug} "
+        "instead of adding it to the cart",
+        examples=["bouquet"],
+    )
+
+
+class OccasionSummary(BaseModel):
+    model_config = {"from_attributes": True}
+
+    id: uuid.UUID
+    slug: str
+    name: str
+
+
+class AdminProductDetail(ProductRead):
+    """The product editor's view: everything buyers see plus what only staff edit."""
+
+    occasions: list[OccasionSummary] = Field(description="Occasion pages the product appears on")
+
+
+class ProductImageOrder(BaseModel):
+    image_ids: list[uuid.UUID] = Field(min_length=1, max_length=50, description="Every photo of the product, first to last")
+
+
+class ProductOccasionsSet(BaseModel):
+    occasion_ids: list[uuid.UUID] = Field(max_length=50, description="The full set; occasions left out are removed")
 
 
 class ProductCreate(BaseModel):

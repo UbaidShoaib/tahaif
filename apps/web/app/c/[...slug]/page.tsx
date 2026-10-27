@@ -39,22 +39,19 @@ export default async function CategoryPage({ params, searchParams }: Props) {
 
   const linkClass = (active: boolean) =>
     cn(
-      "whitespace-nowrap rounded-full px-4 text-sm font-medium transition-colors lg:block lg:rounded-lg lg:px-3",
+      "whitespace-nowrap rounded-full px-4 text-sm font-medium transition-colors",
       active ? "bg-primary-soft text-primary-soft-foreground" : "text-foreground hover:bg-muted",
     );
 
   const categoryNav = (
     <nav aria-label="Categories">
-      <h2 className="mb-2 hidden font-sans text-xs font-semibold uppercase tracking-wide text-muted-foreground lg:block">
-        Categories
-      </h2>
-      <ul className="flex gap-2 lg:block lg:space-y-0.5">
+      <ul className="flex gap-2">
         {allCategories.map((cat) => (
           <li key={cat.id}>
             <Link
               href={`/c/${cat.slug}`}
               aria-current={cat.slug === categorySlug ? "page" : undefined}
-              className={cn(linkClass(cat.slug === categorySlug), "flex min-h-11 items-center lg:min-h-0 lg:py-2")}
+              className={cn(linkClass(cat.slug === categorySlug), "flex min-h-11 items-center")}
             >
               {cat.name}
             </Link>
@@ -69,14 +66,13 @@ export default async function CategoryPage({ params, searchParams }: Props) {
       <Breadcrumb items={[{ label: "Home", href: "/" }, { label: category.name }]} />
       <h1 className="mb-4 text-h1">{category.name}</h1>
 
-      {/* Phones and tablets: categories as a swipeable row instead of a hidden sidebar. */}
-      <div className="-mx-4 mb-4 overflow-x-auto px-4 pb-1 lg:hidden">{categoryNav}</div>
+      {/* Categories as a swipeable row; the filter chips sit just below. */}
+      <div className="-mx-4 mb-4 overflow-x-auto px-4 pb-1">{categoryNav}</div>
 
       <Suspense>
         <ProductListing
           scope={scope}
           initial={initial}
-          aside={categoryNav}
           emptyTitle={`No ${category.name.toLowerCase()} here yet`}
         />
       </Suspense>

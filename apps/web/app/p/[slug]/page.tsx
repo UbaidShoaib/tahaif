@@ -4,6 +4,7 @@ import type { Metadata } from "next";
 import { catalogApi, primaryImage } from "@/lib/catalog";
 import { loyaltyApi } from "@/lib/loyalty";
 import { VariantPicker } from "@/components/catalog/VariantPicker";
+import { Button } from "@/components/ui/button";
 import { ReviewsSection } from "@/components/catalog/ReviewsSection";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { Rating } from "@/components/ui/rating";
@@ -132,7 +133,20 @@ export default async function ProductPage({ params }: Props) {
             <span aria-hidden className="block h-px w-12 bg-gold" />
           </div>
 
-          <VariantPicker product={product} cities={cities} />
+          {product.builder_kind ? (
+            <div className="space-y-2">
+              <p className="text-sm text-muted-foreground">
+                Choose what goes in it, see the price add up, and share the link so family can build it with you.
+              </p>
+              <Button asChild size="lg" className="w-full sm:w-auto">
+                <Link href={`/build/${product.slug}`}>
+                  Start building your {product.builder_kind === "bouquet" ? "bouquet" : "hamper"}
+                </Link>
+              </Button>
+            </div>
+          ) : (
+            <VariantPicker product={product} cities={cities} />
+          )}
 
           <TrustList onTimePercent={vendorOnTime} />
 

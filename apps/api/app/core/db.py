@@ -38,3 +38,9 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
         except Exception:
             await session.rollback()
             raise
+
+
+def get_session_factory() -> async_sessionmaker[AsyncSession]:
+    """For long-lived connections (WebSockets) that open a short session per message
+    instead of holding one request-scoped session open."""
+    return AsyncSessionLocal

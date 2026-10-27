@@ -1,4 +1,5 @@
 import uuid
+from datetime import date
 from typing import Annotated
 
 from fastapi import APIRouter, Form, Query, Response, UploadFile, status
@@ -18,10 +19,14 @@ from app.schemas.catalog import (
     PaginatedProducts,
     ProductCityUpsert,
     ProductCreate,
+    ProductImageOrder,
     ProductImageRead,
+    ProductOccasionsSet,
     ProductRead,
     ProductSort,
     ProductUpdate,
+    ProductVariantUpdate,
+    ProductVariantWrite,
     VendorCreate,
     VendorRead,
     VendorUpdate,
@@ -130,6 +135,12 @@ async def list_products(
     ),
     min_price_pkr: int | None = Query(default=None, ge=0, description="Minimum price in paisa"),  # noqa: B008
     max_price_pkr: int | None = Query(default=None, ge=0, description="Maximum price in paisa"),  # noqa: B008
+    deliver_on: date | None = Query(  # noqa: B008
+        default=None,
+        description="Only gifts that can arrive on this date (YYYY-MM-DD) in city_id, "
+        "counting same-day cutoffs and lead times. Needs city_id.",
+        examples=["2026-10-27"],
+    ),
 ) -> PaginatedProducts:
     response.headers["Cache-Control"] = _CACHE_PRODUCTS
     return await catalog_service.list_products(
@@ -143,6 +154,7 @@ async def list_products(
         sort=sort,
         min_price_pkr=min_price_pkr,
         max_price_pkr=max_price_pkr,
+        deliver_on=deliver_on,
     )
 
 
@@ -212,6 +224,15 @@ async def remove_product_image(
     await catalog_service.remove_product_image(db, slug, image_id, user)
 
 
+@router.put(
+    "/products/{slug}/images/order", response_model=ProductRead,
+    responses={422: {"description": "The list must hold every photo of the product exactly once"}},
+)
+async def reorder_product_images(slug: str, body: ProductImageOrder, db: DB, user: CurrentUser) -> ProductRead:
+    """Set the order photos appear in on the product page, first to last."""
+    return ProductRead.model_validate(await catalog_service.reorder_product_images(db, slug, body.image_ids, user))
+
+
 @router.post("/products/{slug}/images/{image_id}/primary", response_model=ProductRead)
 async def set_primary_product_image(
     slug: str, image_id: uuid.UUID, db: DB, user: CurrentUser
@@ -219,6 +240,33 @@ async def set_primary_product_image(
     """Make this photo the main one shown on listings; the others stay as extra photos."""
     product = await catalog_service.set_primary_product_image(db, slug, image_id, user)
     return ProductRead.model_validate(product)
+
+
+@router.put("/products/{slug}/occasions", response_model=ProductRead)
+async def set_product_occasions(slug: str, body: ProductOccasionsSet, db: DB, user: CurrentUser) -> ProductRead:
+    """Choose the occasion pages this product appears on. Send the full list; an empty list removes it from all."""
+    return ProductRead.model_validate(await catalog_service.set_product_occasions(db, slug, body.occasion_ids, user))
+
+
+@router.post(
+    "/products/{slug}/variants", response_model=ProductRead, status_code=status.HTTP_201_CREATED,
+    responses={409: {"description": "The product already has a size with that name"}},
+)
+async def add_product_variant(slug: str, body: ProductVariantWrite, db: DB, user: CurrentUser) -> ProductRead:
+    """Add a size or option. Leave `stock_qty` out for made-to-order items; give a number to count stock."""
+    return ProductRead.model_validate(await catalog_service.add_product_variant(db, slug, body, user))
+
+
+@router.patch(
+    "/products/{slug}/variants/{variant_id}", response_model=ProductRead,
+    responses={409: {"description": "The product already has a size with that name"}},
+)
+async def update_product_variant(
+    slug: str, variant_id: uuid.UUID, body: ProductVariantUpdate, db: DB, user: CurrentUser
+) -> ProductRead:
+    """Rename, reprice, restock or switch off a size. Sizes are never deleted: past orders point at them.
+    Send `stock_qty: null` to stop counting stock."""
+    return ProductRead.model_validate(await catalog_service.update_product_variant(db, slug, variant_id, body, user))
 
 
 @router.put("/products/{slug}/cities", response_model=ProductRead)

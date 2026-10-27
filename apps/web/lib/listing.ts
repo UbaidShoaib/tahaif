@@ -1,4 +1,5 @@
 import type { PaginatedProducts, Product } from "@/lib/catalog";
+import { earliestDelivery } from "@/lib/delivery";
 
 export type ListingSort = "recommended" | "price_asc" | "price_desc" | "newest";
 
@@ -21,12 +22,17 @@ export const PAGE_SIZE = 24;
 /** /search isn't paginated server-side; we fetch this many matches and page through them locally. */
 const SEARCH_LIMIT = 100;
 
-/** Filters that live in the URL (?q=&city_id=&sort=&price=). */
+/** Every launch city is in Pakistan; used where a listing has no city to hand. */
+const LISTING_TZ = "Asia/Karachi";
+
+/** Filters that live in the URL (?q=&city_id=&sort=&price=&on=). */
 export type ListingParams = {
   q: string;
   cityId: string;
   sort: ListingSort;
   price: string;
+  /** YYYY-MM-DD: only gifts that can arrive that day. Needs a city. */
+  on: string;
 };
 
 /** Fixed scope of a listing page, not user-editable (e.g. the category being viewed). */
@@ -52,6 +58,7 @@ export function parseListingParams(sp: SearchParamsLike): ListingParams {
     cityId: read(sp, "city_id"),
     sort: SORT_OPTIONS.some((o) => o.value === sort) ? (sort as ListingSort) : "recommended",
     price: PRICE_BANDS.some((b) => b.id === price) ? price : "",
+    on: /^\d{4}-\d{2}-\d{2}$/.test(read(sp, "on")) ? read(sp, "on") : "",
   };
 }
 
@@ -62,11 +69,18 @@ export function listingQueryString(p: ListingParams): string {
   if (p.cityId) qs.set("city_id", p.cityId);
   if (p.sort !== "recommended") qs.set("sort", p.sort);
   if (p.price) qs.set("price", p.price);
+  if (p.on) qs.set("on", p.on);
   return qs.toString();
 }
 
 export function activeFilterCount(p: ListingParams): number {
-  return (p.cityId ? 1 : 0) + (p.price ? 1 : 0);
+  return (p.cityId ? 1 : 0) + (p.price ? 1 : 0) + (p.on && p.cityId ? 1 : 0);
+}
+
+/** Can this gift arrive on `day` in the city? Same rule as the API's deliver_on. */
+function arrivesBy(product: Product, cityId: string, day: string): boolean {
+  const pc = product.product_cities.find((c) => c.city_id === cityId && c.is_available);
+  return pc !== undefined && earliestDelivery(pc, LISTING_TZ).date <= day;
 }
 
 export function apiBase(): string {
@@ -99,7 +113,7 @@ async function getJson<T>(url: string): Promise<T> {
 /**
  * One page of results. Browsing uses /products (sorted and filtered by the
  * API). Text search uses /search, which returns relevance-ranked matches
- * without paging, so price filtering, sorting and paging happen here on up
+ * without paging, so price and arrival-date filtering, sorting and paging happen here on up
  * to SEARCH_LIMIT matches ("recommended" keeps relevance order).
  */
 export async function fetchListing(
@@ -113,7 +127,10 @@ export async function fetchListing(
     const qs = new URLSearchParams({ q: p.q, limit: String(SEARCH_LIMIT) });
     if (p.cityId) qs.set("city_id", p.cityId);
     const data = await getJson<PaginatedProducts>(`${base}/search?${qs.toString()}`);
-    let items = data.items.filter((prod) => inBand(effectivePrice(prod, p.cityId), p.price));
+    let items = data.items.filter(
+      (prod) =>
+        inBand(effectivePrice(prod, p.cityId), p.price) && (!p.on || !p.cityId || arrivesBy(prod, p.cityId, p.on)),
+    );
     if (p.sort === "price_asc" || p.sort === "price_desc") {
       const dir = p.sort === "price_asc" ? 1 : -1;
       items = [...items].sort((a, b) => dir * (effectivePrice(a, p.cityId) - effectivePrice(b, p.cityId)));
@@ -126,6 +143,7 @@ export async function fetchListing(
   for (const [k, v] of Object.entries(scope)) if (v) qs.set(k, v);
   if (p.cityId) qs.set("city_id", p.cityId);
   if (p.sort !== "recommended") qs.set("sort", p.sort);
+  if (p.on && p.cityId) qs.set("deliver_on", p.on);
   const band = PRICE_BANDS.find((b) => b.id === p.price);
   if (band?.min !== undefined) qs.set("min_price_pkr", String(band.min));
   if (band?.max !== undefined) qs.set("max_price_pkr", String(band.max));

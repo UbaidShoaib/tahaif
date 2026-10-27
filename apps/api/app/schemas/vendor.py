@@ -24,6 +24,11 @@ class VendorLineItem(BaseModel):
     note_token: uuid.UUID | None = Field(
         default=None, description="Print a QR code to /note/{note_token} on the card when set"
     )
+    bucket_contents: list[str] = Field(
+        default_factory=list,
+        description="For a build-your-own hamper or bouquet: what goes in it",
+        examples=[["6 × Red Rose (stem)", "1 × Kraft Paper Wrap"]],
+    )
 
 
 class VendorFulfillmentRead(BaseModel):

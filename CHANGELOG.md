@@ -7,7 +7,72 @@ pre-production-cutover).
 
 ## [Unreleased]
 
+### Changed
+- **New page layouts across the site** (ADR 0015). Home asks where, when and what for in the hero.
+  Shop, category, occasion and search pages filter from one chip row with *Arrives tomorrow* first.
+  The product buy box is three steps: size, when, your card; the chosen day goes on the cart line.
+  The cart is grouped by recipient and day. Checkout is three steps (Recipient → You → Pay) with a
+  review before paying. The confirmation leads with the one next step. Tracking is a split view on
+  wide screens. The account page leads with your people and their next occasion. Sign-in is a small
+  centred card. The vendor portal opens on today's queue by slot. The back office opens on *Needs
+  attention*: receipts to verify, WhatsApp messages due and late orders.
+
 ### Added
+- **Filter gifts by arrival day.** `GET /products?deliver_on=YYYY-MM-DD` (with `city_id`) keeps only
+  gifts that can arrive that day, counting same-day cutoffs and lead times.
+- **Set up build-your-own hampers and bouquets in the admin** (ADR 0014). New *Catalog →
+  Build-your-own* page lists every builder with its items and how many buckets were started, plus
+  set-up steps. On any product, the new *Build-your-own* section makes it a hamper or bouquet
+  builder (least/most items) and manages its items: add from the same shop, role, most per bucket,
+  reorder, switch off, remove. Changes are in the activity log. Items can be hidden products (single
+  stems), offered only inside builders. The home page shows a *Build your own* strip once a builder
+  is live with items, and a builder's product page shows *Start building* instead of Add to cart.
+  A builder base can no longer be added to the cart on its own or appear in the WhatsApp catalog.
+  API: `GET /builders`, `GET /admin/builders`, `GET|PUT /admin/products/{id}/builder`,
+  `POST /admin/products/{id}/builder/components`, `PATCH|DELETE …/components/{component_id}`.
+- **Build your own hamper or bouquet, together** (ADR 0014). Drag items into a basket, or stems,
+  filler, wrap and ribbon onto a bouquet (or tap + on phones). The price updates as you go. Share
+  the link (copy or WhatsApp) and family can edit the same bucket live, with each person's name
+  and cursor shown. Limits per item and per bucket are checked on the server. **Add to cart** puts
+  it in as one line priced base + components; buyer tracking, the vendor portal and the admin order
+  page list what's inside. Pages `/build/[slug]` and `/build/b/[id]`. API `GET /builders/{slug}`,
+  `POST /buckets`, `GET /buckets/{id}`, `POST /buckets/{id}/edits`, `POST /buckets/{id}/cart`, and
+  WebSocket `/buckets/{id}/ws`. Migration `0021` adds `builder_components`, `custom_buckets` and
+  builder columns on `products`. Seed adds two builders.
+- **Shop inside WhatsApp** (ADR 0013). A bot on Meta's WhatsApp Cloud API takes customers through
+  the website's checkout in the chat: city, gifts from our **WhatsApp catalog** (photos, quantities,
+  the WhatsApp cart) or a plain list, option, delivery date, card message, recipient, address or
+  location pin, surprise, "from" name and payment, then a summary with the total and **Place order**.
+  Orders go through the normal checkout with `source=whatsapp` and are already confirmed.
+  **Payment in the chat:** bank-transfer customers get the amount and our IBAN and send the receipt
+  as a photo or PDF, which is attached to the order; staff approve or reject it in the admin as
+  before and the customer is told in WhatsApp. Catalog feed for Meta Commerce Manager:
+  `GET /api/v1/whatsapp/catalog.csv`. New settings `WHATSAPP_CATALOG_ID`, `BANK_ACCOUNT_NAME`,
+  `BANK_IBAN`. *menu* restarts, *cancel* clears, *help* hands over to the team. The website's "Order on
+  WhatsApp" message starts the bot with that gift. Webhook `GET/POST /api/v1/whatsapp/webhook`
+  (signed by Meta). Off until `WHATSAPP_BOT_ENABLED=true`; setup in `docs/runbook.md`. Migration
+  `0020` adds `whatsapp_conversations` and `whatsapp_inbound_messages`.
+- Back office (Phase 9 P0): **photo order**. Move a product's photos earlier or later from its admin page.
+  API: `PUT /products/{slug}/images/order`.
+- Back office (Phase 9 P0): **occasions on a product**. Tick which occasion pages (Eid, Mother's Day…) list a
+  product, from its page in the admin. API: `PUT /products/{slug}/occasions`; `GET /admin/products/{id}` now
+  includes `occasions`.
+- Back office (Phase 9 P0): **sizes & stock** on the product page. Add, rename, reprice, restock or switch off
+  a size; leave stock blank for made-to-order items (never runs out) or enter a count for boxed goods.
+  Cancelling an order puts counted stock back. API: `POST /products/{slug}/variants`,
+  `PATCH /products/{slug}/variants/{id}`. Migration `0019` makes `product_variants.stock_qty` nullable.
+- Back office (Phase 9 P0): **sidebar**. Admin sections are grouped (Orders, Catalog, Shops & content,
+  Reports, Admin) in a left sidebar, a scrolling row on phones, and it stays on the order and product
+  pages. The open section is in the URL (`/admin?section=…`), so refresh and the back button work.
+- Back office (Phase 9 P0): **order status rules**. Staff can only move an order forward (steps may be
+  skipped), back only via on hold; cancel up to "preparing"; refund once paid; cancelled and refunded are
+  final. Disallowed changes get a 409 with the reason; the status dropdowns offer only allowed statuses
+  (`next_statuses` on `GET /admin/orders` and `GET /admin/orders/{id}`).
+- Back office (Phase 9 P0): **audit log** (ADR 0012). Order status changes, payment approve/reject,
+  staff notes and DM orders; product create/edit/publish/hide/photos/cities; vendor delivery updates;
+  shop approvals; card-note take-downs; coupons; exchange-rate overrides; and role changes record who,
+  what changed (before → after) and the IP. Admin-only **Activity** tab (`GET /admin/audit-log`); the
+  order page timeline now shows status changes and who made them.
 - SEO (Phase 10 P0): the **sitemap lists the whole catalog** — every live product (paged within the
   API's 100-per-page limit, with `lastmod`), categories and subcategories, occasions and shop pages;
   missing (`/about`), private (`/login`, `/register`, `/search`) and placeholder pages are gone. An API
@@ -74,6 +139,10 @@ pre-production-cutover).
   SOP, compliance note and integration options in `docs/`.
 
 ### Changed
+- A size that sells out stays switched on (shown as sold out) instead of being turned off, so restocking
+  brings it straight back.
+- Order status change and payment verification moved from the admin router into `admin_order_service`.
+- Removed the request-level audit middleware (it logged only the HTTP method and URL, no actor).
 - Cart and checkout redesigned to match: cart items as hairline rows (bigger photo, serif name, price
   in ink) with a soft tinted summary panel and a proper empty state (no emoji); checkout sections
   (your details, recipient & delivery, payment) as open sections divided by hairlines, the order
@@ -190,6 +259,45 @@ pre-production-cutover).
   once. Migration `0013`.
 
 ### Fixed
+Found by testing the shop as real buyers would (concurrent checkouts, a real browser):
+- **Overselling:** simultaneous checkouts could all buy the last units (50 sold against 15 in
+  stock). Checkout now locks the cart, the variants (in id order), the coupon and the loyalty
+  wallet until the order commits.
+- **Coupon limits:** a `usage_limit=1` coupon was used 8 times by concurrent orders. Fixed by the
+  lock above; cancelling an order now gives its coupon use back. New optional
+  `per_customer_limit` on coupons (`POST /admin/coupons`), e.g. 1 for a first-order code
+  (migration `0022`).
+- **Selling where the shop doesn't deliver:** a product not offered in the chosen city was
+  accepted with free delivery and no lead-time check (any date, even past). Checkout and quote now
+  return 409 when a product or size was switched off, or isn't delivered to that city
+  (`is_available` too), and refuse inactive cities. Build-your-own buckets follow their base's
+  cities. Delivery dates more than a year out are refused.
+- **Products delivered nowhere were listed:** build-your-own parts (single stems, wrap, ribbon)
+  appeared in the shop and search and could be bought alone. Listings, search and the catalog
+  feed now show only products delivered in at least one city.
+- **City prices:** the price set for a city was shown on product pages but checkout charged the
+  base price. Quote and order now use the city's price; the checkout summary shows it per line
+  (`cart_item_id` on quote lines).
+- **Delivery fee:** charged once per cart line; now once per shop (its highest fee), matching
+  the one delivery each shop makes.
+- **Loyalty on cancelled orders:** points earned stayed after cancellation, and points spent were
+  never returned. Cancelling or refunding now reverses both (ledger entries "Order cancelled: …").
+- **Idempotency keys** are scoped to the buyer (account or guest cart); another buyer's key could
+  return their order with the recipient's address. Retries with one key no longer 500 when sent
+  together, and a double-tapped *Place order* without a key now places one order, not one per tap.
+- **Build-your-own:** a bucket taken out of the cart (or the cart emptied) can be edited and added
+  again instead of staying locked; ordered buckets are marked `ordered`.
+- **Reviews:** an unknown product or order item returned 500; an order item must now be one of
+  the reviewer's own purchases of that product. Double submits no longer make duplicate reviews.
+- Bank receipts can't be uploaded to a paid, refunded or cancelled order (which reset its payment
+  to "awaiting verification").
+- Phone numbers must look like phone numbers (digits, +, spaces, dashes, brackets; 7–15 digits);
+  address lines, landmarks and review bodies have length limits.
+- Checkout explains why a city can't be priced, and no longer flashes "Your cart is empty"
+  between placing an order and the confirmation page.
+- `./start.sh` failed on a fresh clone: values with spaces in `.env.example` are now quoted.
+- Playwright specs updated for email verification after sign-up and for city availability.
+
 - `PATCH /products/{slug}` can now clear `category_id` and `description` with an explicit null.
 - Removing a product's main photo promotes the next one instead of leaving it with none.
 - Security: `POST /vendors` was open to any signed-in user, who became the owner of the new

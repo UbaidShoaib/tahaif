@@ -2,8 +2,10 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, ExternalLink, Eye, EyeOff, Star, Trash2, Upload } from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight, ExternalLink, Eye, EyeOff, Star, Trash2, Upload } from "lucide-react";
 import { toPaisa } from "@/components/admin/AddProductForm";
+import { BuilderEditor } from "@/components/admin/BuilderEditor";
+import { VariantsEditor, type Variant } from "@/components/admin/VariantsEditor";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { FormField } from "@/components/ui/form-field";
@@ -35,6 +37,8 @@ export type EditableProduct = {
   base_price_pkr: number;
   is_active: boolean;
   images: ProductImage[];
+  variants: Variant[];
+  occasions: Option[];
   product_cities: ProductCity[];
   vendor: { id: string; name: string; slug: string } | null;
 };
@@ -70,7 +74,7 @@ function Notice({ kind, children }: { kind: "error" | "ok"; children: React.Reac
 }
 
 /**
- * Edit any product, live or hidden: details and price, photos, and which cities
+ * Edit any product, live or hidden: details and price, occasions, photos, sizes and stock, and which cities
  * it delivers to at what fee. Each section saves on its own so a slow photo
  * upload never holds back a price fix.
  */
@@ -78,6 +82,8 @@ export function ProductEditor({ token, productId }: { token: string; productId: 
   const [product, setProduct] = useState<EditableProduct | null>(null);
   const [categories, setCategories] = useState<Option[]>([]);
   const [cities, setCities] = useState<Option[]>([]);
+  const [occasions, setOccasions] = useState<Option[]>([]);
+  const [occasionIds, setOccasionIds] = useState<Set<string>>(new Set());
   const [loadError, setLoadError] = useState<string | null>(null);
 
   const [name, setName] = useState("");
@@ -99,18 +105,22 @@ export function ProductEditor({ token, productId }: { token: string; productId: 
     setPrice(rupees(p.base_price_pkr));
     setCategoryId(p.category_id ?? "");
     setRows(cityRows(allCities, p));
+    setOccasionIds(new Set(p.occasions.map((o) => o.id)));
   }, []);
 
   useEffect(() => {
     void (async () => {
       try {
-        const [p, cat, ci] = await Promise.all([
+        const [p, cat, ci, occ] = await Promise.all([
           apiFetch<EditableProduct>(`/admin/products/${productId}`, { token }),
           apiFetch<Option[]>("/categories", { token }),
           apiFetch<Option[]>("/cities", { token }),
+          apiFetch<Option[]>("/occasions", { token }),
         ]);
         setCategories(cat);
         setCities(ci);
+        // The list has live occasions only; keep any switched-off one the product is still on.
+        setOccasions([...occ, ...p.occasions.filter((o) => !occ.some((x) => x.id === o.id))]);
         fill(p, ci);
       } catch (e) {
         setLoadError(e instanceof ApiError ? e.detail : "Could not load the product.");
@@ -181,9 +191,34 @@ export function ProductEditor({ token, productId }: { token: string; productId: 
       .then(() => setPhotoInputKey((k) => k + 1));
   }
 
+  /** Swap a photo with its neighbour and save the whole order. */
+  function movePhoto(index: number, by: -1 | 1) {
+    const ids = product!.images.map((i) => i.id);
+    [ids[index], ids[index + by]] = [ids[index + by], ids[index]];
+    void run("photos", () => apiFetch(`/products/${slug}/images/order`, {
+      method: "PUT", token, body: { image_ids: ids },
+    }), "Photo order saved.");
+  }
+
   function removePhoto(id: string) {
     setConfirmRemove(null);
     void run("photos", () => apiFetch(`/products/${slug}/images/${id}`, { method: "DELETE", token }), "Photo removed.");
+  }
+
+  function toggleOccasion(id: string, on: boolean) {
+    setOccasionIds((ids) => {
+      const next = new Set(ids);
+      if (on) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  }
+
+  function saveOccasions(e: React.FormEvent) {
+    e.preventDefault();
+    void run("occasions", () => apiFetch(`/products/${slug}/occasions`, {
+      method: "PUT", token, body: { occasion_ids: [...occasionIds] },
+    }), "Occasions saved.");
   }
 
   function setRow(cityId: string, patch: Partial<CityRow>) {
@@ -281,13 +316,36 @@ export function ProductEditor({ token, productId }: { token: string; productId: 
         <Button type="submit" disabled={busy !== null}>{busy === "details" ? "Saving…" : "Save details"}</Button>
       </form>
 
+      <form onSubmit={saveOccasions} aria-labelledby="occasions-heading" className="space-y-4 rounded-xl border p-4">
+        <div>
+          <h2 id="occasions-heading" className="font-semibold">Occasions</h2>
+          <p className="text-sm text-muted-foreground">The product shows on each ticked occasion&apos;s page, e.g. Mother&apos;s Day.</p>
+        </div>
+        {occasions.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No occasions have been set up yet.</p>
+        ) : (
+          <div className="flex flex-wrap gap-x-5 gap-y-2">
+            {occasions.map((o) => (
+              <label key={o.id} className="flex items-center gap-2 text-sm">
+                <input type="checkbox" checked={occasionIds.has(o.id)} onChange={(e) => toggleOccasion(o.id, e.target.checked)} />
+                {o.name}
+              </label>
+            ))}
+          </div>
+        )}
+        {show("occasions")}
+        {occasions.length > 0 && (
+          <Button type="submit" disabled={busy !== null}>{busy === "occasions" ? "Saving…" : "Save occasions"}</Button>
+        )}
+      </form>
+
       <section aria-labelledby="photos-heading" className="space-y-4 rounded-xl border p-4">
         <h2 id="photos-heading" className="font-semibold">Photos</h2>
         {product.images.length === 0 ? (
           <p className="text-sm text-muted-foreground">No photos yet. Products with a photo sell far better.</p>
         ) : (
           <ul className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            {product.images.map((img) => (
+            {product.images.map((img, index) => (
               <li key={img.id} className="space-y-2">
                 <div className="relative">
                   {/* eslint-disable-next-line @next/next/no-img-element -- photos from any storage host */}
@@ -295,6 +353,18 @@ export function ProductEditor({ token, productId }: { token: string; productId: 
                   {img.is_primary && <Badge variant="brand" className="absolute left-2 top-2">Main photo</Badge>}
                 </div>
                 <div className="flex flex-wrap gap-1">
+                  {product.images.length > 1 && (
+                    <>
+                      <Button size="sm" variant="ghost" className="px-2" disabled={busy !== null || index === 0}
+                        aria-label={`Move photo ${index + 1} earlier`} onClick={() => movePhoto(index, -1)}>
+                        <ChevronLeft aria-hidden className="h-4 w-4" />
+                      </Button>
+                      <Button size="sm" variant="ghost" className="px-2" disabled={busy !== null || index === product.images.length - 1}
+                        aria-label={`Move photo ${index + 1} later`} onClick={() => movePhoto(index, 1)}>
+                        <ChevronRight aria-hidden className="h-4 w-4" />
+                      </Button>
+                    </>
+                  )}
                   {!img.is_primary && (
                     <Button size="sm" variant="outline" className="gap-1" disabled={busy !== null}
                       onClick={() => void run("photos", () => apiFetch(`/products/${slug}/images/${img.id}/primary`, { method: "POST", token }), "Main photo changed.")}>
@@ -310,7 +380,7 @@ export function ProductEditor({ token, productId }: { token: string; productId: 
                     </>
                   ) : (
                     <Button size="sm" variant="ghost" className="gap-1" disabled={busy !== null}
-                      aria-label={`Remove photo ${img.sort_order + 1}`} onClick={() => setConfirmRemove(img.id)}>
+                      aria-label={`Remove photo ${index + 1}`} onClick={() => setConfirmRemove(img.id)}>
                       <Trash2 aria-hidden className="h-3 w-3" /> Remove
                     </Button>
                   )}
@@ -330,6 +400,25 @@ export function ProductEditor({ token, productId }: { token: string; productId: 
         </FormField>
         {show("photos")}
       </section>
+
+      <VariantsEditor
+        variants={product.variants}
+        slug={slug}
+        token={token}
+        basePrice={product.base_price_pkr}
+        busy={busy !== null}
+        run={(work, done) => run("variants", work, done)}
+        notice={show("variants")}
+        onError={(text) => setNotice({ section: "variants", kind: "error", text })}
+      />
+
+      <BuilderEditor
+        token={token}
+        productId={product.id}
+        productSlug={slug}
+        vendorId={product.vendor_id}
+        basePrice={product.base_price_pkr}
+      />
 
       <form onSubmit={saveCities} aria-labelledby="cities-heading" className="space-y-4 rounded-xl border p-4">
         <div>

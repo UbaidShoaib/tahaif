@@ -9,6 +9,7 @@
 export const NOINDEX_PATHS = [
   "/account",
   "/admin",
+  "/build",
   "/cart",
   "/checkout",
   "/forgot-password",
@@ -26,15 +27,20 @@ export const NOINDEX_PATHS = [
   "/verify-email",
 ] as const;
 
-/** Signed-in areas with nothing to index; robots.txt keeps crawlers out entirely. */
+/** Areas crawlers should never visit: signed-in pages and the bucket builder. */
 export const DISALLOWED_PATHS = [
   "/account/",
   "/admin/",
+  // Rendering /build/{slug} creates a bucket, so crawlers must not run it.
+  "/build/",
   "/vendor/dashboard",
   "/vendor/orders",
   "/vendor/products",
   "/api/",
 ] as const;
+
+/** Exceptions inside DISALLOWED_PATHS: shared bucket links stay crawlable so their noindex is seen. */
+export const ALLOWED_PATHS = ["/", "/build/b/"] as const;
 
 /** next.config `headers()` entries: each path and everything beneath it. */
 export function noindexHeaders() {

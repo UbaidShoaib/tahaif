@@ -4,7 +4,7 @@ import uuid
 from datetime import UTC, datetime
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.loyalty import (
@@ -21,10 +21,12 @@ class LoyaltyRepository:
     def __init__(self, db: AsyncSession) -> None:
         self._db = db
 
-    async def get_wallet(self, user_id: uuid.UUID) -> LoyaltyWallet | None:
-        result = await self._db.execute(
-            select(LoyaltyWallet).where(LoyaltyWallet.user_id == user_id)
-        )
+    async def get_wallet(self, user_id: uuid.UUID, *, for_update: bool = False) -> LoyaltyWallet | None:
+        query = select(LoyaltyWallet).where(LoyaltyWallet.user_id == user_id)
+        if for_update:
+            # Checkouts spending the same points run one at a time, on the fresh balance.
+            query = query.with_for_update().execution_options(populate_existing=True)
+        result = await self._db.execute(query)
         return result.scalar_one_or_none()
 
     async def get_or_create_wallet(self, user_id: uuid.UUID) -> LoyaltyWallet:
@@ -88,6 +90,12 @@ class LoyaltyRepository:
         await self.add_ledger_entry(user_id, -points, reason, order_id)
         return wallet
 
+    async def ledger_for_order(self, user_id: uuid.UUID, order_id: uuid.UUID) -> list[LoyaltyLedger]:
+        result = await self._db.execute(
+            select(LoyaltyLedger).where(LoyaltyLedger.user_id == user_id, LoyaltyLedger.order_id == order_id)
+        )
+        return list(result.scalars().all())
+
     async def list_ledger(
         self, user_id: uuid.UUID, limit: int = 50
     ) -> list[LoyaltyLedger]:
@@ -117,9 +125,15 @@ class ReviewRepository:
         result = await self._db.execute(
             select(Review).where(
                 Review.user_id == user_id, Review.product_id == product_id
-            )
+            ).limit(1)
         )
-        return result.scalar_one_or_none()
+        return result.scalars().first()
+
+    async def lock_user_product(self, user_id: uuid.UUID, product_id: uuid.UUID) -> None:
+        """Serialise one buyer's reviews of one product, so a double submit makes one review."""
+        await self._db.execute(
+            select(func.pg_advisory_xact_lock(func.hashtextextended(f"review:{user_id}:{product_id}", 0)))
+        )
 
     async def list_for_product(
         self, product_id: uuid.UUID, published_only: bool = True, limit: int = 50
@@ -136,10 +150,12 @@ class CouponRepository:
     def __init__(self, db: AsyncSession) -> None:
         self._db = db
 
-    async def get_by_code(self, code: str) -> Coupon | None:
-        result = await self._db.execute(
-            select(Coupon).where(Coupon.code == code.upper())
-        )
+    async def get_by_code(self, code: str, *, for_update: bool = False) -> Coupon | None:
+        query = select(Coupon).where(Coupon.code == code.upper())
+        if for_update:
+            # Checkouts using the same coupon run one at a time, so usage_limit holds.
+            query = query.with_for_update().execution_options(populate_existing=True)
+        result = await self._db.execute(query)
         return result.scalar_one_or_none()
 
     async def create(self, **kwargs: Any) -> Coupon:

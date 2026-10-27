@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { daysUntil, formatDaysUntil, formatMonthDay } from "@/lib/occasions";
+import { daysUntil, formatDaysUntil, formatMonthDay, nextOccasion } from "@/lib/occasions";
 
 describe("occasions", () => {
   it("counts days to the next occurrence, rolling into next year", () => {
@@ -19,5 +19,17 @@ describe("occasions", () => {
     expect(formatDaysUntil(0)).toBe("today");
     expect(formatDaysUntil(1)).toBe("tomorrow");
     expect(formatDaysUntil(5)).toBe("in 5 days");
+  });
+});
+
+describe("nextOccasion", () => {
+  it("picks the sooner of birthday and anniversary", () => {
+    const person = { birthday: { month: 3, day: 12 }, anniversary: { month: 11, day: 1 } };
+    expect(nextOccasion(person, "2026-10-26")).toEqual({ kind: "anniversary", days: 6 });
+    expect(nextOccasion(person, "2026-11-02")).toEqual({ kind: "birthday", days: 130 });
+  });
+
+  it("is null without any dates", () => {
+    expect(nextOccasion({ birthday: null }, "2026-10-26")).toBeNull();
   });
 });

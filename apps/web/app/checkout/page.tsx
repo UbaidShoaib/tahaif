@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useForm, type FieldErrors } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { ArrowLeft, ChevronDown, Gift, Lock } from "lucide-react";
+import { ArrowLeft, ChevronDown, Gift, Lock, Pencil } from "lucide-react";
 import { useCartStore } from "@/stores/cart.store";
 import { useAuthStore } from "@/stores/auth.store";
 import { useCurrencyStore } from "@/stores/currency.store";
@@ -15,6 +15,7 @@ import { ApiError } from "@/lib/api";
 import { accountApi, type AddressRead } from "@/lib/account";
 import { loyaltyApi } from "@/lib/loyalty";
 import { formatMoney } from "@/lib/money";
+import { formatDeliveryDay } from "@/lib/delivery";
 import { captureEvent } from "@/components/providers";
 import { useHydrated } from "@/hooks/use-hydrated";
 import { Button } from "@/components/ui/button";
@@ -34,6 +35,22 @@ import { OrderSummary, SummaryItems, type SummaryTotals } from "@/components/che
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api/v1";
 
+/**
+ * Layout decision (checkout B, multi-step wizard): Recipient → You → Pay, one
+ * short screen each, with a review of the order on Pay. Signed-in buyers have
+ * nothing to fill in on "You", so they go straight from Recipient to Pay.
+ */
+type StepKey = "recipient" | "you" | "pay";
+const STEP_LABELS: Record<StepKey, string> = { recipient: "Recipient", you: "You", pay: "Pay" };
+const STEP_FIELDS: Record<StepKey, (keyof CheckoutFormValues)[]> = {
+  recipient: [
+    "delivery_city_id", "delivery_date", "recipient_name", "recipient_phone", "address_line1", "address_line2",
+    "landmark", "notes", "gift_from",
+  ],
+  you: ["contact_email", "contact_phone"],
+  pay: ["payment_method"],
+};
+
 async function fetchCities(): Promise<CheckoutCity[]> {
   const res = await fetch(`${API_BASE}/cities`);
   if (!res.ok) return [];
@@ -49,6 +66,8 @@ export default function CheckoutPage() {
   const [cities, setCities] = useState<CheckoutCity[]>([]);
   const [quote, setQuote] = useState<CheckoutQuote | null>(null);
   const [isQuoting, setIsQuoting] = useState(false);
+  const [quoteError, setQuoteError] = useState<string | null>(null);
+  const [placed, setPlaced] = useState(false);
   const [isPlacing, setIsPlacing] = useState(false);
   const [placeError, setPlaceError] = useState<string | null>(null);
 
@@ -75,6 +94,8 @@ export default function CheckoutPage() {
     watch,
     setValue,
     getValues,
+    trigger,
+    getFieldState,
     formState: { errors },
   } = useForm<CheckoutFormValues>({
     resolver: zodResolver(checkoutSchema),
@@ -102,6 +123,49 @@ export default function CheckoutPage() {
 
   const cityId = watch("delivery_city_id");
   const paymentMethod = watch("payment_method");
+
+  const steps: StepKey[] = user ? ["recipient", "pay"] : ["recipient", "you", "pay"];
+  const [stepIdx, setStepIdx] = useState(0);
+  const step = steps[Math.min(stepIdx, steps.length - 1)] ?? "recipient";
+  const goTo = (i: number) => {
+    setStepIdx(i);
+    setErrorList([]);
+    window.scrollTo?.({ top: 0 });
+  };
+
+  // Lists the current step's errors in the summary, or moves on when there are none.
+  const next = async () => {
+    const fields = STEP_FIELDS[step];
+    if (await trigger(fields)) {
+      goTo(stepIdx + 1);
+      return;
+    }
+    setErrorList(
+      FIELD_ORDER.flatMap(({ name, label }) => {
+        const message = fields.includes(name) ? getFieldState(name).error?.message : undefined;
+        return message ? [{ name, label, message }] : [];
+      }),
+    );
+    setInvalidAttempt((n) => n + 1);
+  };
+
+  // A step that failed to continue re-checks each field as it's edited, like after a submit.
+  useEffect(() => {
+    if (errorList.length === 0) return;
+    const sub = watch((_, { name }) => {
+      if (name && getFieldState(name).error) void trigger(name);
+    });
+    return () => sub.unsubscribe();
+  }, [errorList.length, watch, trigger, getFieldState]);
+
+  // Start from the day chosen on the product page, if it's still ahead.
+  const datedFromCart = useRef(false);
+  useEffect(() => {
+    if (datedFromCart.current || !cart) return;
+    datedFromCart.current = true;
+    const days = cart.items.map((i) => i.delivery_date).filter((d): d is string => !!d && d >= today);
+    if (days.length > 0) setValue("delivery_date", days.sort()[0]);
+  }, [cart, today, setValue]);
 
   useEffect(() => {
     void fetchCart();
@@ -139,6 +203,7 @@ export default function CheckoutPage() {
         paymentMethod,
       });
       setQuote(q);
+      setQuoteError(null);
       // Only a successful quote *with* a coupon clears a coupon error; the
       // requote that follows a rejected coupon must keep the explanation visible.
       if (appliedCoupon) setCouponError(null);
@@ -149,6 +214,8 @@ export default function CheckoutPage() {
         setAppliedCoupon(null);
       } else {
         setQuote(null);
+        // e.g. a gift isn't delivered to the chosen city, or is no longer sold.
+        setQuoteError(err instanceof ApiError && err.status === 409 ? err.detail : null);
       }
     } finally {
       setIsQuoting(false);
@@ -231,8 +298,10 @@ export default function CheckoutPage() {
         item_count: order.items.length,
       });
       attemptRef.current = null;
-      await fetchCart();
+      // The cart is now empty; keep this page as it is until the success page opens.
+      setPlaced(true);
       router.push(`/checkout/success/${order.public_token}`);
+      void fetchCart();
     } catch (err: unknown) {
       setPlaceError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
     } finally {
@@ -245,6 +314,9 @@ export default function CheckoutPage() {
       const message = errs[name]?.message;
       return message ? [{ name, label, message }] : [];
     });
+    // Go back to the first step with a problem, so every listed field is on screen.
+    const first = steps.findIndex((k) => list.some((e) => STEP_FIELDS[k].includes(e.name)));
+    if (first >= 0 && first !== stepIdx) setStepIdx(first);
     setErrorList(list);
     setInvalidAttempt((n) => n + 1);
   };
@@ -254,7 +326,7 @@ export default function CheckoutPage() {
     if (invalidAttempt > 0) errorSummaryRef.current?.focus();
   }, [invalidAttempt]);
 
-  if (cart && cart.items.length === 0) {
+  if (cart && cart.items.length === 0 && !placed) {
     return (
       <div className="container mx-auto max-w-md px-4 py-24">
         <EmptyState
@@ -298,6 +370,28 @@ export default function CheckoutPage() {
         </span>
       </div>
 
+      <ol aria-label="Checkout steps" className="mb-6 grid gap-2" style={{ gridTemplateColumns: `repeat(${steps.length}, 1fr)` }}>
+        {steps.map((k, i) => (
+          <li
+            key={k}
+            aria-current={i === stepIdx ? "step" : undefined}
+            className={`border-t-4 pt-2 text-sm ${
+              i <= stepIdx ? "border-primary-700 font-semibold text-foreground" : "border-muted text-muted-foreground"
+            }`}
+          >
+            {i < stepIdx ? (
+              <button type="button" onClick={() => goTo(i)} className="hover:underline">
+                {i + 1} {STEP_LABELS[k]}
+              </button>
+            ) : (
+              <>
+                {i + 1} {STEP_LABELS[k]}
+              </>
+            )}
+          </li>
+        ))}
+      </ol>
+
       {user && !user.is_verified && (
         <Alert variant="warning" className="mb-6">
           <AlertDescription>
@@ -320,14 +414,21 @@ export default function CheckoutPage() {
             <span className="font-semibold tabular-nums">{formatMoney(totals.total_pkr, "PKR")}</span>
           </summary>
           <div className="border-t border-foreground/10 px-4 py-3">
-            <SummaryItems cart={cart} />
+            <SummaryItems cart={cart} quote={quote} />
           </div>
         </details>
       )}
 
       <form
         noValidate
-        onSubmit={(e) => void handleSubmit(onValid, onInvalid)(e)}
+        onSubmit={(e) => {
+          if (step === "pay") {
+            void handleSubmit(onValid, onInvalid)(e);
+          } else {
+            e.preventDefault();
+            void next();
+          }
+        }}
         className="grid grid-cols-1 gap-8 lg:grid-cols-3 lg:gap-12"
       >
         {/* Disabled until hydrated so nothing typed early is wiped (hooks/use-hydrated.ts). */}
@@ -353,7 +454,7 @@ export default function CheckoutPage() {
             </Alert>
           )}
 
-          {!user && (
+          {step === "you" && (
             <section aria-labelledby="contact-heading" className="space-y-4 border-t pt-8">
               <div className="flex flex-wrap items-baseline justify-between gap-2">
                 <h2 id="contact-heading" className="text-h3">
@@ -394,6 +495,7 @@ export default function CheckoutPage() {
             </section>
           )}
 
+          {step === "recipient" && (
           <DeliveryDetailsSection
             register={register}
             errors={errors}
@@ -404,11 +506,44 @@ export default function CheckoutPage() {
             minDate={today}
             onCityChange={(id) => useDeliveryStore.getState().setCity(id || null)}
           />
+          )}
 
-          <PaymentMethodSection
-            value={paymentMethod}
-            onChange={(m: PaymentMethod) => setValue("payment_method", m, { shouldDirty: true })}
-          />
+          {step === "pay" && (
+            <>
+              <section aria-labelledby="review-heading" className="space-y-3 border-t pt-8">
+                <div className="flex items-baseline justify-between gap-2">
+                  <h2 id="review-heading" className="text-h3">
+                    Going to
+                  </h2>
+                  <button
+                    type="button"
+                    onClick={() => goTo(0)}
+                    className="inline-flex min-h-11 items-center gap-1.5 text-sm font-medium text-link hover:underline"
+                  >
+                    <Pencil aria-hidden className="h-4 w-4" />
+                    Edit recipient
+                  </button>
+                </div>
+                <div className="rounded-xl bg-background-alt p-4 text-sm">
+                  <p className="font-semibold">{getValues("recipient_name")}</p>
+                  <p className="text-muted-foreground">{getValues("recipient_phone")}</p>
+                  <p className="mt-1">
+                    {[getValues("address_line1"), getValues("address_line2"), cities.find((c) => c.id === cityId)?.name]
+                      .filter(Boolean)
+                      .join(", ")}
+                  </p>
+                  <p className="mt-1 text-muted-foreground">
+                    Arrives {formatDeliveryDay(getValues("delivery_date"), "Asia/Karachi")}
+                  </p>
+                </div>
+              </section>
+
+              <PaymentMethodSection
+                value={paymentMethod}
+                onChange={(m: PaymentMethod) => setValue("payment_method", m, { shouldDirty: true })}
+              />
+            </>
+          )}
         </div>
 
         <div className="lg:col-span-1">
@@ -417,6 +552,7 @@ export default function CheckoutPage() {
             totals={totals}
             quote={quote}
             isQuoting={isQuoting}
+            quoteError={quoteError}
             hasCity={!!cityId}
             appliedCoupon={appliedCoupon}
             couponError={couponError}
@@ -429,6 +565,7 @@ export default function CheckoutPage() {
             paymentMethod={paymentMethod}
             placeError={placeError}
             isPlacing={isPlacing}
+            submitLabel={step === "pay" ? undefined : steps[stepIdx + 1] === "you" ? "Continue to your details" : "Continue to payment"}
           />
         </div>
         </fieldset>

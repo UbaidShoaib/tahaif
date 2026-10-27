@@ -135,12 +135,48 @@ Each stage follows the Definition of Done in CLAUDE.md (tests, OpenAPI examples,
   delivered, WhatsApp sent). Status changes made in the admin are **not** on it yet — that needs the
   status-history table from the state-machine item.
 
-**Still open in P0:** variants & stock, occasions on a product (no API yet), photo reordering, sidebar shell,
-audit log, status state machine with status history.
+**P0 · Audit log — done (2026-10-17)** — see ADR 0012. Activity tab (admin only), order timeline shows
+status changes with who. The status-history part of the state-machine item is now covered by the log.
+
+**P0 · Order status rules — done (2026-10-18)** — `app/services/order_status.py` holds the table.
+- Forward along the flow, skipping allowed (preparing → delivered). No backward moves, except via `on_hold`,
+  which can return to any not-yet-delivered status.
+- `cancelled` only up to `preparing` (before the gift leaves the shop); `refunded` only from `paid` onward.
+  Both are final.
+- The API answers 409 with a plain-words reason; setting the current status again is a no-op. Approving a
+  payment is refused once the order has moved past payment (e.g. cancelled).
+- List and order page return `next_statuses`; the dropdowns only offer those, and are disabled on a final order.
+- Known gap: `on_hold → refunded` is allowed even if the order was never paid (we don't keep the pre-hold status).
+
+**P0 · Sidebar — done (2026-10-18)** — `components/admin/AdminShell.tsx`. Sections grouped (Orders, Catalog,
+Shops & content, Reports, Admin) in a left sidebar; a scrolling row on phones. The order and product pages
+use the same shell, so staff never lose the menu. The dashboard section is in `?section=…` (pushState), so
+refresh, shared links and the back button work. Count badges (e.g. receipts waiting) are a follow-up.
+
+**P0 · Sizes & stock — done (2026-10-18)** — "Sizes & stock" on the product page (`VariantsEditor.tsx`),
+`POST /products/{slug}/variants` and `PATCH /products/{slug}/variants/{id}` (owner or staff, audited).
+- `stock_qty` is now nullable (migration 0019): **null = made to order, not counted**; a number counts down at
+  checkout; 0 = sold out. Existing rows kept their numbers — staff clear the count on cakes/bouquets.
+- Selling out no longer switches the size off (it used to set `is_active=false`), so a restock brings it back.
+- Cancelling an order puts counted stock back (audited as `order.restocked`). A refund does not: the goods
+  may have been delivered.
+- Sizes are never deleted, only switched off: past order lines point at them.
+- Daily capacity for made-to-order items is still a P1 idea, not built.
+
+**P0 · Occasions on a product — done (2026-10-18)** — "Occasions" checkboxes on the product page;
+`PUT /products/{slug}/occasions` replaces the full set (owner or staff, audited with the names before → after).
+Occasions are returned only on the admin product (`AdminProductDetail`), not on the shared `ProductRead`, so
+storefront queries don't have to load them.
+
+**P0 · Photo order — done (2026-10-18)** — arrow buttons on each photo (keyboard- and phone-friendly; no
+drag library). `PUT /products/{slug}/images/order` takes every photo id exactly once, else 422. The main
+photo is still chosen separately ("Make main").
+
+**P0 is complete.** Next is P1 (see section 3): the Today home page, payouts, merchandising, reports.
 
 ## 5. Open questions (defaults in brackets)
 
 - Vendor commission model: flat % per vendor or per category? **[flat % per vendor, stored on `Vendor`]**
 - Who issues refunds: ops or admin only? **[admin only until permission scopes ship]**
 - Should vendors edit their own prices, or must admin approve? **[vendor edits go live; audit log + admin can revert]**
-- Is stock tracked for made-to-order items (cakes, bouquets)? **[no — use daily capacity; stock only for perfumes/hampers]**
+- Is stock tracked for made-to-order items (cakes, bouquets)? **[no — use daily capacity; stock only for perfumes/hampers]** — built as "blank stock = not counted" (2026-10-18); capacity not yet.

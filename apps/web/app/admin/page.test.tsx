@@ -42,7 +42,7 @@ describe("AdminDashboard session handling", () => {
 
     await waitFor(() => expect(global.fetch).toHaveBeenCalled());
     expect(push).not.toHaveBeenCalled();
-    expect(await screen.findByText("Admin Dashboard")).toBeInTheDocument();
+    expect(await screen.findByText("Back office")).toBeInTheDocument();
   });
 
   it("sends signed-out visitors to login with a callback", async () => {
@@ -74,14 +74,15 @@ describe("AdminDashboard sections", () => {
     global.fetch = originalFetch;
   });
 
-  it("opens on orders and switches to the shop applications queue", async () => {
+  it("opens on what needs attention and switches to the shop applications queue", async () => {
     render(<AdminDashboard />);
-    expect(await screen.findByText("No orders found.")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Needs attention");
+    expect(await screen.findByText(/All clear/)).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("button", { name: "Shop applications" }));
 
     expect(await screen.findByText("No shop applications are waiting.")).toBeInTheDocument();
-    expect(screen.queryByText("No orders found.")).not.toBeInTheDocument();
+    expect(screen.queryByText(/All clear/)).not.toBeInTheDocument();
     expect(global.fetch).toHaveBeenCalledWith(
       expect.stringContaining("/admin/vendor-applications?status=pending"),
       expect.anything(),
@@ -96,11 +97,35 @@ describe("AdminDashboard sections", () => {
     expect(await screen.findByRole("searchbox", { name: "Search products" })).toBeInTheDocument();
   });
 
+  it("shows the activity log to admins only", async () => {
+    render(<AdminDashboard />);
+    expect(await screen.findByRole("button", { name: "Activity" })).toBeInTheDocument();
+
+    useAuthStore.setState({ user: { ...admin, role: "staff" } as never });
+    await waitFor(() => expect(screen.queryByRole("button", { name: "Activity" })).not.toBeInTheDocument());
+  });
+
   it("opens the tab named in ?section=", async () => {
     window.history.replaceState(null, "", "/admin?section=products");
     render(<AdminDashboard />);
 
     expect(await screen.findByRole("searchbox", { name: "Search products" })).toBeInTheDocument();
+    window.history.replaceState(null, "", "/");
+  });
+
+  it("puts the section in the URL and follows the back button", async () => {
+    window.history.replaceState(null, "", "/admin");
+    render(<AdminDashboard />);
+    await userEvent.click(await screen.findByRole("button", { name: "Reported notes" }));
+    expect(window.location.search).toBe("?section=note-reports");
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Reported notes");
+    expect(screen.getByRole("button", { name: "Reported notes" })).toHaveAttribute("aria-current", "page");
+
+    act(() => {
+      window.history.replaceState(null, "", "/admin");
+      window.dispatchEvent(new PopStateEvent("popstate"));
+    });
+    expect(await screen.findByText(/All clear/)).toBeInTheDocument();
     window.history.replaceState(null, "", "/");
   });
 });

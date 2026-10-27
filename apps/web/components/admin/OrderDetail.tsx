@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, CheckCircle, ExternalLink, Eye, Phone, XCircle } from "lucide-react";
-import { ORDER_STATUSES, STATUS_BADGE, orderCode } from "@/components/admin/OrderList";
+import { STATUS_BADGE, orderCode, statusOptions } from "@/components/admin/OrderList";
 import { WhatsAppMessages } from "@/components/admin/WhatsAppMessages";
 import { Button } from "@/components/ui/button";
 import { FormField } from "@/components/ui/form-field";
@@ -41,6 +41,7 @@ type Item = {
   greeting_message: string | null;
   has_note: boolean;
   customization: Record<string, unknown> | null;
+  bucket_contents?: string[];
 };
 
 type Payment = {
@@ -60,6 +61,7 @@ export type AdminOrder = {
   id: string;
   public_token: string;
   status: string;
+  next_statuses: string[];
   currency: string;
   total_charged: number;
   subtotal_pkr: number;
@@ -82,7 +84,7 @@ export type AdminOrder = {
   taken_by: string | null;
   payment: Payment | null;
   staff_notes: StaffNote[];
-  timeline: { at: string; label: string }[];
+  timeline: { at: string; label: string; by?: string | null }[];
 };
 
 const when = (iso: string) => new Date(iso).toLocaleString("en-PK", { dateStyle: "medium", timeStyle: "short" });
@@ -205,10 +207,10 @@ export function OrderDetail({ token, orderId }: { token: string; orderId: string
               aria-label="Order status"
               className="rounded border px-2 py-1 text-sm"
               value={order.status}
-              disabled={busy}
+              disabled={busy || order.next_statuses.length === 0}
               onChange={(e) => void act(`/admin/orders/${order.id}/status`, "PATCH", { status: e.target.value })}
             >
-              {ORDER_STATUSES.map((s) => <option key={s} value={s}>{words(s)}</option>)}
+              {statusOptions(order).map((s) => <option key={s} value={s}>{words(s)}</option>)}
             </select>
             {order.buyer_phone && (
               <Button size="sm" variant="outline" aria-expanded={showMessages} onClick={() => setShowMessages((v) => !v)}>
@@ -274,7 +276,10 @@ export function OrderDetail({ token, orderId }: { token: string; orderId: string
                     </p>
                     {it.greeting_message && <p className="italic text-muted-foreground">“{it.greeting_message}”</p>}
                     {it.has_note && <p className="text-xs text-muted-foreground">Voice/video note on the card</p>}
-                    {it.customization && Object.entries(it.customization).map(([k, v]) => (
+                    {it.bucket_contents && it.bucket_contents.length > 0 && (
+                      <p className="text-xs text-muted-foreground">Contains: {it.bucket_contents.join(", ")}</p>
+                    )}
+                    {it.customization && !("bucket_id" in it.customization) && Object.entries(it.customization).map(([k, v]) => (
                       <p key={k} className="text-xs text-muted-foreground">{words(k)}: {String(v)}</p>
                     ))}
                   </div>
@@ -376,7 +381,7 @@ export function OrderDetail({ token, orderId }: { token: string; orderId: string
               {order.timeline.map((ev, i) => (
                 <li key={`${ev.at}-${i}`} className="text-sm">
                   <p>{ev.label}</p>
-                  <p className="text-xs text-muted-foreground">{when(ev.at)}</p>
+                  <p className="text-xs text-muted-foreground">{when(ev.at)}{ev.by ? ` · ${ev.by}` : ""}</p>
                 </li>
               ))}
             </ol>
@@ -389,7 +394,7 @@ export function OrderDetail({ token, orderId }: { token: string; orderId: string
 
 function BackLink() {
   return (
-    <Link href="/admin" className="inline-flex items-center gap-1 text-sm text-link hover:underline">
+    <Link href="/admin?section=orders" className="inline-flex items-center gap-1 text-sm text-link hover:underline">
       <ArrowLeft aria-hidden className="h-4 w-4" /> All orders
     </Link>
   );

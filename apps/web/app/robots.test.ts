@@ -15,6 +15,11 @@ describe("robots.txt", () => {
     }
   });
 
+  it("never runs the bucket builder, which creates a bucket, but can see shared bucket links", () => {
+    expect(rule?.disallow).toContain("/build/");
+    expect(rule?.allow).toContain("/build/b/");
+  });
+
   it("keeps crawlers out of signed-in areas and points at the sitemap", () => {
     expect(rule?.disallow).toEqual(expect.arrayContaining(["/admin/", "/account/", "/vendor/dashboard"]));
     expect(robots().sitemap).toBe(`${brand.siteUrl}/sitemap.xml`);

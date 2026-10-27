@@ -3,8 +3,13 @@ turned into one E.164 form, so the same person matches across orders and a
 wa.me link opens the right chat."""
 
 import re
+from typing import Annotated
+
+from pydantic import AfterValidator
 
 _DIGITS = re.compile(r"\d+")
+# What a person types: digits with optional +, spaces, dashes, dots and brackets.
+_TYPED_PHONE = re.compile(r"^\+?[\d\s().-]+$")
 
 
 class InvalidPhoneError(ValueError):
@@ -34,3 +39,21 @@ def normalize_phone(raw: str, default_country_code: str = "92") -> str:
 def wa_me_digits(e164: str) -> str:
     """wa.me wants the number as digits only, no '+'."""
     return e164.lstrip("+")
+
+
+def check_typed_phone(raw: str) -> str:
+    """A phone number as typed into a form: kept as written, but only phone characters
+    and 7–15 digits, so nothing else (markup, words) is stored as a number."""
+    text = raw.strip()
+    if not _TYPED_PHONE.match(text) or not 7 <= len("".join(_DIGITS.findall(text))) <= 15:
+        raise ValueError("Enter a phone number using digits, with an optional + for the country code")
+    return text
+
+
+def _check_optional_typed_phone(raw: str | None) -> str | None:
+    return check_typed_phone(raw) if raw is not None and raw.strip() else None
+
+
+# For request bodies; on the optional one, blank means none.
+TypedPhone = Annotated[str, AfterValidator(check_typed_phone)]
+OptionalTypedPhone = Annotated[str | None, AfterValidator(_check_optional_typed_phone)]

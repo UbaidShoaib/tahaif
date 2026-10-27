@@ -14,6 +14,7 @@ const order: AdminOrder = {
   id: "o1",
   public_token: "3f9a2c1b-0000-4000-8000-000000000000",
   status: "pending_payment",
+  next_statuses: ["paid", "preparing", "cancelled", "on_hold"],
   currency: "GBP",
   total_charged: 2450,
   subtotal_pkr: 500000,
@@ -65,7 +66,9 @@ function serve(overrides: Record<string, unknown> = {}) {
 const section = (name: string) => screen.getByRole("region", { name });
 
 describe("OrderDetail", () => {
-  beforeEach(() => vi.mocked(apiFetch).mockReset());
+  beforeEach(() => {
+    vi.mocked(apiFetch).mockReset();
+  });
 
   it("shows recipient address, shop, items, buyer and payment", async () => {
     serve();
@@ -139,6 +142,6 @@ describe("OrderDetail", () => {
     render(<OrderDetail token="tok" orderId="o1" />);
 
     expect(await screen.findByRole("alert")).toHaveTextContent("Order not found");
-    expect(screen.getByRole("link", { name: /All orders/ })).toHaveAttribute("href", "/admin");
+    expect(screen.getByRole("link", { name: /All orders/ })).toHaveAttribute("href", "/admin?section=orders");
   });
 });

@@ -49,8 +49,17 @@ describe("CheckoutPage as a guest (ADR 0004)", () => {
     global.fetch = originalFetch;
   });
 
+  async function toYourDetails() {
+    await screen.findByRole("option", { name: "Lahore" });
+    await userEvent.type(screen.getByLabelText(/^Recipient name/), "Ammi");
+    await userEvent.type(screen.getByLabelText(/^Recipient phone/), "+923001234567");
+    await userEvent.type(screen.getByLabelText(/^Address/), "12 Main Boulevard");
+    await userEvent.click(screen.getByRole("button", { name: "Continue to your details" }));
+  }
+
   it("asks for contact details instead of a sign-in wall, and quotes without a token", async () => {
     render(<CheckoutPage />);
+    await toYourDetails();
     expect(screen.getByRole("heading", { name: "Your details" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Have an account? Sign in" })).toHaveAttribute("href", "/login?callbackUrl=/checkout");
     await waitFor(() => expect(cartApi.quote).toHaveBeenCalledWith("city-lhr", null, expect.anything()));
@@ -58,9 +67,9 @@ describe("CheckoutPage as a guest (ADR 0004)", () => {
 
   it("requires a valid email and phone from guests", async () => {
     render(<CheckoutPage />);
-    await screen.findByRole("option", { name: "Lahore" });
+    await toYourDetails();
     await userEvent.type(screen.getByLabelText(/^Your email/), "not-an-email");
-    await userEvent.click(screen.getByRole("button", { name: "Place Order" }));
+    await userEvent.click(screen.getByRole("button", { name: "Continue to payment" }));
     expect(await screen.findByRole("link", { name: /Your email: Enter an email like/ })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Your phone: Enter a phone number/ })).toBeInTheDocument();
     expect(cartApi.place).not.toHaveBeenCalled();
@@ -69,12 +78,10 @@ describe("CheckoutPage as a guest (ADR 0004)", () => {
   it("places the order with the contact details and no account", async () => {
     vi.mocked(cartApi.place).mockResolvedValue({ id: "o1", public_token: "t1", total_pkr: 1, payment_method: "cod", items: [] } as never);
     render(<CheckoutPage />);
-    await screen.findByRole("option", { name: "Lahore" });
+    await toYourDetails();
     await userEvent.type(screen.getByLabelText(/^Your email/), "buyer@example.co.uk");
     await userEvent.type(screen.getByLabelText(/^Your phone/), "+44 7700 900123");
-    await userEvent.type(screen.getByLabelText(/^Recipient name/), "Ammi");
-    await userEvent.type(screen.getByLabelText(/^Recipient phone/), "+923001234567");
-    await userEvent.type(screen.getByLabelText(/^Address/), "12 Main Boulevard");
+    await userEvent.click(screen.getByRole("button", { name: "Continue to payment" }));
     await userEvent.click(screen.getByRole("button", { name: "Place Order" }));
 
     await waitFor(() => expect(cartApi.place).toHaveBeenCalled());
@@ -89,6 +96,8 @@ describe("CheckoutPage as a guest (ADR 0004)", () => {
     useAuthStore.setState({ user: { id: "u1" } as never, accessToken: "tok", isLoading: false });
     render(<CheckoutPage />);
     await screen.findByRole("option", { name: "Lahore" });
+    const steps = screen.getByRole("list", { name: "Checkout steps" });
+    expect([...steps.querySelectorAll("li")].map((li) => li.textContent)).toEqual(["1 Recipient", "2 Pay"]);
     expect(screen.queryByRole("heading", { name: "Your details" })).not.toBeInTheDocument();
   });
 

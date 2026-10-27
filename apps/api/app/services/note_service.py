@@ -25,7 +25,7 @@ from app.schemas.order import (
     NoteReportRead,
     ReportedNoteRead,
 )
-from app.services import proof_service
+from app.services import audit_service, proof_service
 
 # The card is printed while the gift is being prepared, so the note can change
 # until the gift leaves the shop.
@@ -210,6 +210,10 @@ async def resolve_reports(db: AsyncSession, admin: User, item_id: uuid.UUID, *, 
             r.resolved_by = admin.id
             r.resolved_at = now
     await db.flush()
+    await audit_service.record(
+        db, admin, "card_note.disabled" if disable else "card_note.dismissed", "order", item.order_id,
+        after={"item_id": str(item_id)},
+    )
     await logger.ainfo(
         "card_note_disabled" if disable else "card_note_reports_dismissed",
         item_id=str(item_id),
@@ -225,4 +229,5 @@ async def restore_note(db: AsyncSession, admin: User, item_id: uuid.UUID) -> Non
     item.note_disabled_at = None
     item.note_disabled_by = None
     await db.flush()
+    await audit_service.record(db, admin, "card_note.restored", "order", item.order_id, after={"item_id": str(item_id)})
     await logger.ainfo("card_note_restored", item_id=str(item_id), admin_id=str(admin.id))

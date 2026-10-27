@@ -5,19 +5,26 @@ from datetime import UTC, date, datetime
 from decimal import Decimal
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Header, HTTPException, Query, status
+from fastapi import APIRouter, BackgroundTasks, Header, HTTPException, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 
 from app.core.deps import DB, require_roles
 from app.models.catalog import FxRate, FxRateSource, VendorApprovalStatus
 from app.models.loyalty import Coupon, CouponType
-from app.models.order import OrderSource, OrderStatus, PaymentStatus
+from app.models.order import OrderSource, OrderStatus
 from app.models.user import User, UserRole
 from app.repositories.loyalty_repository import CouponRepository
-from app.repositories.order_repository import OrderRepository
 from app.repositories.user_repository import UserRepository
-from app.schemas.catalog import ProductRead
+from app.schemas.audit import AuditPage
+from app.schemas.bucket import (
+    AdminBuilderConfig,
+    AdminBuilderSummary,
+    BuilderComponentCreate,
+    BuilderComponentUpdate,
+    BuilderSettingsUpdate,
+)
+from app.schemas.catalog import AdminProductDetail
 from app.schemas.order import (
     AdminOrderDetail,
     AdminOrderPage,
@@ -40,11 +47,14 @@ from app.schemas.vendor import (
 )
 from app.services import (
     admin_order_service,
+    audit_service,
+    builder_admin_service,
     catalog_service,
     note_service,
     report_service,
     social_order_service,
     vendor_application_service,
+    whatsapp_bot_service,
 )
 
 AdminUser = Annotated[User, require_roles(UserRole.admin, UserRole.staff)]
@@ -76,7 +86,10 @@ class CouponCreate(BaseModel):
     coupon_type: CouponType
     value: Decimal = Field(gt=0)
     min_order_pkr: int | None = None
-    usage_limit: int | None = None
+    usage_limit: int | None = Field(default=None, ge=1)
+    per_customer_limit: int | None = Field(
+        default=None, ge=1, description="How many orders one buyer may use it on; 1 for a first-order code"
+    )
     ends_at: datetime | None = None
 
 
@@ -121,19 +134,14 @@ async def add_order_note(
     return await admin_order_service.add_staff_note(db, order_id, admin, body.body)
 
 
-@router.patch("/orders/{order_id}/status")
+@router.patch("/orders/{order_id}/status", responses={409: {"description": "That status change isn't allowed from the current status"}})
 async def update_order_status(
     order_id: uuid.UUID,
     body: OrderStatusUpdate,
-    _admin: AdminUser,
+    admin: AdminUser,
     db: DB,
 ) -> dict[str, Any]:
-    repo = OrderRepository(db)
-    order = await repo.get_by_id(order_id)
-    if not order:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Order not found")
-    order.status = body.status
-    await db.flush()
+    order = await admin_order_service.set_status(db, admin, order_id, body.status)
     return {"id": str(order.id), "status": order.status}
 
 
@@ -143,25 +151,14 @@ async def verify_payment(
     body: PaymentVerify,
     admin: AdminUser,
     db: DB,
+    background: BackgroundTasks,
 ) -> dict[str, Any]:
-    repo = OrderRepository(db)
-    order = await repo.get_by_id(order_id)
-    if not order or not order.payments:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Order not found")
-
-    payment = order.payments[0]
-    now = datetime.now(UTC)
-
-    if body.verified:
-        payment.status = PaymentStatus.paid
-        payment.verified_by = admin.id
-        payment.verified_at = now
-        order.status = OrderStatus.paid
-    else:
-        payment.status = PaymentStatus.failed
-
-    await db.flush()
-    return {"payment_status": payment.status, "order_status": order.status}
+    order = await admin_order_service.verify_payment(db, admin, order_id, body.verified)
+    # Orders placed in the WhatsApp bot hear back in the chat (ADR 0013), once committed.
+    if notice := whatsapp_bot_service.payment_notice(order, body.verified):
+        to, replies = notice
+        background.add_task(whatsapp_bot_service.send_payment_notice, order.id, to, replies, body.verified)
+    return {"payment_status": order.payments[0].status, "order_status": order.status}
 
 
 # ── Orders from Instagram / WhatsApp chats (ADR 0009) ─────────────────────────
@@ -300,21 +297,72 @@ async def list_products(
     ]
 
 
-@router.get("/products/{product_id}", response_model=ProductRead)
-async def get_product(product_id: uuid.UUID, _admin: AdminUser, db: DB) -> ProductRead:
-    """One product for the editor, hidden or live."""
-    return ProductRead.model_validate(await catalog_service.get_admin_product(db, product_id))
+@router.get("/products/{product_id}", response_model=AdminProductDetail)
+async def get_product(product_id: uuid.UUID, _admin: AdminUser, db: DB) -> AdminProductDetail:
+    """One product for the editor, hidden or live, with its occasions."""
+    return AdminProductDetail.model_validate(await catalog_service.get_admin_product(db, product_id))
 
 
 @router.patch("/products/{product_id}/active")
 async def set_product_active(
     product_id: uuid.UUID,
     body: ProductActiveUpdate,
-    _admin: AdminUser,
+    admin: AdminUser,
     db: DB,
 ) -> dict[str, Any]:
-    product = await catalog_service.set_product_active(db, product_id, body.is_active)
+    product = await catalog_service.set_product_active(db, product_id, body.is_active, admin)
     return {"id": str(product.id), "is_active": product.is_active}
+
+
+# ── Build-your-own builders (ADR 0014) ──────────────────────────────────────
+
+@router.get("/builders", response_model=list[AdminBuilderSummary])
+async def list_builders(_admin: AdminUser, db: DB) -> list[AdminBuilderSummary]:
+    """Every product set up as a builder, hidden ones included, with how many items buyers can add."""
+    return await builder_admin_service.list_for_admin(db)
+
+
+@router.get("/products/{product_id}/builder", response_model=AdminBuilderConfig)
+async def get_builder_config(product_id: uuid.UUID, _admin: AdminUser, db: DB) -> AdminBuilderConfig:
+    """The product's builder settings and items (an ordinary product has `builder_kind` null)."""
+    return await builder_admin_service.get_config(db, product_id)
+
+
+@router.put("/products/{product_id}/builder", response_model=AdminBuilderConfig)
+async def update_builder_settings(
+    product_id: uuid.UUID, body: BuilderSettingsUpdate, admin: AdminUser, db: DB
+) -> AdminBuilderConfig:
+    """Turn a product into a hamper or bouquet builder (or back), and set how many items it holds."""
+    return await builder_admin_service.update_settings(db, admin, product_id, body)
+
+
+@router.post(
+    "/products/{product_id}/builder/components",
+    response_model=AdminBuilderConfig,
+    status_code=status.HTTP_201_CREATED,
+    responses={409: {"description": "Not a builder yet, another shop's product, or already added"}},
+)
+async def add_builder_component(
+    product_id: uuid.UUID, body: BuilderComponentCreate, admin: AdminUser, db: DB
+) -> AdminBuilderConfig:
+    """Let buyers put this product in the builder. It must be from the builder's own shop."""
+    return await builder_admin_service.add_component(db, admin, product_id, body)
+
+
+@router.patch("/products/{product_id}/builder/components/{component_id}", response_model=AdminBuilderConfig)
+async def update_builder_component(
+    product_id: uuid.UUID, component_id: uuid.UUID, body: BuilderComponentUpdate, admin: AdminUser, db: DB
+) -> AdminBuilderConfig:
+    """Change an item's role, most allowed, position in the list, or switch it off."""
+    return await builder_admin_service.update_component(db, admin, product_id, component_id, body)
+
+
+@router.delete("/products/{product_id}/builder/components/{component_id}", response_model=AdminBuilderConfig)
+async def remove_builder_component(
+    product_id: uuid.UUID, component_id: uuid.UUID, admin: AdminUser, db: DB
+) -> AdminBuilderConfig:
+    """Take the item out. Buckets already in carts keep their copy of it."""
+    return await builder_admin_service.remove_component(db, admin, product_id, component_id)
 
 
 # ── FX rates ──────────────────────────────────────────────────────────────────
@@ -345,6 +393,10 @@ async def override_fx_rate(body: FxRateOverride, admin: AdminUser, db: DB) -> di
     )).scalar_one_or_none()
 
     now = datetime.now(UTC)
+    await audit_service.record(
+        db, admin, "fx_rate.overridden", "fx_rate", body.quote_currency.upper(),
+        before={"rate": existing.rate} if existing else None, after={"rate": body.rate},
+    )
     if existing:
         existing.rate = body.rate
         existing.fetched_at = now
@@ -375,6 +427,7 @@ async def list_coupons(_admin: AdminUser, db: DB) -> list[dict[str, Any]]:
             "value": str(c.value),
             "used_count": c.used_count,
             "usage_limit": c.usage_limit,
+            "per_customer_limit": c.per_customer_limit,
             "is_active": c.is_active,
             "ends_at": c.ends_at.isoformat() if c.ends_at else None,
         }
@@ -383,7 +436,7 @@ async def list_coupons(_admin: AdminUser, db: DB) -> list[dict[str, Any]]:
 
 
 @router.post("/coupons", status_code=status.HTTP_201_CREATED)
-async def create_coupon(body: CouponCreate, _admin: AdminUser, db: DB) -> dict[str, Any]:
+async def create_coupon(body: CouponCreate, admin: AdminUser, db: DB) -> dict[str, Any]:
     repo = CouponRepository(db)
     coupon = await repo.create(
         code=body.code.upper(),
@@ -391,7 +444,12 @@ async def create_coupon(body: CouponCreate, _admin: AdminUser, db: DB) -> dict[s
         value=body.value,
         min_order_pkr=body.min_order_pkr,
         usage_limit=body.usage_limit,
+        per_customer_limit=body.per_customer_limit,
         ends_at=body.ends_at,
+    )
+    await audit_service.record(
+        db, admin, "coupon.created", "coupon", coupon.id,
+        after={"code": coupon.code, **body.model_dump(exclude={"code"})},
     )
     return {"id": str(coupon.id), "code": coupon.code}
 
@@ -400,13 +458,17 @@ async def create_coupon(body: CouponCreate, _admin: AdminUser, db: DB) -> dict[s
 async def set_coupon_active(
     coupon_id: uuid.UUID,
     body: ProductActiveUpdate,
-    _admin: AdminUser,
+    admin: AdminUser,
     db: DB,
 ) -> dict[str, Any]:
     result = await db.execute(select(Coupon).where(Coupon.id == coupon_id))
     coupon = result.scalar_one_or_none()
     if not coupon:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Coupon not found")
+    await audit_service.record(
+        db, admin, "coupon.enabled" if body.is_active else "coupon.disabled", "coupon", coupon.id,
+        before={"is_active": coupon.is_active}, after={"is_active": body.is_active}, context={"code": coupon.code},
+    )
     coupon.is_active = body.is_active
     await db.flush()
     return {"id": str(coupon.id), "is_active": coupon.is_active}
@@ -445,5 +507,33 @@ async def update_user_role(
     user = await repo.get_by_id(user_id)
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    await audit_service.record(
+        db, admin, "user.role_changed", "user", user.id,
+        before={"role": user.role}, after={"role": role}, context={"email": user.email},
+    )
     await repo.update(user, role=role)
     return {"id": str(user.id), "role": user.role}
+
+
+# ── Audit log ─────────────────────────────────────────────────────────────────
+
+@router.get("/audit-log", response_model=AuditPage)
+async def list_audit_log(
+    admin: AdminUser,
+    db: DB,
+    entity: str | None = Query(default=None, examples=["order"]),  # noqa: B008
+    entity_id: str | None = Query(default=None, max_length=255),  # noqa: B008
+    actor_user_id: uuid.UUID | None = None,
+    action: str | None = Query(  # noqa: B008
+        default=None, max_length=100, description="Action or prefix, e.g. `payment.` or `product.updated`"
+    ),
+    offset: int = Query(default=0, ge=0),  # noqa: B008
+    limit: int = Query(default=50, ge=1, le=100),  # noqa: B008
+) -> AuditPage:
+    """Who changed what in the back office, newest first. Admins only: it shows every staff
+    member's actions and IP addresses."""
+    if admin.role != UserRole.admin:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only admins can see the activity log")
+    return await audit_service.search(
+        db, entity=entity, entity_id=entity_id, actor_user_id=actor_user_id, action=action, offset=offset, limit=limit
+    )

@@ -9,7 +9,7 @@ import pytest_asyncio
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.catalog import City, Vendor
+from app.models.catalog import City, ProductCity, Vendor
 from app.models.user import User, UserRole
 from app.repositories.catalog_repository import (
     CategoryRepository,
@@ -370,6 +370,8 @@ async def test_list_products(
         slug=f"red-roses-{uuid.uuid4().hex[:4]}",
         base_price_pkr=150000,
     )
+    db.add(ProductCity(product_id=product.id, city_id=city.id))  # listed only where it's delivered
+    await db.flush()
     product_slug = product.slug
 
     # Scope to this test's shop: other tests' products share the database and
