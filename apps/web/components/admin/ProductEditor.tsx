@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { apiFetch, ApiError } from "@/lib/api";
+import { categoryOptions } from "@/lib/taxonomy-admin";
 
 type Option = { id: string; name: string };
 
@@ -113,11 +114,11 @@ export function ProductEditor({ token, productId }: { token: string; productId: 
       try {
         const [p, cat, ci, occ] = await Promise.all([
           apiFetch<EditableProduct>(`/admin/products/${productId}`, { token }),
-          apiFetch<Option[]>("/categories", { token }),
+          apiFetch<Parameters<typeof categoryOptions>[0]>("/categories", { token }),
           apiFetch<Option[]>("/cities", { token }),
           apiFetch<Option[]>("/occasions", { token }),
         ]);
-        setCategories(cat);
+        setCategories(categoryOptions(cat));
         setCities(ci);
         // The list has live occasions only; keep any switched-off one the product is still on.
         setOccasions([...occ, ...p.occasions.filter((o) => !occ.some((x) => x.id === o.id))]);
@@ -308,6 +309,10 @@ export function ProductEditor({ token, productId }: { token: string; productId: 
               <Select {...p} value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
                 <option value="">None</option>
                 {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                {/* The menu lists shown categories only; keep a hidden one the product is still in, so saving doesn't drop it. */}
+                {product.category_id && !categories.some((c) => c.id === product.category_id) && (
+                  <option value={product.category_id}>Current category (hidden)</option>
+                )}
               </Select>
             )}
           </FormField>

@@ -17,8 +17,10 @@ from app.models.catalog import (
     ProductVariant,
     Vendor,
     VendorDocument,
+    product_categories_table,
     product_occasions_table,
 )
+from app.models.order import Fulfillment
 
 
 class CityRepository:
@@ -52,6 +54,21 @@ class CityRepository:
         await self._db.flush()
         await self._db.refresh(city)
         return city
+
+    async def list_with_usage(self, city_id: uuid.UUID | None = None) -> builtins.list[tuple[City, int, int, int]]:
+        """Every city (or just one), switched-off ones too, with how many shops, products and deliveries use it."""
+        vendors = select(func.count()).where(Vendor.city_id == City.id).scalar_subquery()
+        products = select(func.count()).where(ProductCity.city_id == City.id).scalar_subquery()
+        deliveries = select(func.count()).where(Fulfillment.city_id == City.id).scalar_subquery()
+        q = select(City, vendors, products, deliveries).order_by(City.name)
+        if city_id is not None:
+            q = q.where(City.id == city_id)
+        result = await self._db.execute(q)
+        return [(c, v, p, d) for c, v, p, d in result.all()]
+
+    async def delete(self, city: City) -> None:
+        await self._db.delete(city)
+        await self._db.flush()
 
 
 class VendorRepository:
@@ -186,8 +203,39 @@ class CategoryRepository:
         for key, value in kwargs.items():
             setattr(category, key, value)
         await self._db.flush()
-        await self._db.refresh(category)
-        return category
+        result = await self._db.execute(
+            select(Category)
+            .options(selectinload(Category.children))
+            .where(Category.id == category.id)
+            .execution_options(populate_existing=True)
+        )
+        return result.scalar_one()
+
+    async def list_with_usage(
+        self, category_id: uuid.UUID | None = None
+    ) -> builtins.list[tuple[Category, int, int]]:
+        """Every category (or just one), switched-off ones too, flat, with its product and subcategory counts."""
+        child = aliased(Category)
+        products = (
+            select(func.count(func.distinct(Product.id)))
+            .select_from(Product)
+            .outerjoin(product_categories_table, product_categories_table.c.product_id == Product.id)
+            .where(or_(Product.category_id == Category.id, product_categories_table.c.category_id == Category.id))
+            .scalar_subquery()
+        )
+        children = select(func.count()).select_from(child).where(child.parent_id == Category.id).scalar_subquery()
+        q = select(Category, products, children).order_by(Category.sort_order, Category.name)
+        if category_id is not None:
+            q = q.where(Category.id == category_id)
+        result = await self._db.execute(q)
+        return [(c, p, ch) for c, p, ch in result.all()]
+
+    async def has_children(self, category_id: uuid.UUID) -> bool:
+        return bool(await self._db.scalar(select(exists().where(Category.parent_id == category_id))))
+
+    async def delete(self, category: Category) -> None:
+        await self._db.delete(category)
+        await self._db.flush()
 
 
 class OccasionRepository:

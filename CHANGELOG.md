@@ -7,6 +7,15 @@ pre-production-cutover).
 
 ## [Unreleased]
 
+### Fixed
+- `GET /categories` no longer fails (500) once any subcategory exists, and leaves switched-off
+  subcategories out of the menu.
+- `PATCH /categories/{slug}` with `"parent_id": null` now moves a category to the top level (it was
+  ignored); a category can't be filed under itself, a subcategory, or while it has its own children.
+- A city's time zone must be a real one (e.g. `Asia/Karachi`, now the default); a typo used to be
+  saved and break same-day cut-offs.
+- The product editor keeps a product's hidden category instead of dropping it on save.
+
 ### Changed
 - **New page layouts across the site** (ADR 0015). Home asks where, when and what for in the hero.
   Shop, category, occasion and search pages filter from one chip row with *Arrives tomorrow* first.
@@ -18,6 +27,16 @@ pre-production-cutover).
   attention*: receipts to verify, WhatsApp messages due and late orders.
 
 ### Added
+- **Manage categories and cities in the admin.** New *Catalog → Categories* and *Catalog → Cities*
+  pages list every one, switched-off ones too, with what uses them (products and subcategories; shops,
+  products and deliveries). Add, rename, re-file a category under another (two levels, as the store
+  menu shows), set its menu position, hide or show it; add a city with its time zone, rename it,
+  switch it off or on. Only an unused category or city can be deleted — the API refuses (409) the
+  rest, so past orders keep their address. New `GET /admin/cities`, `DELETE /admin/cities/{id}`,
+  `GET /admin/categories`, `DELETE /admin/categories/{id}`; changes are in the activity log.
+- **Build-your-own from Add product.** The form now asks for the product type: ready-made, or a
+  build-your-own hamper or bouquet with its fewest and most items. A builder links straight to
+  adding its items. Subcategories can be picked in Add product and the product editor.
 - **Filter gifts by arrival day.** `GET /products?deliver_on=YYYY-MM-DD` (with `city_id`) keeps only
   gifts that can arrive that day, counting same-day cutoffs and lead times.
 - **Set up build-your-own hampers and bouquets in the admin** (ADR 0014). New *Catalog →

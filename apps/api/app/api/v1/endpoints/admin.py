@@ -24,7 +24,7 @@ from app.schemas.bucket import (
     BuilderComponentUpdate,
     BuilderSettingsUpdate,
 )
-from app.schemas.catalog import AdminProductDetail
+from app.schemas.catalog import AdminCategoryRead, AdminCityRead, AdminProductDetail
 from app.schemas.order import (
     AdminOrderDetail,
     AdminOrderPage,
@@ -312,6 +312,40 @@ async def set_product_active(
 ) -> dict[str, Any]:
     product = await catalog_service.set_product_active(db, product_id, body.is_active, admin)
     return {"id": str(product.id), "is_active": product.is_active}
+
+
+# ── Cities & categories ──────────────────────────────────────────────────────
+# Create and edit go through /cities and /categories (staff only there too); these
+# add what the back office needs on top: switched-off rows, usage, and delete.
+
+@router.get("/cities", response_model=list[AdminCityRead])
+async def list_cities(_admin: AdminUser, db: DB) -> list[AdminCityRead]:
+    """Every city, switched-off ones too, with how many shops, products and deliveries use it."""
+    return await catalog_service.list_admin_cities(db)
+
+
+@router.delete(
+    "/cities/{city_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses={409: {"description": "Still used by a shop, product or delivery; switch it off instead"}},
+)
+async def delete_city(city_id: uuid.UUID, admin: AdminUser, db: DB) -> None:
+    await catalog_service.delete_city(db, city_id, admin)
+
+
+@router.get("/categories", response_model=list[AdminCategoryRead])
+async def list_categories(_admin: AdminUser, db: DB) -> list[AdminCategoryRead]:
+    """Every category, flat, switched-off ones too, with product and subcategory counts."""
+    return await catalog_service.list_admin_categories(db)
+
+
+@router.delete(
+    "/categories/{category_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses={409: {"description": "Still has products or subcategories; switch it off instead"}},
+)
+async def delete_category(category_id: uuid.UUID, admin: AdminUser, db: DB) -> None:
+    await catalog_service.delete_category(db, category_id, admin)
 
 
 # ── Build-your-own builders (ADR 0014) ──────────────────────────────────────

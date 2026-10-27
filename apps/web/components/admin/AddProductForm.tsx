@@ -8,12 +8,15 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { apiFetch, ApiError } from "@/lib/api";
+import { buildersAdminApi, wholeNumber, type BuilderKind } from "@/lib/builders-admin";
+import { categoryOptions } from "@/lib/taxonomy-admin";
 
 type Option = { id: string; name: string };
 type Vendor = Option & { owner_user_id: string | null };
 const MAX_PHOTO_BYTES = 10 * 1024 * 1024;
 
 type CreatedProduct = { id: string; slug: string; name: string };
+type Kind = "regular" | BuilderKind;
 
 export function slugify(name: string): string {
   return name.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
@@ -28,6 +31,8 @@ export function toPaisa(rupees: string): number | null {
 /**
  * Staff create a product that goes live at once (no approval step, unlike vendor listings).
  * Every product needs a vendor; the house shop (a vendor with no owner account) is preselected.
+ * Picking a build-your-own type makes it a hamper or bouquet base (ADR 0014); its items are
+ * added next, in the product editor.
  */
 export function AddProductForm({ token }: { token: string }) {
   const [vendors, setVendors] = useState<Vendor[]>([]);
@@ -35,6 +40,9 @@ export function AddProductForm({ token }: { token: string }) {
   const [cities, setCities] = useState<Option[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
 
+  const [kind, setKind] = useState<Kind>("regular");
+  const [minItems, setMinItems] = useState("1");
+  const [maxItems, setMaxItems] = useState("");
   const [vendorId, setVendorId] = useState("");
   const [categoryId, setCategoryId] = useState("");
   const [name, setName] = useState("");
@@ -51,18 +59,18 @@ export function AddProductForm({ token }: { token: string }) {
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [created, setCreated] = useState<CreatedProduct | null>(null);
+  const [created, setCreated] = useState<(CreatedProduct & { kind: Kind }) | null>(null);
 
   useEffect(() => {
     void (async () => {
       try {
         const [v, c, ci] = await Promise.all([
           apiFetch<Vendor[]>("/vendors", { token }),
-          apiFetch<Option[]>("/categories", { token }),
+          apiFetch<Parameters<typeof categoryOptions>[0]>("/categories", { token }),
           apiFetch<Option[]>("/cities", { token }),
         ]);
         setVendors(v);
-        setCategories(c);
+        setCategories(categoryOptions(c));
         setCities(ci);
         const house = v.find((x) => x.owner_user_id === null) ?? v[0];
         if (house) setVendorId(house.id);
@@ -84,6 +92,7 @@ export function AddProductForm({ token }: { token: string }) {
   function reset() {
     setName(""); setSlug(""); setSlugEdited(false); setDescription("");
     setPrice(""); setPhoto(null); setPhotoInputKey((k) => k + 1); setCityIds([]); setCategoryId("");
+    setKind("regular"); setMinItems("1"); setMaxItems("");
   }
 
   async function submit(e: React.FormEvent) {
@@ -101,6 +110,13 @@ export function AddProductForm({ token }: { token: string }) {
     if (fee === null) return setError("Enter the delivery fee in whole rupees.");
     if (!Number.isInteger(lead) || lead < 0) return setError("Lead time must be a whole number of hours.");
     if (photo && photo.size > MAX_PHOTO_BYTES) return setError("The photo is larger than 10 MB.");
+    const least = wholeNumber(minItems, 1, 100);
+    const most = maxItems.trim() ? wholeNumber(maxItems, 1, 200) : null;
+    if (kind !== "regular") {
+      if (least === null) return setError("The fewest items must be a whole number from 1 to 100.");
+      if (maxItems.trim() && most === null) return setError("The most items must be a whole number from 1 to 200, or blank.");
+      if (most !== null && most < least) return setError("The most items can't be fewer than the fewest.");
+    }
 
     setSubmitting(true);
     let product: CreatedProduct | null = null;
@@ -131,7 +147,10 @@ export function AddProductForm({ token }: { token: string }) {
           body: cityIds.map((city_id) => ({ city_id, delivery_fee_pkr: fee, lead_time_hours: lead })),
         });
       }
-      setCreated(product);
+      if (kind !== "regular") {
+        await buildersAdminApi.saveSettings(token, product.id, { builder_kind: kind, min_items: least ?? 1, max_items: most });
+      }
+      setCreated({ ...product, kind });
       reset();
     } catch (err) {
       const detail = err instanceof ApiError ? err.detail : "Something went wrong.";
@@ -151,17 +170,55 @@ export function AddProductForm({ token }: { token: string }) {
       {error && (
         <div role="alert" className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">{error}</div>
       )}
-      {created && (
+      {created && created.kind === "regular" && (
         <div role="status" className="rounded-lg bg-success-soft p-3 text-sm">
           “{created.name}” is live.{" "}
           <a href={`/p/${created.slug}`} target="_blank" rel="noreferrer" className="text-link hover:underline">
             View it →
+          </a>{" "}
+          <a href={`/admin/products/${created.id}`} className="text-link hover:underline">
+            Add sizes, occasions and more photos →
+          </a>
+        </div>
+      )}
+      {created && created.kind !== "regular" && (
+        <div role="status" className="rounded-lg bg-success-soft p-3 text-sm">
+          “{created.name}” is set up as a build-your-own {created.kind}. Buyers can start it once it has items.{" "}
+          <a href={`/admin/products/${created.id}#builder-heading`} className="text-link hover:underline">
+            Add the items buyers can pick →
           </a>
         </div>
       )}
 
+      <fieldset className="space-y-3 rounded-xl border p-4">
+        <legend className="px-1 text-sm font-medium">What are you adding?</legend>
+        <FormField label="Product type"
+          hint={kind === "regular"
+            ? "A ready-made gift buyers order as it is."
+            : "An empty basket or wrap buyers fill themselves. Price it at what the container costs; each item adds its own price."}>
+          {(p) => (
+            <Select {...p} value={kind} onChange={(e) => setKind(e.target.value as Kind)}>
+              <option value="regular">Ready-made product</option>
+              <option value="hamper">Build-your-own hamper</option>
+              <option value="bouquet">Build-your-own bouquet</option>
+            </Select>
+          )}
+        </FormField>
+        {kind !== "regular" && (
+          <div className="grid gap-4 sm:grid-cols-2">
+            <FormField label="Fewest items" hint="A bucket needs at least this many before it can go in the cart.">
+              {(p) => <Input {...p} inputMode="numeric" value={minItems} onChange={(e) => setMinItems(e.target.value)} />}
+            </FormField>
+            <FormField label="Most items" hint="Leave blank for no limit.">
+              {(p) => <Input {...p} inputMode="numeric" value={maxItems} onChange={(e) => setMaxItems(e.target.value)} />}
+            </FormField>
+          </div>
+        )}
+      </fieldset>
+
       <div className="grid gap-4 sm:grid-cols-2">
-        <FormField label="Vendor" required hint="Your own shop is picked by default.">
+        <FormField label="Vendor" required
+          hint={kind === "regular" ? "Your own shop is picked by default." : "Items in the builder must come from this same shop."}>
           {(p) => (
             <Select {...p} value={vendorId} onChange={(e) => setVendorId(e.target.value)}>
               {vendors.map((v) => (

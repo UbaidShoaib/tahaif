@@ -89,6 +89,7 @@
           "landmark": {
             "anyOf": [
               {
+                "maxLength": 255,
                 "type": "string"
               },
               {
@@ -98,12 +99,15 @@
             "title": "Landmark"
           },
           "line1": {
+            "maxLength": 500,
+            "minLength": 1,
             "title": "Line1",
             "type": "string"
           },
           "line2": {
             "anyOf": [
               {
+                "maxLength": 255,
                 "type": "string"
               },
               {
@@ -320,6 +324,7 @@
           "landmark": {
             "anyOf": [
               {
+                "maxLength": 255,
                 "type": "string"
               },
               {
@@ -331,6 +336,8 @@
           "line1": {
             "anyOf": [
               {
+                "maxLength": 500,
+                "minLength": 1,
                 "type": "string"
               },
               {
@@ -342,6 +349,7 @@
           "line2": {
             "anyOf": [
               {
+                "maxLength": 255,
                 "type": "string"
               },
               {
@@ -595,6 +603,119 @@
           "bucket_count"
         ],
         "title": "AdminBuilderSummary",
+        "type": "object"
+      },
+      "AdminCategoryRead": {
+        "description": "A category in the back office: flat, switched-off ones included.",
+        "properties": {
+          "child_count": {
+            "description": "Subcategories under it",
+            "title": "Child Count",
+            "type": "integer"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "is_active": {
+            "title": "Is Active",
+            "type": "boolean"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "parent_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Id"
+          },
+          "product_count": {
+            "description": "Products filed under it",
+            "title": "Product Count",
+            "type": "integer"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          },
+          "sort_order": {
+            "title": "Sort Order",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "parent_id",
+          "name",
+          "slug",
+          "sort_order",
+          "is_active",
+          "product_count",
+          "child_count"
+        ],
+        "title": "AdminCategoryRead",
+        "type": "object"
+      },
+      "AdminCityRead": {
+        "description": "A city in the back office, with what still depends on it.",
+        "properties": {
+          "delivery_count": {
+            "description": "Deliveries ever sent there",
+            "title": "Delivery Count",
+            "type": "integer"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "is_active": {
+            "title": "Is Active",
+            "type": "boolean"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "product_count": {
+            "description": "Products set up to deliver there",
+            "title": "Product Count",
+            "type": "integer"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          },
+          "timezone": {
+            "title": "Timezone",
+            "type": "string"
+          },
+          "vendor_count": {
+            "description": "Shops based in the city",
+            "title": "Vendor Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "slug",
+          "timezone",
+          "is_active",
+          "vendor_count",
+          "product_count",
+          "delivery_count"
+        ],
+        "title": "AdminCityRead",
         "type": "object"
       },
       "AdminFulfillmentRead": {
@@ -3472,6 +3593,7 @@
         "properties": {
           "name": {
             "maxLength": 100,
+            "minLength": 1,
             "title": "Name",
             "type": "string"
           },
@@ -3578,6 +3700,7 @@
             "anyOf": [
               {
                 "maxLength": 100,
+                "minLength": 1,
                 "type": "string"
               },
               {
@@ -3596,6 +3719,7 @@
                 "type": "null"
               }
             ],
+            "description": "Send null to make it a top-level category",
             "title": "Parent Id"
           },
           "sort_order": {
@@ -3624,6 +3748,7 @@
           "address_line2": {
             "anyOf": [
               {
+                "maxLength": 255,
                 "type": "string"
               },
               {
@@ -3714,6 +3839,7 @@
           "landmark": {
             "anyOf": [
               {
+                "maxLength": 255,
                 "type": "string"
               },
               {
@@ -3857,6 +3983,7 @@
         "properties": {
           "name": {
             "maxLength": 100,
+            "minLength": 1,
             "title": "Name",
             "type": "string"
           },
@@ -3867,6 +3994,7 @@
             "type": "string"
           },
           "timezone": {
+            "default": "Asia/Karachi",
             "maxLength": 64,
             "title": "Timezone",
             "type": "string"
@@ -3874,8 +4002,7 @@
         },
         "required": [
           "name",
-          "slug",
-          "timezone"
+          "slug"
         ],
         "title": "CityCreate",
         "type": "object"
@@ -3931,6 +4058,7 @@
             "anyOf": [
               {
                 "maxLength": 100,
+                "minLength": 1,
                 "type": "string"
               },
               {
@@ -4003,9 +4131,23 @@
             ],
             "title": "Min Order Pkr"
           },
+          "per_customer_limit": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "How many orders one buyer may use it on; 1 for a first-order code",
+            "title": "Per Customer Limit"
+          },
           "usage_limit": {
             "anyOf": [
               {
+                "minimum": 1.0,
                 "type": "integer"
               },
               {
@@ -5961,6 +6103,19 @@
       },
       "QuoteLineItem": {
         "properties": {
+          "cart_item_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The cart line this prices",
+            "title": "Cart Item Id"
+          },
           "line_total_pkr": {
             "title": "Line Total Pkr",
             "type": "integer"
@@ -6212,6 +6367,7 @@
           "body": {
             "anyOf": [
               {
+                "maxLength": 5000,
                 "type": "string"
               },
               {
@@ -7969,6 +8125,156 @@
           }
         ],
         "summary": "List Builders",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/categories": {
+      "get": {
+        "description": "Every category, flat, switched-off ones too, with product and subcategory counts.",
+        "operationId": "list_categories_api_v1_admin_categories_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/AdminCategoryRead"
+                  },
+                  "title": "Response List Categories Api V1 Admin Categories Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Categories",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/categories/{category_id}": {
+      "delete": {
+        "operationId": "delete_category_api_v1_admin_categories__category_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "category_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Category Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "409": {
+            "description": "Still has products or subcategories; switch it off instead"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Delete Category",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/cities": {
+      "get": {
+        "description": "Every city, switched-off ones too, with how many shops, products and deliveries use it.",
+        "operationId": "list_cities_api_v1_admin_cities_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/AdminCityRead"
+                  },
+                  "title": "Response List Cities Api V1 Admin Cities Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Cities",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/cities/{city_id}": {
+      "delete": {
+        "operationId": "delete_city_api_v1_admin_cities__city_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "city_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "City Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "409": {
+            "description": "Still used by a shop, product or delivery; switch it off instead"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Delete City",
         "tags": [
           "admin"
         ]
