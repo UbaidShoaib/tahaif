@@ -18,6 +18,15 @@ pre-production-cutover).
   attention*: receipts to verify, WhatsApp messages due and late orders.
 
 ### Added
+- SEO (Phase 10 P2.1): **city landing pages** for searches like "flowers gujranwala" or "cake
+  delivery lahore". `/city/{city}` lists every gift delivered there, with links to its categories
+  ("Cakes in Lahore 7") and the shops that deliver there; `/c/{category}/{city}` is that category
+  filtered to the city on the server. Both have keyword titles ("Flowers Delivery in Gujranwala —
+  Order Flowers Online"), descriptions with the real gift count, and canonicals, and stay `noindex`
+  until they have enough gifts (1 for a city, 3 for a category in a city). The sitemap lists the
+  ones that qualify. Shop pages are titled with their city ("Bouquet Bar, Gujranwala — Order Online
+  for Home Delivery"); category pages target national searches and link to each city; the footer
+  links every city. Listings take a fixed `city` (no city chip, not in the URL).
 - **Filter gifts by arrival day.** `GET /products?deliver_on=YYYY-MM-DD` (with `city_id`) keeps only
   gifts that can arrive that day, counting same-day cutoffs and lead times.
 - **Set up build-your-own hampers and bouquets in the admin** (ADR 0014). New *Catalog →

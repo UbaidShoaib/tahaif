@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Check, ChevronDown, Search } from "lucide-react";
-import type { PaginatedProducts, Product } from "@/lib/catalog";
+import type { City, PaginatedProducts, Product } from "@/lib/catalog";
 import {
   activeFilterCount,
   fetchListing,
@@ -30,6 +30,8 @@ type Props = {
   /** Show the search box (the /search page). */
   showSearch?: boolean;
   emptyTitle?: string;
+  /** A city page (/city/x, /c/y/x): the city comes from the path, not ?city_id=, and can't be changed here. */
+  city?: City;
 };
 
 const chipBase =
@@ -74,11 +76,12 @@ function ChipSelect({
  * with "Arrives tomorrow" always first. Filters and sort live in the URL (shareable, back-button friendly); the
  * first page comes from the server and "Load more" appends the next pages.
  */
-export function ProductListing({ scope = {}, initial, showSearch = false, emptyTitle = "No gifts found" }: Props) {
+export function ProductListing({ scope = {}, initial, showSearch = false, emptyTitle = "No gifts found", city }: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const params = parseListingParams(searchParams);
+  const urlParams = parseListingParams(searchParams);
+  const params = city ? { ...urlParams, cityId: city.id } : urlParams;
   const queryKey = listingQueryString(params);
 
   const cities = useDeliveryStore((s) => s.cities);
@@ -108,16 +111,17 @@ export function ProductListing({ scope = {}, initial, showSearch = false, emptyT
   const update = useCallback(
     (next: Partial<ListingParams>) => {
       const merged = { ...parseListingParams(searchParams), ...next };
-      if (next.cityId !== undefined) setDeliverTo(next.cityId || null);
+      if (city) merged.cityId = "";
+      else if (next.cityId !== undefined) setDeliverTo(next.cityId || null);
       const qs = listingQueryString(merged);
       router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
     },
-    [pathname, router, searchParams, setDeliverTo],
+    [city, pathname, router, searchParams, setDeliverTo],
   );
 
   // No city in the URL: start from the buyer's "Deliver to" choice.
   useEffect(() => {
-    if (!params.cityId && deliverTo) update({ cityId: deliverTo });
+    if (!city && !params.cityId && deliverTo) update({ cityId: deliverTo });
     // Only on first mount / when the remembered city first loads.
   }, [deliverTo]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -177,9 +181,11 @@ export function ProductListing({ scope = {}, initial, showSearch = false, emptyT
     }
   };
 
-  const filterCount = activeFilterCount(params);
-  const cityName = cities.find((c) => c.id === params.cityId)?.name;
-  const tz = cities.find((c) => c.id === params.cityId)?.timezone ?? "Asia/Karachi";
+  // A city page's own city isn't a filter the buyer can clear.
+  const filterCount = activeFilterCount(params) - (city ? 1 : 0);
+  const chosenCity = city ?? cities.find((c) => c.id === params.cityId);
+  const cityName = chosenCity?.name;
+  const tz = chosenCity?.timezone ?? "Asia/Karachi";
   const today = zonedNow(tz).date;
   const tomorrow = addDays(today, 1);
   // A date only filters once a city is chosen; the chip says which day it means.
@@ -223,7 +229,7 @@ export function ProductListing({ scope = {}, initial, showSearch = false, emptyT
             {dateOn && <Check aria-hidden className="h-4 w-4" />}
             {dateLabel}
           </button>
-          {cities.length > 0 && (
+          {!city && cities.length > 0 && (
             <ChipSelect
               label="Deliver to"
               value={params.cityId}

@@ -219,6 +219,14 @@ needs the lookup to happen before streaming starts (P3 performance work).
 
 ### P2 — Landing pages & content (≈2–3 weeks, ongoing)
 
+**P2.1 first cut shipped (city pages):** `/city/{city}` hubs and `/c/{category}/{city}` pages
+with the listing filtered on the server, data-driven titles, descriptions and intro copy
+(`lib/city-seo.ts`), self canonicals, and `noindex` below the threshold (a hub needs 1 gift,
+a category in a city needs `MIN_CITY_PRODUCTS` = 3); the sitemap uses the same rule. Shop
+pages carry their city in the title ("Bouquet Bar, Gujranwala — …") and link to their city
+hub; every page's footer links to each city. Still to do from this item: per-page copy and
+FAQs edited by staff (`seo_title`, `seo_description`, `intro_md`).
+
 1. **City hubs and city × category pages**, with a server-side city filter,
    the threshold rule from section 3, and unique intro and FAQ copy stored per
    page in the DB. Add `seo_title`, `seo_description` and `intro_md` to
